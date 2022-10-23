@@ -3552,10 +3552,12 @@ ul li a strong {
 	color: #fff;
 	color: rgba(255, 255, 255, .8);
 	overflow: visible !important;
-	z-index: 10
+	z-index: 10;
 }
 
 .footer-contents {
+	font-size: 15px;
+	font-weight: bolder;
 	position: relative;
 	bottom: 14px;
 	right: 10px;
@@ -3565,8 +3567,8 @@ ul li a strong {
 }
 
 .footer-contents .footer-link-separator {
-	background-color: #e6eaed;
-	background-color: rgba(230, 234, 237, .2);
+	/* background-color: #e6eaed; */
+	background-color: rgba(230, 234, 237, .6);
 	display: inline-block;
 	width: 1px;
 	height: 10px;
@@ -3576,7 +3578,7 @@ ul li a strong {
 .footer-contents a, .footer-contents a:active, .footer-contents a:focus {
 	text-decoration: none;
 	color: #fff;
-	color: rgba(255, 255, 255, .8)
+	/* color: rgba(230, 210, 172, .8) */
 }
 
 .footer-contents a:hover {
