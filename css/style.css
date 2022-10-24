@@ -3544,11 +3544,13 @@ ul li a strong {
 #footer {
 	width: 80%;
 	margin: auto;
+	margin-top: 150px;
+	min-height: 100%;
 	height: 50px;
 	-webkit-font-smoothing: antialiased;
-	text-align: right;
-	font-size: 13px;
-	font-weight: 400;
+	text-align: center;
+	font-size: 15px;
+	font-weight: bolder;
 	color: #fff;
 	color: rgba(255, 255, 255, .8);
 	overflow: visible !important;
@@ -3556,8 +3558,6 @@ ul li a strong {
 }
 
 .footer-contents {
-	font-size: 15px;
-	font-weight: bolder;
 	position: relative;
 	bottom: 14px;
 	right: 10px;
