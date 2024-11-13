@@ -2,6 +2,7 @@ import requests
 import re
 import os
 import subprocess
+import time
 
 # 请求网页并解析IP地址
 def get_ip_from_website():
@@ -78,4 +79,9 @@ def main():
         print("未能获取到有效的 IP 地址。")
 
 if __name__ == "__main__":
-    main()
+    while True:
+        try:
+            main()
+        except Exception as e:
+            print(f"发生错误: {e}，但继续执行")
+        time.sleep(600)

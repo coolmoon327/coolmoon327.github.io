@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  auto_update_web:
+    build: .
+    container_name: auto_update_web
+    volumes:
+      - .:/app   
+    working_dir: /app
+    command: python autoUpdateIP.py 
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1         # 防止 Python 输出被缓冲
