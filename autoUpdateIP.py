@@ -72,7 +72,7 @@ def main():
             print("IP 地址已更新！")
             save_ip_to_file(current_ip)
             generate_html(current_ip)
-            # git_commit_and_push()
+            git_commit_and_push()
         else:
             print("IP 地址未更新，无需提交。")
     else:
