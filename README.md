@@ -18,4 +18,6 @@
 
 2. 基于 `ori_index.html`，替换其中的域名，生成 `index.html`
 
-3. 更新 github.io
+3. 更新 github.io (需要配置 id_rsa 到本目录，并在 github 注册公钥)
+
+容器内的 git 存在问题
