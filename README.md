@@ -18,6 +18,12 @@
 
 2. 基于 `ori_index.html`，替换其中的域名，生成 `index.html`
 
-3. 更新 github.io (需要配置 id_rsa 到本目录，并在 github 注册公钥)
+3. 更新 github.io
 
-容器内的 git 存在问题
+## 容器内使用 git
+
+1. 使用宿主机的 ssh 公钥，需要配置 id_rsa 到本目录
+
+2. 宿主机完成的 git init，因此需要 `git config --global --add safe.directory /app` 来跳过安全性检查
+
+3. docker 镜像一般不会包含 git，需要下载

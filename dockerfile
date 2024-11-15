@@ -25,4 +25,6 @@ RUN echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config \
 RUN git config --global user.email "535987745@qq.com" \
     && git config --global user.name "coolmoon327"
 
+RUN git config --global --add safe.directory /app
+
 CMD ["python", "autoUpdateIP.py"]
