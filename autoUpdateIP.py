@@ -4,6 +4,8 @@ import os
 import subprocess
 import time
 
+success=True
+
 # 请求网页并解析IP地址
 def get_ip_from_website():
     url = "https://ip111.cn/"
@@ -54,8 +56,10 @@ def git_commit_and_push():
         subprocess.run(["git", "commit", "-m", "update IP"], check=True)
         subprocess.run(["git", "push"], check=True)
         print("Git 操作成功！")
+        success=True
     except subprocess.CalledProcessError as e:
         print(f"Git 操作失败: {e}")
+        success=False
 
 def main():
     # 获取当前 IP
@@ -75,6 +79,10 @@ def main():
             git_commit_and_push()
         else:
             print("IP 地址未更新，无需提交。")
+        
+        if not success:
+            print("上次提交有问题，重新提交。")
+            git_commit_and_push()
     else:
         print("未能获取到有效的 IP 地址。")
 
