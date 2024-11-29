@@ -1,8 +1,8 @@
 import requests
 import re
-import os
 import subprocess
 import time
+from generateFiles import generate_html, get_stored_ip
 
 success=True
 
@@ -17,36 +17,10 @@ def get_ip_from_website():
             return match.group(1)  # 返回IP地址
     return None
 
-# 获取文件中的IP地址
-def get_stored_ip(filename="host.txt"):
-    if os.path.exists(filename):
-        with open(filename, 'r') as file:
-            return file.read().strip()
-    return None
-
 # 保存新的IP到文件
 def save_ip_to_file(ip, filename="host.txt"):
     with open(filename, 'w') as file:
         file.write(ip)
-
-# 生成 index.html 文件
-def generate_html(ip, filename="ori_index.html"):
-    # 读取 host.txt 中的 IP 地址
-    with open("host.txt", "r") as f:
-        ip_address = f.read().strip()
-
-    # 读取你的 HTML 文件
-    with open(filename, "r", encoding="utf-8") as f:
-        html_content = f.read()
-
-    # 替换网址
-    updated_html_content = html_content.replace("coolmoon.dynv6.net", ip_address)
-
-    # 将更新后的内容写回 HTML 文件
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(updated_html_content)
-
-    print("网址替换完成！")
 
 # 执行Git操作：git add, commit, push
 def git_commit_and_push():

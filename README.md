@@ -24,6 +24,10 @@
 
 1. 使用宿主机的 ssh 公钥，需要配置 id_rsa 到本目录
 
-2. 宿主机完成的 git init，因此需要 `git config --global --add safe.directory /app` 来跳过安全性检查
+````
+cp ~/.ssh/id_rsa ./
+````
 
-3. docker 镜像一般不会包含 git，需要下载
+1. 宿主机完成的 git init，因此需要 `git config --global --add safe.directory /app` 来跳过安全性检查
+
+2. docker 镜像一般不会包含 git，需要下载
