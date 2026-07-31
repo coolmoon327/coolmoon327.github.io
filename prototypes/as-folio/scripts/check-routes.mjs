@@ -1,4 +1,5 @@
 const baseUrl = (process.argv[2] ?? 'http://127.0.0.1:4321').replace(/\/$/, '');
+const basePath = new URL(baseUrl).pathname.replace(/\/$/, '');
 
 const coreRoutes = [
   { path: '/', lang: 'en', marker: 'Yuhang Shen', switchHref: '/zh/' },
@@ -21,6 +22,12 @@ const coreRoutes = [
     switchHref: '/zh/publications/',
   },
   { path: '/projects/', lang: 'en', marker: 'Projects', switchHref: '/zh/projects/' },
+  {
+    path: '/games/',
+    lang: 'en',
+    marker: 'Pocket game lab',
+    switchHref: '/zh/games/',
+  },
   { path: '/blog/', lang: 'en', marker: 'Writing will live here.', switchHref: '/zh/blog/' },
   {
     path: '/owner/',
@@ -49,6 +56,12 @@ const coreRoutes = [
     switchHref: '/publications/',
   },
   { path: '/zh/projects/', lang: 'zh-CN', marker: '项目', switchHref: '/projects/' },
+  {
+    path: '/zh/games/',
+    lang: 'zh-CN',
+    marker: '小游戏实验室',
+    switchHref: '/games/',
+  },
   { path: '/zh/blog/', lang: 'zh-CN', marker: '以后文章会发布在这里', switchHref: '/blog/' },
   {
     path: '/zh/owner/',
@@ -57,6 +70,14 @@ const coreRoutes = [
     switchHref: '/owner/',
     owner: true,
   },
+];
+
+const gameRoutes = [
+  { id: 'orbit', marker: '月轨校准' },
+  { id: 'signature', marker: '星屑签名' },
+  { id: 'echo', marker: '记忆回声' },
+  { id: 'match', marker: '翻牌花园' },
+  { id: 'merge', marker: '方块花园' },
 ];
 
 const removedDemoRoutes = [
@@ -85,7 +106,7 @@ for (const route of coreRoutes) {
   if (!html.includes(route.marker)) {
     failures.push(`${route.path}: missing expected content marker`);
   }
-  if (!html.includes(`href="${route.switchHref}"`)) {
+  if (!html.includes(`href="${basePath}${route.switchHref}"`)) {
     failures.push(`${route.path}: missing corresponding language switch`);
   }
   if (/\b(?:\d{1,3}\.){3}\d{1,3}\b/.test(html)) {
@@ -106,6 +127,29 @@ for (const route of coreRoutes) {
   console.log(`core ${response.status} ${route.lang.padEnd(5)} ${route.path}`);
 }
 
+for (const game of gameRoutes) {
+  const gameBase = `/pocket-play/games/${game.id}/`;
+  for (const asset of ['', 'style.css', 'game.js']) {
+    const path = `${gameBase}${asset}`;
+    const response = await fetch(`${baseUrl}${path}`, { redirect: 'manual' });
+    const body = await response.text();
+    if (response.status !== 200) {
+      failures.push(`${path}: expected 200, received ${response.status}`);
+    }
+    if (asset === '' && !body.includes(game.marker)) {
+      failures.push(`${path}: missing expected game marker`);
+    }
+    const networkScan = body.replaceAll('http://www.w3.org/2000/svg', '');
+    if (/https?:\/\//i.test(networkScan)) {
+      failures.push(`${path}: contains a runtime external URL`);
+    }
+    if (/\b(?:\d{1,3}\.){3}\d{1,3}\b/.test(body)) {
+      failures.push(`${path}: contains an IPv4 literal`);
+    }
+    console.log(`game ${response.status}       ${path}`);
+  }
+}
+
 for (const path of removedDemoRoutes) {
   const response = await fetch(`${baseUrl}${path}`, { redirect: 'manual' });
   if (response.status !== 404) {
@@ -119,5 +163,7 @@ if (failures.length > 0) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exitCode = 1;
 } else {
-  console.log(`\nValidated ${coreRoutes.length} core routes and ${removedDemoRoutes.length} removed demo routes.`);
+  console.log(
+    `\nValidated ${coreRoutes.length} core routes, ${gameRoutes.length * 3} game assets, and ${removedDemoRoutes.length} removed demo routes.`,
+  );
 }

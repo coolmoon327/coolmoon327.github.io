@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#142a35">
+    <title>月轨校准</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <main class="game" aria-labelledby="game-title">
+      <div class="topline">
+        <div>
+          <p>ORBIT ALIGNMENT</p>
+          <h1 id="game-title">月轨校准</h1>
+        </div>
+        <div class="status-actions">
+          <button
+            class="assist"
+            id="assist"
+            type="button"
+            aria-pressed="false"
+            aria-describedby="assist-note"
+          >辅助提示</button>
+          <output id="score" aria-live="polite">等待开始</output>
+        </div>
+      </div>
+
+      <div class="orbit-field" id="field" aria-hidden="true">
+        <div class="target-zone"></div>
+        <div class="orbit-ring"></div>
+        <div class="planet"></div>
+        <div class="satellite" id="satellite">
+          <span></span>
+        </div>
+      </div>
+
+      <button id="action" type="button">开始校准</button>
+      <p class="hint" id="hint">第二次点击时，让月球停在发光窗口中。</p>
+      <output class="sr-only" id="assist-status" aria-live="assertive"></output>
+      <span class="sr-only" id="assist-note">
+        开启后会播报月球正在远离、接近或正对窗口。
+      </span>
+    </main>
+    <script src="./game.js"></script>
+  </body>
+</html>

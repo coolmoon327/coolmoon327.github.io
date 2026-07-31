@@ -27,7 +27,14 @@ const sharedRules = {
 
 export default tseslint.config(
   {
-    ignores: ['node_modules/**', 'dist/**', '.astro/**', 'scripts/**', 'public/assets/js/**'],
+    ignores: [
+      'node_modules/**',
+      'dist/**',
+      '.astro/**',
+      'scripts/**',
+      'public/assets/js/**',
+      'public/pocket-play/**',
+    ],
   },
 
   eslint.configs.recommended,

@@ -61,8 +61,9 @@
     "test:types": "astro check && tsc --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --reporter=junit",
+    "check:games": "node scripts/check-games.mjs",
     "check:routes": "node scripts/check-routes.mjs",
-    "test:all": "yarn test:types && yarn lint:ci && yarn test && yarn test:e2e",
+    "test:all": "yarn test:types && yarn lint:ci && yarn check:games && yarn test && yarn test:e2e",
     "validate": "yarn test:all",
     "prepare": "husky",
     "citations:update": "node --strip-types scripts/update-citations.ts"

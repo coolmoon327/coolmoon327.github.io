@@ -7,12 +7,14 @@ const routes = [
   '/projects/',
   '/research/',
   '/research/openraas-thesis/',
+  '/games/',
   '/blog/',
   '/zh/',
   '/zh/publications/',
   '/zh/projects/',
   '/zh/research/',
   '/zh/research/openraas-thesis/',
+  '/zh/games/',
   '/zh/blog/',
 ] as const;
 

@@ -11,5 +11,6 @@
       "@content/*": ["./src/content/*"],
       "@data/*": ["./src/data/*"]
     }
-  }
+  },
+  "exclude": ["dist", "public/pocket-play/**"]
 }

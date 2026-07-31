@@ -121,6 +121,7 @@ export const site = {
             { label: 'research', href: '/research/' },
             { label: 'publications', href: '/publications/' },
             { label: 'projects', href: '/projects/' },
+            { label: 'play', href: '/games/' },
             { label: 'blog', href: '/blog/' },
             { label: 'owner', href: '/owner/' },
           ] as NavItem[],
@@ -141,6 +142,7 @@ export const site = {
             { label: '研究', href: '/zh/research/' },
             { label: '论文', href: '/zh/publications/' },
             { label: '项目', href: '/zh/projects/' },
+            { label: '试玩', href: '/zh/games/' },
             { label: '博客', href: '/zh/blog/' },
             { label: '主人入口', href: '/zh/owner/' },
           ] as NavItem[],
@@ -820,6 +822,162 @@ export const site = {
             '全国大学生嵌入式芯片与系统设计竞赛全国一等奖（2022）',
             '四川省优秀毕业生',
           ],
+        },
+      ],
+    },
+  },
+
+  // ─── Pocket game lab ────────────────────────────────────────────────────
+
+  playground: {
+    en: {
+      eyebrow: 'Interactive prototypes',
+      title: 'Pocket game lab',
+      intro:
+        'Five dependency-free games are shown here at their intended embedded sizes. Try them before we decide whether any belongs inside the academic homepage.',
+      boundaryLabel: 'Demo boundary',
+      boundary:
+        'This gallery is separate from the academic record, and every placement note is a hypothesis rather than a final design decision.',
+      interfaceNote:
+        'The games currently retain their original Chinese prototype controls. Any selected game will receive full English localization and a final visual pass before permanent placement.',
+      scoreNote:
+        'Scores are session-only inside the isolated previews. Open a game directly if you want its browser-local best score to persist.',
+      sessionLabel: 'Typical session',
+      placementLabel: 'Placement hypothesis',
+      openAction: 'Open full game',
+      iframeTitleSuffix: 'interactive game demo',
+      galleryLabel: 'Five pocket game prototypes',
+      games: [
+        {
+          id: 'orbit',
+          title: 'Orbit Alignment',
+          nativeTitle: '月轨校准',
+          kind: 'Micro interaction',
+          session: '10–20 seconds',
+          height: 360,
+          description:
+            'Start the orbit, then stop the moon inside a moving target window. A second click or the Space key completes one attempt.',
+          placement:
+            'A possible compact break between Research and Selected Work, provided it remains visually quiet.',
+        },
+        {
+          id: 'signature',
+          title: 'Stardust Signature',
+          nativeTitle: '星屑签名',
+          kind: 'Micro canvas',
+          session: '5–30 seconds',
+          height: 260,
+          description:
+            'Place seven stars to create a small constellation and a short closing line. It works with pointer, touch, Enter, or Space.',
+          placement:
+            'The strongest homepage candidate: a low-pressure interaction near the end of About or just before the footer.',
+        },
+        {
+          id: 'echo',
+          title: 'Memory Echo',
+          nativeTitle: '记忆回声',
+          kind: 'Short memory game',
+          session: '30 seconds–3 minutes',
+          height: 430,
+          description:
+            'Watch a four-pad sequence and reproduce it as the pattern grows, using pointer, touch, or number keys 1–4.',
+          placement:
+            'Better suited to this Playground or the end of a blog post than to the main academic landing page.',
+        },
+        {
+          id: 'match',
+          title: 'Memory Garden',
+          nativeTitle: '翻牌花园',
+          kind: 'Session game',
+          session: '1–4 minutes',
+          height: 590,
+          description:
+            'A keyboard-friendly 4×4 matching board with eight hidden pairs, move tracking, and a local best score when opened directly.',
+          placement:
+            'A dedicated play or reading-break page; the board is too tall for the homepage flow.',
+        },
+        {
+          id: 'merge',
+          title: 'Merge Garden',
+          nativeTitle: '方块花园',
+          kind: 'Session game',
+          session: '3–10 minutes',
+          height: 680,
+          description:
+            'A compact 4×4 merge game that grows seeds into research artifacts through buttons or arrow-key controls.',
+          placement:
+            'Keep on the Playground or a dedicated route; it is the longest and tallest experience in the set.',
+        },
+      ],
+    },
+    zh: {
+      eyebrow: '互动原型',
+      title: '小游戏实验室',
+      intro:
+        '这里按照预期嵌入尺寸集中展示五个零依赖小游戏。先实际试玩，再决定是否有作品适合进入学术主页及其具体位置。',
+      boundaryLabel: 'Demo 边界',
+      boundary: '本页与学术内容分开；每条放置建议都只是测试假设，不代表最终设计。',
+      interfaceNote:
+        '游戏本体暂时保留原型中文文案。最终选中的作品会在固定嵌入前再统一中英文界面与视觉细节。',
+      scoreNote: '隔离预览中的成绩只在本次会话有效；直接打开游戏后可保留浏览器本地最佳成绩。',
+      sessionLabel: '典型时长',
+      placementLabel: '放置假设',
+      openAction: '单独打开',
+      iframeTitleSuffix: '互动游戏 Demo',
+      galleryLabel: '五个口袋小游戏原型',
+      games: [
+        {
+          id: 'orbit',
+          title: '月轨校准',
+          nativeTitle: 'Orbit Alignment',
+          kind: '微交互',
+          session: '10–20 秒',
+          height: 360,
+          description:
+            '启动月球轨道，再用第二次点击或空格键让它停进移动的发光窗口，完成一次短促的校准挑战。',
+          placement: '可尝试放在首页 Research 与 Selected Work 之间，但前提是视觉上足够安静。',
+        },
+        {
+          id: 'signature',
+          title: '星屑签名',
+          nativeTitle: 'Stardust Signature',
+          kind: '微型画布',
+          session: '5–30 秒',
+          height: 260,
+          description:
+            '放置七颗星，生成一幅小型星座和一句收尾签语；支持鼠标、触屏、Enter 与空格键。',
+          placement: '最适合首页的候选：可放在 About 尾部或 footer 之前，干扰最小。',
+        },
+        {
+          id: 'echo',
+          title: '记忆回声',
+          nativeTitle: 'Memory Echo',
+          kind: '短时记忆游戏',
+          session: '30 秒–3 分钟',
+          height: 430,
+          description: '观察四色按钮的亮起顺序，再用点击、触屏或数字键 1–4 复现逐渐增长的序列。',
+          placement: '更适合保留在 Playground，或作为博客文章末尾的休息区，不建议进入主页正文。',
+        },
+        {
+          id: 'match',
+          title: '翻牌花园',
+          nativeTitle: 'Memory Garden',
+          kind: '完整小游戏',
+          session: '1–4 分钟',
+          height: 590,
+          description:
+            '一个支持键盘的 4×4 翻牌棋盘，共八对图案；记录步数，单独打开时还会保存本地最佳成绩。',
+          placement: '适合独立试玩或阅读休息页；棋盘高度不适合打断主页浏览节奏。',
+        },
+        {
+          id: 'merge',
+          title: '方块花园',
+          nativeTitle: 'Merge Garden',
+          kind: '完整小游戏',
+          session: '3–10 分钟',
+          height: 680,
+          description: '通过按钮或方向键，在紧凑的 4×4 棋盘中把种子逐步合成为科研成果。',
+          placement: '保留在 Playground 或独立路由；它是本组耗时最长、页面最高的游戏。',
         },
       ],
     },
