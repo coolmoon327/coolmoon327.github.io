@@ -1,0 +1,353 @@
+---
+import { site } from '@config/site';
+import Base from '@layouts/Base.astro';
+import { withBase } from '@utils/base';
+
+interface Props {
+  locale: 'en' | 'zh';
+}
+
+const { locale } = Astro.props;
+const content = site.thesis[locale];
+---
+
+<Base title={content.title} description={content.overview}>
+  <article class="thesis-page page-container">
+    <header class="thesis-hero">
+      <a class="back-link" href={withBase(content.backHref)}>← {content.backLabel}</a>
+      <p class="eyebrow">{content.eyebrow}</p>
+      <h1>{content.title}</h1>
+      <p class="subtitle">{content.subtitle}</p>
+
+      <dl class="thesis-facts">
+        <div class="title-fact">
+          <dt>{content.titleLabel}</dt>
+          <dd lang="zh-CN">{content.originalTitle}</dd>
+        </div>
+        <div>
+          <dt>{content.degreeLabel}</dt>
+          <dd>{content.degree}</dd>
+        </div>
+        <div>
+          <dt>{content.institutionLabel}</dt>
+          <dd>{content.institution}</dd>
+        </div>
+      </dl>
+    </header>
+
+    <section class="overview-grid" aria-label={content.approachLabel}>
+      <div>
+        <p class="section-label">{content.overviewLabel}</p>
+        <p class="lead">{content.overview}</p>
+      </div>
+      <div>
+        <p class="section-label">{content.approachLabel}</p>
+        <p>{content.approach}</p>
+      </div>
+    </section>
+
+    <section class="contributions" aria-labelledby="contributions-heading">
+      <h2 id="contributions-heading">{content.contributionsLabel}</h2>
+      <ol>
+        {
+          content.contributions.map((item) => (
+            <li>
+              <span>{item.index}</span>
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    <section class="artifacts" aria-labelledby="artifacts-heading">
+      <div class="section-heading">
+        <h2 id="artifacts-heading">{content.artifactsLabel}</h2>
+        <p>{content.artifactsIntro}</p>
+      </div>
+      <div class="artifact-grid">
+        {
+          content.artifacts.map((artifact) => (
+            <a href={artifact.href} target="_blank" rel="noopener noreferrer">
+              <span>{artifact.meta}</span>
+              <h3>{artifact.title}</h3>
+              <p>{artifact.body}</p>
+              <small>{artifact.action} ↗</small>
+            </a>
+          ))
+        }
+      </div>
+    </section>
+
+    <aside class="record-card" aria-labelledby="record-heading">
+      <p class="section-label">{content.recordLabel}</p>
+      <div>
+        <h2 id="record-heading">{content.recordTitle}</h2>
+        <p>{content.recordBody}</p>
+      </div>
+      <a href={content.recordHref} target="_blank" rel="noopener noreferrer">
+        {content.recordAction} ↗
+      </a>
+    </aside>
+  </article>
+</Base>
+
+<style>
+  .thesis-page {
+    max-width: 1040px;
+    min-height: calc(100vh - 57px);
+    padding: clamp(3rem, 8vw, 6.5rem) 1.25rem 5rem;
+  }
+
+  .thesis-hero {
+    padding-bottom: clamp(3rem, 7vw, 5rem);
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 3rem;
+    color: var(--global-text-color-light);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .back-link:hover {
+    color: var(--global-theme-color);
+  }
+
+  .eyebrow,
+  .section-label,
+  .thesis-facts dt,
+  .artifact-grid > a > span,
+  .contributions li > span {
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .eyebrow {
+    margin: 0 0 0.75rem;
+  }
+
+  h1 {
+    max-width: 920px;
+    margin: 0;
+    color: var(--global-text-color);
+    font-size: clamp(3rem, 8vw, 6.5rem);
+    letter-spacing: -0.065em;
+    line-height: 0.92;
+  }
+
+  .subtitle {
+    max-width: 760px;
+    margin: 1.25rem 0 0;
+    color: var(--global-text-color-light);
+    font-size: clamp(1.05rem, 2.4vw, 1.4rem);
+    line-height: 1.55;
+  }
+
+  .thesis-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    margin: 3rem 0 0;
+    border-top: 1px solid var(--global-divider-color);
+  }
+
+  .thesis-facts div {
+    padding: 1.15rem 1.25rem 0 0;
+    border-bottom: 1px solid var(--global-divider-color);
+  }
+
+  .thesis-facts .title-fact {
+    grid-column: 1 / -1;
+  }
+
+  .thesis-facts dt {
+    margin-bottom: 0.4rem;
+  }
+
+  .thesis-facts dd {
+    margin: 0 0 1.15rem;
+    color: var(--global-text-color);
+    font-size: 0.93rem;
+    line-height: 1.55;
+  }
+
+  .overview-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: clamp(2rem, 7vw, 5rem);
+    padding: clamp(3rem, 8vw, 5.5rem) 0;
+    border-top: 1px solid var(--global-divider-color);
+  }
+
+  .overview-grid p:not(.section-label) {
+    margin: 0.8rem 0 0;
+    color: var(--global-text-color-light);
+    line-height: 1.8;
+  }
+
+  .overview-grid .lead {
+    color: var(--global-text-color);
+    font-size: clamp(1.25rem, 3vw, 1.8rem);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.45;
+  }
+
+  .contributions,
+  .artifacts {
+    padding: clamp(3rem, 8vw, 5.5rem) 0;
+    border-top: 1px solid var(--global-divider-color);
+  }
+
+  .contributions h2,
+  .section-heading h2,
+  .record-card h2 {
+    margin: 0;
+    color: var(--global-text-color);
+    font-size: clamp(1.65rem, 4vw, 2.6rem);
+    letter-spacing: -0.04em;
+    line-height: 1.15;
+  }
+
+  .contributions ol {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.8rem;
+    margin: 2rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .contributions li {
+    display: grid;
+    align-content: start;
+    min-height: 270px;
+    padding: 1.25rem;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 1rem;
+    background: var(--global-card-bg-color);
+  }
+
+  .contributions h3,
+  .artifact-grid h3 {
+    margin: 1.5rem 0 0.65rem;
+    color: var(--global-text-color);
+    font-size: 1.15rem;
+    line-height: 1.4;
+  }
+
+  .contributions p,
+  .section-heading p,
+  .artifact-grid p,
+  .record-card p {
+    margin: 0;
+    color: var(--global-text-color-light);
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .section-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+    gap: 2.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .artifact-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+  }
+
+  .artifact-grid > a {
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    min-height: 250px;
+    padding: 1.35rem;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 1rem;
+    color: var(--global-text-color);
+    background: var(--global-card-bg-color);
+    text-decoration: none;
+    transition:
+      border-color 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  .artifact-grid > a:hover {
+    border-color: var(--global-theme-color);
+    transform: translateY(-3px);
+  }
+
+  .artifact-grid small {
+    margin-top: 1.5rem;
+    color: var(--global-theme-color);
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .record-card {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr) auto;
+    gap: 1.5rem;
+    align-items: start;
+    padding: clamp(1.5rem, 5vw, 2.5rem);
+    border-left: 4px solid var(--global-theme-color);
+    background: color-mix(in srgb, var(--global-theme-color) 7%, var(--global-bg-color));
+  }
+
+  .record-card h2 {
+    font-size: clamp(1.2rem, 3vw, 1.7rem);
+  }
+
+  .record-card p {
+    margin-top: 0.65rem;
+  }
+
+  .record-card > a {
+    display: inline-flex;
+    justify-content: center;
+    padding: 0.7rem 0.95rem;
+    border: 1px solid var(--global-theme-color);
+    border-radius: 999px;
+    color: var(--global-theme-color);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 760px) {
+    .thesis-facts,
+    .overview-grid,
+    .section-heading,
+    .artifact-grid,
+    .record-card {
+      grid-template-columns: 1fr;
+    }
+
+    .thesis-facts .title-fact {
+      grid-column: auto;
+    }
+
+    .contributions ol {
+      grid-template-columns: 1fr;
+    }
+
+    .contributions li {
+      min-height: auto;
+    }
+
+    .record-card > a {
+      justify-self: start;
+    }
+  }
+</style>

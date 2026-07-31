@@ -1,0 +1,507 @@
+---
+import { site } from '@config/site';
+
+interface Props {
+  locale: 'en' | 'zh';
+}
+
+const { locale } = Astro.props;
+const copy = site.pages.localized[locale].owner;
+const registryUrl =
+  import.meta.env.PUBLIC_HOME_REGISTRY_URL ||
+  'https://raw.githubusercontent.com/coolmoon327/home-endpoint-registry/main/endpoint.enc.json';
+const inputId = `home-access-password-${locale}`;
+---
+
+<section
+  class="home-access"
+  data-home-access
+  data-registry-url={registryUrl}
+  data-copy={JSON.stringify({
+    unlockPending: copy.unlockPending,
+    lockedStatus: copy.lockedStatus,
+    unlockedStatus: copy.unlockedStatus,
+    errorStatus: copy.errorStatus,
+    emptyStatus: copy.emptyStatus,
+    updatedLabel: copy.updatedLabel,
+    expiresLabel: copy.expiresLabel,
+    openAction: copy.openAction,
+  })}
+>
+  <div class="unlock-panel">
+    <div class="panel-copy">
+      <span class="status-label">{copy.status}</span>
+      <h2>{copy.statusTitle}</h2>
+      <p>{copy.statusBody}</p>
+    </div>
+
+    <form class="unlock-form" data-unlock-form autocomplete="off">
+      <label for={inputId}>{copy.passwordLabel}</label>
+      <div class="input-row">
+        <input
+          id={inputId}
+          type="password"
+          placeholder={copy.passwordPlaceholder}
+          maxlength="1024"
+          autocapitalize="none"
+          autocomplete="off"
+          spellcheck="false"
+          required
+          disabled
+          data-password
+        />
+        <button type="submit" data-unlock disabled>{copy.unlockAction}</button>
+      </div>
+    </form>
+
+    <noscript><p class="script-required">{copy.scriptRequired}</p></noscript>
+
+    <p class="live-status" role="status" aria-live="polite" data-live-status>
+      {copy.lockedStatus}
+    </p>
+  </div>
+
+  <div class="unlocked" data-unlocked hidden>
+    <div class="unlocked-heading">
+      <div>
+        <span class="status-label">{copy.servicesLabel}</span>
+        <p class="published" data-published></p>
+      </div>
+      <button class="lock-button" type="button" data-lock>{copy.lockAction}</button>
+    </div>
+    <div class="service-grid" data-service-list></div>
+  </div>
+
+  <aside class="security-note" aria-labelledby={`owner-security-${locale}`}>
+    <div>
+      <h3 id={`owner-security-${locale}`}>{copy.rulesLabel}</h3>
+      <p>{copy.resetHint}</p>
+    </div>
+    <ul>
+      {copy.rules.map((rule) => <li>{rule}</li>)}
+    </ul>
+  </aside>
+</section>
+
+<script>
+  import { decryptHomeAccess } from '@utils/home-access';
+
+  interface ClientCopy {
+    unlockPending: string;
+    lockedStatus: string;
+    unlockedStatus: string;
+    errorStatus: string;
+    emptyStatus: string;
+    updatedLabel: string;
+    expiresLabel: string;
+    openAction: string;
+  }
+
+  const MAX_REGISTRY_RESPONSE_LENGTH = 384 * 1024;
+  const REGISTRY_FETCH_TIMEOUT_MS = 15_000;
+
+  function initializeHomeAccess(): void {
+    document.querySelectorAll<HTMLElement>('[data-home-access]').forEach((root) => {
+      if (root.dataset.initialized === 'true') return;
+      root.dataset.initialized = 'true';
+
+      const form = root.querySelector<HTMLFormElement>('[data-unlock-form]');
+      const input = root.querySelector<HTMLInputElement>('[data-password]');
+      const unlockButton = root.querySelector<HTMLButtonElement>('[data-unlock]');
+      const lockButton = root.querySelector<HTMLButtonElement>('[data-lock]');
+      const status = root.querySelector<HTMLElement>('[data-live-status]');
+      const unlocked = root.querySelector<HTMLElement>('[data-unlocked]');
+      const published = root.querySelector<HTMLElement>('[data-published]');
+      const serviceList = root.querySelector<HTMLElement>('[data-service-list]');
+
+      if (
+        form === null ||
+        input === null ||
+        unlockButton === null ||
+        lockButton === null ||
+        status === null ||
+        unlocked === null ||
+        published === null ||
+        serviceList === null
+      ) {
+        return;
+      }
+
+      let copy: ClientCopy;
+      let requestController: AbortController | null = null;
+      try {
+        copy = JSON.parse(root.dataset.copy ?? '') as ClientCopy;
+      } catch {
+        return;
+      }
+
+      const setBusy = (busy: boolean): void => {
+        input.disabled = busy;
+        unlockButton.disabled = busy;
+        root.setAttribute('aria-busy', busy ? 'true' : 'false');
+      };
+
+      const setStatus = (message: string, state: 'locked' | 'busy' | 'error' | 'open'): void => {
+        status.textContent = message;
+        root.dataset.state = state;
+      };
+
+      const clearDirectory = (): void => {
+        requestController?.abort();
+        requestController = null;
+        input.value = '';
+        published.textContent = '';
+        serviceList.replaceChildren();
+        unlocked.hidden = true;
+        form.hidden = false;
+        setStatus(copy.lockedStatus, 'locked');
+      };
+
+      const createServiceCard = (
+        service: Awaited<ReturnType<typeof decryptHomeAccess>>['services'][number],
+        locale: 'en' | 'zh',
+      ): HTMLAnchorElement => {
+        const card = document.createElement('a');
+        card.className = 'service-card';
+        card.href = service.url;
+        card.target = '_blank';
+        card.rel = 'noopener noreferrer';
+
+        const title = document.createElement('h3');
+        title.textContent = service.label[locale];
+        const description = document.createElement('p');
+        description.textContent = service.description[locale];
+        const action = document.createElement('span');
+        action.textContent = `${copy.openAction} ↗`;
+
+        card.append(title, description, action);
+        return card;
+      };
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (input.value.length === 0) return;
+
+        let password = input.value;
+        let shouldRestoreFocus = false;
+        requestController?.abort();
+        const controller = new AbortController();
+        requestController = controller;
+        const timeoutId = window.setTimeout(() => controller.abort(), REGISTRY_FETCH_TIMEOUT_MS);
+        setBusy(true);
+        setStatus(copy.unlockPending, 'busy');
+
+        try {
+          const registryUrl = new URL(root.dataset.registryUrl ?? '', window.location.href);
+          const isLoopbackHttp =
+            registryUrl.protocol === 'http:' &&
+            (registryUrl.hostname === '127.0.0.1' || registryUrl.hostname === 'localhost');
+          if (registryUrl.protocol !== 'https:' && !isLoopbackHttp) throw new Error();
+          registryUrl.searchParams.set('_fresh', Date.now().toString());
+
+          const response = await fetch(registryUrl, {
+            cache: 'no-store',
+            headers: { Accept: 'application/json' },
+            signal: controller.signal,
+          });
+          const declaredLength = Number(response.headers.get('content-length') ?? 0);
+          if (!response.ok || declaredLength > MAX_REGISTRY_RESPONSE_LENGTH) throw new Error();
+
+          const source = await response.text();
+          if (source.length === 0 || source.length > MAX_REGISTRY_RESPONSE_LENGTH)
+            throw new Error();
+          const payload = await decryptHomeAccess(JSON.parse(source) as unknown, password);
+          password = '';
+
+          const contentLocale = document.documentElement.lang === 'zh-CN' ? 'zh' : 'en';
+          const cards = payload.services.map((service) =>
+            createServiceCard(service, contentLocale),
+          );
+          serviceList.replaceChildren(...cards);
+
+          const locale = document.documentElement.lang === 'zh-CN' ? 'zh-CN' : 'en';
+          const formattedDate = new Intl.DateTimeFormat(locale, {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          }).format(new Date(payload.publishedAt));
+          const formattedExpiry = new Intl.DateTimeFormat(locale, {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          }).format(new Date(payload.expiresAt));
+          published.textContent = `${copy.updatedLabel}: ${formattedDate} · ${copy.expiresLabel}: ${formattedExpiry}`;
+
+          input.value = '';
+          form.hidden = true;
+          unlocked.hidden = false;
+          setStatus(cards.length === 0 ? copy.emptyStatus : copy.unlockedStatus, 'open');
+          (cards[0] ?? lockButton).focus();
+        } catch {
+          password = '';
+          input.value = '';
+          setStatus(copy.errorStatus, 'error');
+          shouldRestoreFocus = true;
+        } finally {
+          window.clearTimeout(timeoutId);
+          if (requestController === controller) requestController = null;
+          setBusy(false);
+          if (shouldRestoreFocus) input.focus();
+        }
+      });
+
+      lockButton.addEventListener('click', () => {
+        clearDirectory();
+        input.focus();
+      });
+
+      document.addEventListener(
+        'astro:before-swap',
+        () => {
+          requestController?.abort();
+          requestController = null;
+        },
+        { once: true },
+      );
+
+      clearDirectory();
+      setBusy(false);
+    });
+  }
+
+  initializeHomeAccess();
+  document.addEventListener('astro:page-load', initializeHomeAccess);
+</script>
+
+<style>
+  .home-access {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .unlock-panel,
+  .unlocked,
+  .security-note {
+    border: 1px solid var(--global-divider-color);
+    border-radius: 1.25rem;
+    background: var(--global-card-bg-color);
+  }
+
+  .unlock-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.82fr);
+    gap: clamp(1.5rem, 5vw, 4rem);
+    padding: clamp(1.5rem, 5vw, 3rem);
+    border-top: 4px solid var(--global-theme-color);
+  }
+
+  .status-label {
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.73rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  h2 {
+    margin: 0.8rem 0 0.75rem;
+    color: var(--global-text-color);
+    font-size: clamp(1.55rem, 3vw, 2.35rem);
+    letter-spacing: -0.04em;
+  }
+
+  .panel-copy p,
+  .security-note p,
+  .script-required {
+    margin: 0;
+    color: var(--global-text-color-light);
+    font-size: 0.92rem;
+    line-height: 1.7;
+  }
+
+  .unlock-form {
+    align-self: center;
+  }
+
+  .unlock-form label {
+    display: block;
+    margin-bottom: 0.55rem;
+    color: var(--global-text-color);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  input,
+  button {
+    min-height: 2.9rem;
+    border: 1px solid var(--global-divider-color);
+    font: inherit;
+  }
+
+  input {
+    min-width: 0;
+    padding: 0 0.85rem;
+    border-radius: 0.65rem 0 0 0.65rem;
+    color: var(--global-text-color);
+    background: var(--global-bg-color);
+  }
+
+  input:focus-visible,
+  button:focus-visible,
+  .service-card:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--global-theme-color) 35%, transparent);
+    outline-offset: 2px;
+  }
+
+  button {
+    padding: 0.55rem 1rem;
+    border-color: var(--global-theme-color);
+    border-radius: 0 0.65rem 0.65rem 0;
+    color: var(--global-bg-color);
+    background: var(--global-theme-color);
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+  }
+
+  .live-status {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--global-divider-color);
+    color: var(--global-text-color-light);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    line-height: 1.55;
+  }
+
+  [data-state='error'] .live-status {
+    color: #b42318;
+  }
+
+  .unlocked {
+    padding: clamp(1.25rem, 4vw, 2rem);
+  }
+
+  .unlocked-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .published {
+    margin: 0.3rem 0 0;
+    color: var(--global-text-color-light);
+    font-size: 0.78rem;
+  }
+
+  .lock-button {
+    min-height: 2.4rem;
+    border-radius: 999px;
+    color: var(--global-theme-color);
+    background: transparent;
+  }
+
+  .service-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  :global(.service-card) {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 175px;
+    padding: 1.15rem;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 0.9rem;
+    color: var(--global-text-color);
+    background: var(--global-bg-color);
+    text-decoration: none;
+    transition:
+      transform 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  :global(.service-card:hover) {
+    border-color: var(--global-theme-color);
+    transform: translateY(-2px);
+  }
+
+  :global(.service-card h3) {
+    margin: 0;
+    color: var(--global-text-color);
+    font-size: 1rem;
+  }
+
+  :global(.service-card p) {
+    margin: 0.55rem 0 1.25rem;
+    color: var(--global-text-color-light);
+    font-size: 0.84rem;
+    line-height: 1.6;
+  }
+
+  :global(.service-card span) {
+    color: var(--global-theme-color);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .security-note {
+    display: grid;
+    grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+    gap: 2rem;
+    padding: clamp(1.25rem, 4vw, 2rem);
+  }
+
+  .security-note h3 {
+    margin: 0 0 0.6rem;
+    color: var(--global-text-color);
+    font-size: 0.92rem;
+  }
+
+  .security-note ul {
+    display: grid;
+    gap: 0.55rem;
+    margin: 0;
+    padding-left: 1.15rem;
+    color: var(--global-text-color-light);
+    font-size: 0.84rem;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 720px) {
+    .unlock-panel,
+    .security-note {
+      grid-template-columns: 1fr;
+    }
+
+    .service-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .input-row {
+      grid-template-columns: 1fr;
+      gap: 0.55rem;
+    }
+
+    input,
+    button {
+      border-radius: 0.65rem;
+    }
+
+    .unlocked-heading {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+</style>

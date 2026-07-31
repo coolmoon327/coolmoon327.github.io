@@ -1,0 +1,331 @@
+---
+import { site } from '@config/site';
+import Base from '@layouts/Base.astro';
+import { withBase } from '@utils/base';
+
+import HomeAccess from './HomeAccess.astro';
+
+interface Props {
+  locale: 'en' | 'zh';
+  kind: 'publications' | 'projects' | 'blog' | 'owner';
+}
+
+const { locale, kind } = Astro.props;
+const localized = site.pages.localized[locale];
+const home = site.home[locale];
+const page = localized[kind];
+const isExternal = (href: string) => /^https?:\/\//.test(href);
+---
+
+<Base title={page.title} description={page.intro} noindex={kind === 'owner'}>
+  <div class="interior page-container">
+    <header>
+      <p class="eyebrow">{page.eyebrow}</p>
+      <h1>{page.title}</h1>
+      <p class="intro">{page.intro}</p>
+    </header>
+
+    {
+      kind === 'publications' && (
+        <>
+          <section class="record-note" aria-labelledby="publication-status-heading">
+            <span class="status">{localized.publications.status}</span>
+            <div>
+              <h2 id="publication-status-heading">{localized.publications.statusTitle}</h2>
+              <p>{localized.publications.statusBody}</p>
+            </div>
+          </section>
+          <ol class="publication-list" aria-label={localized.publications.title}>
+            {home.publications.map((paper) => (
+              <li>
+                <span class="year">{paper.year}</span>
+                <div>
+                  <p class="meta">{paper.type}</p>
+                  <h2>{paper.title}</h2>
+                  <a href={paper.href} target="_blank" rel="noopener noreferrer">
+                    {home.publicationsAction} <span aria-hidden="true">↗</span>
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </>
+      )
+    }
+
+    {
+      kind === 'projects' && (
+        <>
+          <section class="record-note" aria-labelledby="project-status-heading">
+            <span class="status">{localized.projects.status}</span>
+            <div>
+              <h2 id="project-status-heading">{localized.projects.statusTitle}</h2>
+              <p>{localized.projects.statusBody}</p>
+            </div>
+          </section>
+          <div class="project-grid" aria-label={localized.projects.title}>
+            {home.projects.map((project, index) => (
+              <a
+                href={isExternal(project.href) ? project.href : withBase(project.href)}
+                target={isExternal(project.href) ? '_blank' : undefined}
+                rel={isExternal(project.href) ? 'noopener noreferrer' : undefined}
+              >
+                <span class="index">0{index + 1}</span>
+                <p class="project-meta">{project.meta}</p>
+                <h2>{project.title}</h2>
+                <p class="project-description">{project.description}</p>
+                <small>
+                  {home.projectsAction} <span aria-hidden="true">↗</span>
+                </small>
+              </a>
+            ))}
+          </div>
+        </>
+      )
+    }
+
+    {
+      kind === 'blog' && (
+        <section class="status-card" aria-labelledby="blog-status-heading">
+          <span class="status">{localized.blog.status}</span>
+          <h2 id="blog-status-heading">{localized.blog.statusTitle}</h2>
+          <p>{localized.blog.statusBody}</p>
+          <div class="planned">
+            <h3>{localized.blog.topicsLabel}</h3>
+            <ul>
+              {localized.blog.topics.map((topic) => (
+                <li>{topic}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )
+    }
+
+    {kind === 'owner' && <HomeAccess locale={locale} />}
+  </div>
+</Base>
+
+<style>
+  .interior {
+    max-width: 980px;
+    min-height: calc(100vh - 57px);
+    padding: clamp(3rem, 8vw, 6.5rem) 1.25rem 5rem;
+  }
+
+  header {
+    display: grid;
+    grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+    column-gap: 3rem;
+    align-items: end;
+    margin-bottom: 4rem;
+  }
+
+  .eyebrow,
+  .meta,
+  .status,
+  .index {
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .eyebrow {
+    grid-column: 1 / -1;
+    margin: 0 0 0.6rem;
+  }
+
+  h1 {
+    margin: 0;
+    color: var(--global-text-color);
+    font-size: clamp(3rem, 9vw, 6rem);
+    letter-spacing: -0.06em;
+    line-height: 0.92;
+  }
+
+  .intro {
+    max-width: 620px;
+    margin: 0;
+    color: var(--global-text-color-light);
+    font-size: 1.05rem;
+    line-height: 1.8;
+  }
+
+  .publication-list {
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--global-divider-color);
+    list-style: none;
+  }
+
+  .record-note {
+    display: grid;
+    grid-template-columns: 10rem 1fr;
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+    padding: 1.25rem 1.5rem;
+    border-left: 3px solid var(--global-theme-color);
+    background: color-mix(in srgb, var(--global-theme-color) 7%, var(--global-bg-color));
+  }
+
+  .record-note h2 {
+    margin: 0;
+    color: var(--global-text-color);
+    font-size: 1rem;
+  }
+
+  .record-note p {
+    max-width: 690px;
+    margin: 0.45rem 0 0;
+    color: var(--global-text-color-light);
+    font-size: 0.88rem;
+    line-height: 1.65;
+  }
+
+  .publication-list li {
+    display: grid;
+    grid-template-columns: 4rem 1fr;
+    gap: 1.25rem;
+    padding: 1.8rem 0;
+    border-bottom: 1px solid var(--global-divider-color);
+  }
+
+  .publication-list .year {
+    color: var(--global-text-color-light);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+  }
+
+  .publication-list .meta {
+    margin: 0;
+  }
+
+  .publication-list h2 {
+    max-width: 720px;
+    margin: 0.35rem 0 0.85rem;
+    color: var(--global-text-color);
+    font-size: clamp(1.05rem, 2.4vw, 1.35rem);
+    line-height: 1.45;
+  }
+
+  .publication-list a,
+  .project-grid small {
+    color: var(--global-theme-color);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+  }
+
+  .project-grid > a {
+    display: grid;
+    grid-template-rows: auto auto auto 1fr auto;
+    min-height: 260px;
+    padding: 1.25rem;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 1rem;
+    color: var(--global-text-color);
+    background: var(--global-card-bg-color);
+    text-decoration: none;
+    transition:
+      transform 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .project-grid > a:hover {
+    border-color: var(--global-theme-color);
+    transform: translateY(-3px);
+  }
+
+  .project-grid .project-meta {
+    margin: 1rem 0 0.35rem;
+    color: var(--global-text-color-light);
+    font-size: 0.78rem;
+  }
+
+  .project-grid .project-description {
+    margin: 0 0 1.5rem;
+    color: var(--global-text-color-light);
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+
+  .project-grid h2 {
+    margin: 0 0 0.65rem;
+    color: var(--global-text-color);
+    font-size: 1.15rem;
+    line-height: 1.45;
+  }
+
+  .status-card {
+    max-width: 760px;
+    padding: clamp(1.5rem, 5vw, 3rem);
+    border: 1px solid var(--global-divider-color);
+    border-radius: 1.25rem;
+    background: var(--global-card-bg-color);
+  }
+
+  .status-card h2 {
+    margin: 0.8rem 0 0.75rem;
+    color: var(--global-text-color);
+    font-size: clamp(1.5rem, 3vw, 2.2rem);
+    letter-spacing: -0.035em;
+  }
+
+  .status-card > p {
+    max-width: 650px;
+    color: var(--global-text-color-light);
+    line-height: 1.75;
+  }
+
+  .planned {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--global-divider-color);
+  }
+
+  .planned h3 {
+    margin: 0 0 0.75rem;
+    color: var(--global-text-color);
+    font-size: 0.9rem;
+  }
+
+  .planned ul {
+    display: grid;
+    gap: 0.6rem;
+    margin: 0;
+    padding-left: 1.2rem;
+    color: var(--global-text-color-light);
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 720px) {
+    header {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .project-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .record-note {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+
+    .publication-list li {
+      grid-template-columns: 3rem 1fr;
+    }
+  }
+</style>

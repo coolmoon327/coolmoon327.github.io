@@ -1,0 +1,61 @@
+---
+import { site } from '@config/site';
+
+const routePath = Astro.url.pathname.slice(site.base.length) || '/';
+const localeKey = routePath === '/zh' || routePath.startsWith('/zh/') ? 'zh' : 'en';
+const content = site.footer.localized[localeKey];
+const year = new Date().getFullYear();
+const lastUpdated = new Date().toLocaleDateString(localeKey === 'zh' ? 'zh-CN' : 'en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
+const isSticky = site.footer.position === 'sticky';
+const footerStyle = [
+  'background-color: var(--global-footer-bg-color);',
+  'color: var(--global-footer-text-color);',
+  'padding: 1rem 0;',
+  isSticky ? 'position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;' : 'margin-top: auto;',
+].join(' ');
+---
+
+<footer style={footerStyle}>
+  <div class="page-container text-center text-sm">
+    <p>
+      &copy; {year}
+      {content.authorName}.
+      {content.text && <span set:html={content.text} />}
+      {
+        site.footer.lastUpdated && (
+          <span class="ml-2">
+            {content.lastUpdatedLabel}: {lastUpdated}.
+          </span>
+        )
+      }
+    </p>
+    {
+      site.footer.impressum && (
+        <p class="mt-1">
+          <a
+            href={site.footer.impressum}
+            style="color: var(--global-footer-link-color); text-decoration: none;"
+          >
+            {content.legalLabel}
+          </a>
+        </p>
+      )
+    }
+  </div>
+</footer>
+
+<style>
+  footer a {
+    color: var(--global-footer-link-color);
+  }
+
+  footer a:hover {
+    color: var(--global-footer-text-color);
+    text-decoration: underline;
+  }
+</style>

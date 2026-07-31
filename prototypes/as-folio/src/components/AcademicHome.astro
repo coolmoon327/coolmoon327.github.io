@@ -1,0 +1,490 @@
+---
+import { site } from '@config/site';
+import Base from '@layouts/Base.astro';
+import { withBase } from '@utils/base';
+
+interface Props {
+  locale: 'en' | 'zh';
+}
+
+const { locale } = Astro.props;
+const content = site.home[locale];
+const researchProfile = site.research[locale];
+const isExternal = (href: string) => /^https?:\/\//.test(href);
+---
+
+<Base title={content.name} description={content.intro} isHome={true}>
+  <div class="home-shell page-container">
+    <section class="hero" aria-labelledby="home-title">
+      <div class="hero-copy">
+        <p class="eyebrow">{content.eyebrow}</p>
+        <h1 id="home-title">{content.name}</h1>
+        <p class="role">{content.role}</p>
+        <p class="place">{content.institution} · {content.location}</p>
+        <p class="intro">{content.intro}</p>
+        <div class="actions">
+          <a class="button primary" href={withBase(content.primaryAction.href)}>
+            {content.primaryAction.label}
+          </a>
+          <a
+            class="button secondary"
+            href={content.secondaryAction.href}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {content.secondaryAction.label}
+          </a>
+        </div>
+      </div>
+
+      <aside class="profile-card" aria-label={content.profileLabel}>
+        <span class="profile-label">{content.profileLabel}</span>
+        <img
+          src={withBase(site.author.avatar)}
+          alt={content.name}
+          width="320"
+          height="320"
+          fetchpriority="high"
+        />
+        <strong>{content.name}</strong>
+        <span>{content.institution}</span>
+        <span>{content.location}</span>
+      </aside>
+    </section>
+
+    <section class="research section-block" aria-labelledby="research-heading">
+      <div class="section-heading">
+        <h2 id="research-heading">{content.researchLabel}</h2>
+        <p>{content.researchIntro}</p>
+      </div>
+      <a
+        class="research-spotlight"
+        href={withBase(locale === 'zh' ? '/zh/research/' : '/research/')}
+      >
+        <span>{researchProfile.currentLabel}</span>
+        <strong>{researchProfile.currentTitle}</strong>
+        <p>{researchProfile.program}</p>
+        <small>{content.researchAction} →</small>
+      </a>
+      <ul class="topic-grid">
+        {
+          content.research.map((topic, index) => (
+            <li>
+              <span>0{index + 1}</span>
+              {topic}
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section
+      id="selected-work"
+      class="work-grid section-block"
+      aria-label={site.i18n.locales[locale].selectedWork}
+    >
+      <div>
+        <h2>{content.publicationsLabel}</h2>
+        <ol class="publication-list">
+          {
+            content.publications.slice(0, 3).map((paper) => (
+              <li>
+                <span class="year">{paper.year}</span>
+                <div>
+                  <p class="meta">{paper.type}</p>
+                  <h3>{paper.title}</h3>
+                  <a href={paper.href} target="_blank" rel="noopener noreferrer">
+                    {content.publicationsAction} <span aria-hidden="true">↗</span>
+                  </a>
+                </div>
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+
+      <div>
+        <h2>{content.projectsLabel}</h2>
+        <div class="project-list">
+          {
+            content.projects.slice(0, 4).map((project) => (
+              <a
+                href={isExternal(project.href) ? project.href : withBase(project.href)}
+                target={isExternal(project.href) ? '_blank' : undefined}
+                rel={isExternal(project.href) ? 'noopener noreferrer' : undefined}
+              >
+                <span>{project.meta}</span>
+                <strong>{project.title}</strong>
+                <p>{project.description}</p>
+                <small>{content.projectsAction} ↗</small>
+              </a>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="public-links section-block" aria-labelledby="links-heading">
+      <h2 id="links-heading">{content.linksLabel}</h2>
+      <div>
+        {
+          content.links.map((link) => (
+            <a href={link.href} target="_blank" rel="noopener noreferrer">
+              {link.label} <span aria-hidden="true">↗</span>
+            </a>
+          ))
+        }
+      </div>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .home-shell {
+    max-width: 1040px;
+    padding: 3.75rem 1.25rem 5rem;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(250px, 0.72fr);
+    gap: clamp(2.5rem, 7vw, 6rem);
+    align-items: center;
+    min-height: 70vh;
+  }
+
+  .eyebrow,
+  .profile-label,
+  .meta {
+    margin: 0;
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    max-width: 9ch;
+    margin: 0.5rem 0 1rem;
+    color: var(--global-text-color);
+    font-size: clamp(3.6rem, 10vw, 7rem);
+    font-weight: 800;
+    letter-spacing: -0.065em;
+    line-height: 0.9;
+  }
+
+  .role {
+    margin: 0;
+    color: var(--global-text-color);
+    font-size: clamp(1.2rem, 2.4vw, 1.6rem);
+    font-weight: 600;
+  }
+
+  .place {
+    margin: 0.35rem 0 0;
+    color: var(--global-text-color-light);
+    font-size: 0.95rem;
+  }
+
+  .intro {
+    max-width: 650px;
+    margin: 1.5rem 0 0;
+    color: var(--global-text-color-light);
+    font-size: 1.05rem;
+    line-height: 1.8;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--global-theme-color);
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .button.primary {
+    background: var(--global-theme-color);
+    color: var(--global-bg-color);
+  }
+
+  .button.secondary {
+    color: var(--global-theme-color);
+  }
+
+  .profile-card {
+    display: grid;
+    gap: 0.25rem;
+    padding: 1rem;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 1.25rem;
+    background: var(--global-card-bg-color);
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+  }
+
+  .profile-card img {
+    width: 100%;
+    aspect-ratio: 1;
+    margin: 0.45rem 0 0.65rem;
+    border-radius: 0.8rem;
+    object-fit: cover;
+  }
+
+  .profile-card strong {
+    color: var(--global-text-color);
+    font-size: 1rem;
+  }
+
+  .profile-card span:not(.profile-label) {
+    color: var(--global-text-color-light);
+    font-size: 0.82rem;
+  }
+
+  .section-block {
+    padding: 4.5rem 0;
+    border-top: 1px solid var(--global-divider-color);
+  }
+
+  .section-block h2 {
+    margin: 0 0 1.5rem;
+    color: var(--global-text-color);
+    font-size: clamp(1.65rem, 3vw, 2.35rem);
+    letter-spacing: -0.035em;
+  }
+
+  .section-heading {
+    display: grid;
+    grid-template-columns: 0.75fr 1.25fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .section-heading p {
+    max-width: 620px;
+    margin: 0.25rem 0 2rem;
+    color: var(--global-text-color-light);
+    line-height: 1.7;
+  }
+
+  .topic-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .research-spotlight {
+    display: grid;
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+    gap: 0.5rem 2rem;
+    margin-bottom: 0.75rem;
+    padding: 1.25rem;
+    border: 1px solid var(--global-theme-color);
+    border-radius: 0.8rem;
+    color: var(--global-text-color);
+    background: color-mix(in srgb, var(--global-theme-color) 7%, var(--global-card-bg-color));
+    text-decoration: none;
+  }
+
+  .research-spotlight > span {
+    grid-row: 1 / 4;
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .research-spotlight strong {
+    font-size: clamp(1.05rem, 2.5vw, 1.35rem);
+    line-height: 1.35;
+  }
+
+  .research-spotlight p {
+    margin: 0;
+    color: var(--global-text-color-light);
+    font-size: 0.85rem;
+  }
+
+  .research-spotlight small {
+    color: var(--global-theme-color);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .topic-grid li {
+    display: grid;
+    grid-template-columns: 2rem 1fr;
+    gap: 0.5rem;
+    min-height: 110px;
+    padding: 1.15rem;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 0.8rem;
+    color: var(--global-text-color);
+    background: var(--global-card-bg-color);
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+
+  .topic-grid span {
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  .work-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: clamp(2.5rem, 7vw, 5rem);
+  }
+
+  .publication-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .publication-list li {
+    display: grid;
+    grid-template-columns: 3.2rem 1fr;
+    gap: 1rem;
+    padding: 1.35rem 0;
+    border-top: 1px solid var(--global-divider-color);
+  }
+
+  .year {
+    color: var(--global-text-color-light);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
+  .publication-list h3 {
+    margin: 0.25rem 0 0.65rem;
+    color: var(--global-text-color);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .publication-list a,
+  .public-links a {
+    color: var(--global-theme-color);
+    font-size: 0.83rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .project-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .project-list > a {
+    display: grid;
+    gap: 0.5rem;
+    padding: 1rem;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 0.8rem;
+    color: var(--global-text-color);
+    background: var(--global-card-bg-color);
+    text-decoration: none;
+    transition:
+      transform 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .project-list > a:hover {
+    border-color: var(--global-theme-color);
+    transform: translateY(-2px);
+  }
+
+  .project-list span,
+  .project-list p,
+  .project-list small {
+    color: var(--global-text-color-light);
+    font-size: 0.75rem;
+  }
+
+  .project-list p {
+    margin: 0;
+    line-height: 1.55;
+  }
+
+  .project-list small {
+    color: var(--global-theme-color);
+    font-weight: 700;
+  }
+
+  .public-links {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+
+  .public-links h2 {
+    margin: 0;
+  }
+
+  .public-links > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  @media (max-width: 760px) {
+    .home-shell {
+      padding-top: 2.25rem;
+    }
+
+    .hero,
+    .section-heading,
+    .work-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero {
+      min-height: auto;
+    }
+
+    h1 {
+      font-size: clamp(3.35rem, 19vw, 5rem);
+    }
+
+    .profile-card {
+      max-width: 360px;
+    }
+
+    .topic-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .research-spotlight {
+      grid-template-columns: 1fr;
+    }
+
+    .research-spotlight > span {
+      grid-row: auto;
+    }
+
+    .public-links {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+</style>
