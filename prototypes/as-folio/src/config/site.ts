@@ -250,110 +250,189 @@ export const site = {
     /** Enable the personalized academic homepage experience. */
     enabled: true,
     en: {
-      eyebrow: 'Secure wireless systems · Learning · Optimization',
+      eyebrow: 'Physical-layer security · Resilient wireless intelligence',
       name: 'Yuhang Shen',
       role: 'PhD Student in Electrical and Computer Engineering',
       institution: 'Khalifa University',
       location: 'Abu Dhabi, United Arab Emirates',
       intro:
-        'I study physical-layer security for zero-energy 6G IoT and IoE systems, with an emphasis on wireless communications and reinforcement-learning-based optimization for secure transmission.',
+        'I am a PhD researcher in electrical and computer engineering at Khalifa University. My work focuses on physical-layer security and resilient learning-enabled wireless systems for energy-constrained IoT and IoE, building on earlier research in edge and fog computing, online optimization, and signal analysis.',
       primaryAction: { label: 'Explore my research', href: '/research/' },
       secondaryAction: { label: 'View GitHub', href: 'https://github.com/coolmoon327' },
       profileLabel: 'Profile',
       researchLabel: 'Current research',
       researchIntro:
-        'My current doctoral work is represented by its research questions, not by placeholder publication entries. Public titles are added only when a stable version is available.',
+        'I study how future wireless systems can remain secure and dependable under tight energy, sensing, and decision constraints. Selected accepted and published results are listed below.',
       researchAction: 'View research profile',
       research: [
-        'Physical-layer security for zero-energy 6G',
-        'Secure transmission for IoT and IoE systems',
-        'Reinforcement learning for wireless optimization',
-        'Wireless communications and resource allocation',
+        'Physical-layer security for energy-constrained wireless systems',
+        'Resilient learning-enabled communications under adversarial interference',
+        'Wireless optimization, resource allocation, and online decision-making',
+        'Edge and fog systems, with foundations in nonlinear signal analysis',
       ],
-      publicationsLabel: 'Recent public work',
+      publicationsLabel: 'Recent accepted & published work',
       publicationsAction: 'Open publication',
+      publicationsPending: 'Proceedings link pending',
       publications: [
         {
           year: '2026',
           title:
+            'Outsmarting the Smart: Intelligent Jamming Strategies Against AI-Empowered Anti-Jamming Frameworks',
+          type: 'IEEE JSAC · Early Access',
+          description:
+            'Examines adversarial pressure on AI-enabled anti-jamming systems and the need for more resilient learning-based wireless designs.',
+          href: 'https://ieeexplore.ieee.org/document/11551582/',
+          featured: true,
+        },
+        {
+          year: '2026',
+          title: 'Robust DRL-Based Anti-Jamming Under Adversarial State Manipulation Attacks',
+          type: 'IEEE ICMLCN · Accepted',
+          description:
+            'Studies robust learning-based anti-jamming when wireless observations can be manipulated by an adversary.',
+          href: '',
+          featured: true,
+        },
+        {
+          year: '2026',
+          title:
+            'Semantic Prediction Driven Resilience in SAGSIN Scenario under Adversarial Jamming',
+          type: 'IEEE ICMLCN · Accepted',
+          description:
+            'Studies resilient semantic communications for integrated aerial and non-terrestrial networks under adversarial interference.',
+          href: '',
+          featured: true,
+        },
+        {
+          year: '2026',
+          title:
             'Energy-Efficient Online Scheduling for Wireless Powered Mobile Edge Computing Networks',
-          type: 'Preprint',
+          type: 'arXiv preprint',
+          description:
+            'Revisits online scheduling for joint wireless-power transfer and computation offloading with an energy-efficiency focus.',
           href: 'https://arxiv.org/abs/2603.07984',
+          featured: false,
         },
         {
           year: '2024',
           title:
             'Deep Reinforcement Learning-Based Social Welfare Maximization for Collaborative Edge Computing',
           type: 'IEEE iWRF&AT',
+          description:
+            'Uses deep reinforcement learning to study social-welfare-oriented resource allocation across collaborating edge servers.',
           href: 'https://doi.org/10.1109/iWRFAT61200.2024.10594571',
+          featured: false,
         },
         {
           year: '2024',
           title:
             'ES-ATF: Early Smoke Detection based on Attention-aggregated Temporal Feature Extraction',
           type: 'IEEE ICEET',
+          description:
+            'Contributes to an attention-based temporal model for detecting smoke at an earlier stage.',
           href: 'https://doi.org/10.1109/ICEET65156.2024.10913544',
+          featured: false,
         },
         {
           year: '2022',
           title:
             'An online auction-based incentive mechanism for soft-deadline tasks in Collaborative Edge Computing',
           type: 'Future Generation Computer Systems',
+          description:
+            'Designs an online auction mechanism that supports incentive-aware cooperation among edge-service providers.',
           href: 'https://doi.org/10.1016/j.future.2022.07.001',
+          featured: false,
         },
         {
           year: '2022',
           title:
             'Online Scheduling for Energy Minimization in Wireless Powered Mobile Edge Computing',
           type: 'IEEE WCNC',
+          description:
+            'Develops an online scheduling formulation for energy-aware computation offloading in wireless-powered edge networks.',
           href: 'https://doi.org/10.1109/WCNC51071.2022.9771592',
+          featured: false,
+        },
+        {
+          year: '2022',
+          title:
+            'A nonlinear wave coupling algorithm and its programing and application in plasma turbulences',
+          type: 'Chinese Physics B',
+          description:
+            'Extends nonlinear wave-coupling analysis toward applications in plasma turbulence.',
+          href: 'https://doi.org/10.1088/1674-1056/ac4233',
+          featured: false,
+        },
+        {
+          year: '2020',
+          title: 'An improved method for bispectral analysis of nonlinear wave interaction system',
+          type: 'Physica Scripta',
+          description:
+            'Introduces and evaluates an iterative bispectral method for identifying nonlinear wave interactions.',
+          href: 'https://doi.org/10.1088/1402-4896/ab725f',
+          featured: false,
+        },
+        {
+          year: '2020',
+          title:
+            'Performance of the Algorithms for Bispectral Analysis on Turbulence and Their Application in Edge Plasmas',
+          type: 'Journal of the Physical Society of Japan',
+          description:
+            'Compares bispectral-analysis algorithms and applies them to nonlinear interactions in edge-plasma turbulence.',
+          href: 'https://doi.org/10.7566/JPSJ.89.044501',
+          featured: false,
         },
       ],
-      projectsLabel: 'Research systems',
+      projectsLabel: 'Research programs & systems',
       projectsAction: 'Open work',
       projects: [
         {
-          title: 'Open Resource-as-a-Service — Master’s thesis',
-          meta: 'M.Eng. research story',
+          title: 'Secure and resilient wireless systems',
+          meta: 'Current doctoral research portfolio',
           description:
-            'A bilingual introduction to the thesis and its relationship with OpenRaaS and FogCom.',
+            'Physical-layer security and resilient learning-enabled communications for energy-constrained wireless systems. Public output includes a JSAC Early Access article and two ICMLCN acceptances.',
+          href: '/research/',
+          featured: true,
+        },
+        {
+          title: 'OpenRaaS and FogCom',
+          meta: 'M.Eng. research · systems and learning',
+          description:
+            'A connected research line on exposing heterogeneous compute and storage resources as cooperative services, with OpenRaaS as the system foundation and FogCom as the experimental scheduling environment.',
           href: '/research/openraas-thesis/',
+          featured: true,
         },
         {
-          title: 'FogCom',
-          meta: 'Research prototype · Maintainer',
+          title: 'Collaborative and wireless-powered edge computing',
+          meta: 'Mechanism design · online optimization',
           description:
-            'PPO-based candidate-set control for a collaborative fog-computing simulation.',
-          href: 'https://github.com/coolmoon327/FogCom',
+            'A continuing line spanning incentives, social-welfare-aware resource allocation, and energy-aware online scheduling in collaborative edge systems.',
+          href: '/publications/',
+          featured: true,
         },
         {
-          title: 'OpenRaaS',
-          meta: 'Collaborative systems project · Contributor',
+          title: 'Nonlinear signal analysis for wave interactions',
+          meta: 'First-author research · spectral methods',
           description:
-            'A decentralized resource-service infrastructure that separates runtime, storage, and compute roles.',
-          href: 'https://github.com/zobinHuang/OpenRaaS',
+            'Algorithmic bispectral analysis for nonlinear wave coupling and plasma turbulence, reflected in two first-author journal papers and subsequent collaborative work.',
+          href: '/publications/',
+          featured: true,
         },
         {
-          title: 'RL-driven face-tracking conference system',
-          meta: 'Collaborative embedded system',
+          title: 'Adaptive antenna control for 5G',
+          meta: 'B.Eng. thesis · operator collaboration',
           description:
-            'A HiSilicon and OpenHarmony prototype combining face detection, edge offloading, and reinforcement-learning-based arm control.',
+            'An undergraduate research project on reinforcement-learning-based control of 5G base-station antenna feeds, grounded in an operator-side network-optimization placement.',
+          href: '/research/',
+          featured: false,
+        },
+        {
+          title: 'Embedded vision and robotic tracking',
+          meta: 'Award-winning collaborative engineering system',
+          description:
+            'A HiSilicon and OpenHarmony prototype combining visual tracking, edge offloading, and robotic control; recognized with a national first prize in an embedded systems competition.',
           href: 'https://zobinhuang.github.io/sec_about/project_socchina/report.pdf',
-        },
-        {
-          title:
-            'Online Scheduling for Energy Minimization in Wireless Powered Mobile Edge Computing',
-          meta: 'Research code · WP-MEC',
-          description:
-            'Public code supporting online energy-minimization research in wireless-powered mobile edge computing.',
-          href: 'https://github.com/coolmoon327/Online-Scheduling-for-Energy-Minimization-in-Wireless-Powered-Mobile-Edge-Computing',
-        },
-        {
-          title: 'ieeexplore-ku-oa',
-          meta: 'Open-source utility',
-          description:
-            'A practical utility for checking open-access availability from IEEE Xplore at Khalifa University.',
-          href: 'https://github.com/coolmoon327/ieeexplore-ku-oa',
+          featured: false,
         },
       ],
       linksLabel: 'Public profiles',
@@ -367,105 +446,178 @@ export const site = {
       ],
     },
     zh: {
-      eyebrow: '安全无线系统 · 学习 · 优化',
+      eyebrow: '物理层安全 · 韧性无线智能',
       name: '沈煜航',
       role: '电气与计算机工程博士研究生',
       institution: '哈利法大学',
       location: '阿联酋阿布扎比',
       intro:
-        '我研究面向零能耗 6G 物联网与万物互联系统的物理层安全，重点关注无线通信与基于强化学习的安全传输优化。',
+        '我目前在哈利法大学攻读电气与计算机工程博士，研究面向能量受限 IoT 与 IoE 的物理层安全和具有韧性的学习型无线系统，并延续此前在边缘与雾计算、在线优化和信号分析方面的工作。',
       primaryAction: { label: '查看研究概况', href: '/zh/research/' },
       secondaryAction: { label: '访问 GitHub', href: 'https://github.com/coolmoon327' },
       profileLabel: '个人资料',
       researchLabel: '当前研究',
       researchIntro:
-        '博士阶段工作先按研究问题呈现，而不是用占位论文条目凑数量；只有存在稳定公开版本后才加入具体题目。',
+        '我关注未来无线系统如何在能源、感知与决策能力受限时仍保持安全和可靠。下方列出部分已接收与已发表成果。',
       researchAction: '查看研究概况',
       research: [
-        '面向零能耗 6G 的物理层安全',
-        'IoT 与 IoE 系统的安全传输',
-        '用于无线优化的强化学习',
-        '无线通信与资源分配',
+        '面向能量受限无线系统的物理层安全',
+        '对抗性干扰下具有韧性的学习型通信',
+        '无线优化、资源分配与在线决策',
+        '边缘与雾计算，以及非线性信号分析基础',
       ],
-      publicationsLabel: '近期公开工作',
+      publicationsLabel: '近期已接收与已发表工作',
       publicationsAction: '打开论文',
+      publicationsPending: '会议录链接待发布',
       publications: [
         {
           year: '2026',
           title:
+            'Outsmarting the Smart: Intelligent Jamming Strategies Against AI-Empowered Anti-Jamming Frameworks',
+          type: 'IEEE JSAC · Early Access',
+          description:
+            '研究 AI 抗干扰系统在对抗性环境中的韧性，并强调学习型无线设计需要更稳健的安全保障。',
+          href: 'https://ieeexplore.ieee.org/document/11551582/',
+          featured: true,
+        },
+        {
+          year: '2026',
+          title: 'Robust DRL-Based Anti-Jamming Under Adversarial State Manipulation Attacks',
+          type: 'IEEE ICMLCN · 已接收',
+          description: '研究无线观测可能被对手操控时，学习型抗干扰方法的稳健性。',
+          href: '',
+          featured: true,
+        },
+        {
+          year: '2026',
+          title:
+            'Semantic Prediction Driven Resilience in SAGSIN Scenario under Adversarial Jamming',
+          type: 'IEEE ICMLCN · 已接收',
+          description: '研究对抗性干扰下空中与非地面融合网络中的韧性语义通信。',
+          href: '',
+          featured: true,
+        },
+        {
+          year: '2026',
+          title:
             'Energy-Efficient Online Scheduling for Wireless Powered Mobile Edge Computing Networks',
-          type: '预印本',
+          type: 'arXiv 预印本',
+          description: '从能效角度重新研究无线供能与计算卸载联合决策中的在线调度。',
           href: 'https://arxiv.org/abs/2603.07984',
+          featured: false,
         },
         {
           year: '2024',
           title:
             'Deep Reinforcement Learning-Based Social Welfare Maximization for Collaborative Edge Computing',
           type: 'IEEE iWRF&AT',
+          description: '利用深度强化学习研究协同边缘服务器之间面向社会福利的资源分配。',
           href: 'https://doi.org/10.1109/iWRFAT61200.2024.10594571',
+          featured: false,
         },
         {
           year: '2024',
           title:
             'ES-ATF: Early Smoke Detection based on Attention-aggregated Temporal Feature Extraction',
           type: 'IEEE ICEET',
+          description: '参与基于注意力聚合时序特征的早期烟雾检测研究。',
           href: 'https://doi.org/10.1109/ICEET65156.2024.10913544',
+          featured: false,
         },
         {
           year: '2022',
           title:
             'An online auction-based incentive mechanism for soft-deadline tasks in Collaborative Edge Computing',
           type: 'Future Generation Computer Systems',
+          description: '设计支持多边缘服务提供方协作的在线拍卖激励机制。',
           href: 'https://doi.org/10.1016/j.future.2022.07.001',
+          featured: false,
         },
         {
           year: '2022',
           title:
             'Online Scheduling for Energy Minimization in Wireless Powered Mobile Edge Computing',
           type: 'IEEE WCNC',
+          description: '面向无线供能边缘网络中的计算卸载，研究能耗感知的在线调度。',
           href: 'https://doi.org/10.1109/WCNC51071.2022.9771592',
+          featured: false,
+        },
+        {
+          year: '2022',
+          title:
+            'A nonlinear wave coupling algorithm and its programing and application in plasma turbulences',
+          type: 'Chinese Physics B',
+          description: '将非线性波耦合分析进一步用于等离子体湍流研究。',
+          href: 'https://doi.org/10.1088/1674-1056/ac4233',
+          featured: false,
+        },
+        {
+          year: '2020',
+          title: 'An improved method for bispectral analysis of nonlinear wave interaction system',
+          type: 'Physica Scripta',
+          description: '提出并验证用于识别非线性波相互作用的迭代双谱分析方法。',
+          href: 'https://doi.org/10.1088/1402-4896/ab725f',
+          featured: false,
+        },
+        {
+          year: '2020',
+          title:
+            'Performance of the Algorithms for Bispectral Analysis on Turbulence and Their Application in Edge Plasmas',
+          type: 'Journal of the Physical Society of Japan',
+          description: '比较双谱分析算法，并将其用于边缘等离子体湍流中的非线性相互作用。',
+          href: 'https://doi.org/10.7566/JPSJ.89.044501',
+          featured: false,
         },
       ],
-      projectsLabel: '研究系统',
+      projectsLabel: '研究方向与系统',
       projectsAction: '打开项目',
       projects: [
         {
-          title: '开放资源即服务 — 硕士论文',
-          meta: '硕士研究脉络',
-          description: '中英文介绍硕士论文，以及它与 OpenRaaS、FogCom 的关系。',
-          href: '/zh/research/openraas-thesis/',
-        },
-        {
-          title: 'FogCom',
-          meta: '研究原型 · 维护者',
-          description: '面向协同雾计算仿真环境、基于 PPO 的候选资源集合控制。',
-          href: 'https://github.com/coolmoon327/FogCom',
-        },
-        {
-          title: 'OpenRaaS',
-          meta: '合作系统项目 · 贡献者',
-          description: '将运行环境、存储与计算角色解耦的去中心化资源服务基础设施。',
-          href: 'https://github.com/zobinHuang/OpenRaaS',
-        },
-        {
-          title: '强化学习驱动的人脸追踪远程会议系统',
-          meta: '合作嵌入式系统',
+          title: '安全且具有韧性的无线系统',
+          meta: '当前博士研究组合',
           description:
-            '基于海思与 OpenHarmony 的原型，结合人脸检测、边缘卸载和强化学习机械臂控制。',
+            '面向能量受限无线系统的物理层安全与学习型韧性通信。公开成果包括一篇 JSAC Early Access 论文和两篇 ICMLCN 已接收论文。',
+          href: '/zh/research/',
+          featured: true,
+        },
+        {
+          title: 'OpenRaaS 与 FogCom',
+          meta: '硕士研究 · 系统与学习',
+          description:
+            '围绕异构计算与存储资源如何形成协作服务的一条完整研究线：OpenRaaS 提供系统基础，FogCom 提供调度问题的实验环境。',
+          href: '/zh/research/openraas-thesis/',
+          featured: true,
+        },
+        {
+          title: '协同与无线供能边缘计算',
+          meta: '机制设计 · 在线优化',
+          description:
+            '持续研究协同边缘系统中的激励机制、面向社会福利的资源分配，以及能耗感知的在线调度。',
+          href: '/zh/publications/',
+          featured: true,
+        },
+        {
+          title: '波相互作用的非线性信号分析',
+          meta: '第一作者研究 · 频谱方法',
+          description:
+            '面向非线性波耦合与等离子体湍流的算法化双谱分析，形成两篇第一作者期刊论文及后续合作成果。',
+          href: '/zh/publications/',
+          featured: true,
+        },
+        {
+          title: '5G 自适应天馈控制',
+          meta: '本科论文 · 运营商合作',
+          description: '基于运营商网络优化实践，研究利用强化学习控制 5G 基站天馈系统。',
+          href: '/zh/research/',
+          featured: false,
+        },
+        {
+          title: '嵌入式视觉与机器人追踪',
+          meta: '获奖合作工程系统',
+          description:
+            '基于海思与 OpenHarmony 的原型，融合视觉追踪、边缘卸载与机器人控制，并获嵌入式系统赛事全国一等奖。',
           href: 'https://zobinhuang.github.io/sec_about/project_socchina/report.pdf',
-        },
-        {
-          title:
-            'Online Scheduling for Energy Minimization in Wireless Powered Mobile Edge Computing',
-          meta: '研究代码 · WP-MEC',
-          description: '无线供能移动边缘计算中在线能耗最小化研究的公开代码。',
-          href: 'https://github.com/coolmoon327/Online-Scheduling-for-Energy-Minimization-in-Wireless-Powered-Mobile-Edge-Computing',
-        },
-        {
-          title: 'ieeexplore-ku-oa',
-          meta: '开源工具',
-          description: '用于检查哈利法大学 IEEE Xplore 论文开放获取状态的实用工具。',
-          href: 'https://github.com/coolmoon327/ieeexplore-ku-oa',
+          featured: false,
         },
       ],
       linksLabel: '公开主页',
@@ -487,11 +639,11 @@ export const site = {
       eyebrow: 'Research profile',
       title: 'Research',
       intro:
-        'My work connects secure wireless communications with learning-based optimization, while building on earlier research in collaborative edge and fog computing.',
+        'My work connects secure wireless communications with learning-based optimization. The broader trajectory runs from nonlinear signal analysis and cooperative edge systems to physical-layer security for energy-constrained wireless networks.',
       currentLabel: 'Current doctoral research',
       currentTitle: 'Physical-layer security for zero-energy 6G IoT and IoE systems',
       currentBody:
-        'My doctoral research studies secure transmission for future wireless systems, with particular interest in reinforcement-learning-based optimization. The dissertation title below is the official working title recorded by the program.',
+        'My doctoral research studies secure and resilient transmission for future wireless systems, with particular interest in learning-enabled decision making under practical constraints. The dissertation title below is the official working title recorded by the program; public descriptions intentionally remain at the research-problem level.',
       programLabel: 'Program',
       program: 'PhD in Engineering — Electrical & Computer Engineering',
       dissertationLabel: 'Dissertation',
@@ -506,21 +658,21 @@ export const site = {
       ],
       publicStatusLabel: 'Public record',
       publicStatus:
-        'Several doctoral projects are ongoing or not yet available in archival form. They are described here as research directions rather than padded publication entries; titles and links will be added when public versions are available.',
+        'The public record includes an IEEE JSAC Early Access article and two papers accepted at IEEE ICMLCN 2026. Several additional physical-layer-security collaborations are under review and are summarized only at the theme level.',
       trajectoryLabel: 'Research trajectory',
       trajectoryIntro:
         'The progression from systems and resource cooperation to secure wireless optimization is part of one continuous research story.',
       stages: [
         {
           marker: 'Now',
-          title: 'Secure zero-energy 6G systems',
-          body: 'Physical-layer security, wireless communications, and reinforcement-learning-based optimization for secure transmission in IoT and IoE systems.',
+          title: 'Secure and resilient wireless intelligence',
+          body: 'Physical-layer security and dependable learning-enabled communications for energy-constrained IoT and IoE systems under adversarial interference.',
           links: [{ label: 'Publications', href: '/publications/' }],
         },
         {
           marker: 'M.Eng.',
           title: 'Open Resource-as-a-Service and collaborative fog computing',
-          body: 'A system-and-algorithm track that connects OpenRaaS, a decentralized resource service infrastructure, with FogCom, a simulation prototype for candidate control under partial observability.',
+          body: 'A systems-and-decision track on exposing heterogeneous compute and storage resources as cooperative services. OpenRaaS provides the system foundation, while FogCom provides an experimental scheduling environment.',
           links: [
             { label: 'Master’s thesis', href: '/research/openraas-thesis/' },
             { label: 'OpenRaaS', href: 'https://github.com/zobinHuang/OpenRaaS' },
@@ -528,25 +680,65 @@ export const site = {
           ],
         },
         {
+          marker: '2021–26',
+          title: 'Collaborative and wireless-powered edge computing',
+          body: 'Research on incentive mechanisms, social-welfare-aware allocation, and online energy management for cooperative and wireless-powered edge systems.',
+          links: [{ label: 'Related publications', href: '/publications/' }],
+        },
+        {
+          marker: '2020–22',
+          title: 'Nonlinear signal analysis and plasma turbulence',
+          body: 'First-author work on bispectral methods for nonlinear wave coupling, followed by collaborative applications to plasma-turbulence analysis.',
+          links: [{ label: 'Related publications', href: '/publications/' }],
+        },
+        {
           marker: 'B.Eng.',
-          title: 'Adaptive antenna-feed control for 5G base stations',
-          body: 'The undergraduate thesis investigated reinforcement-learning-based adaptive antenna-feed control for 5G base stations.',
-          links: [],
+          title: '5G control and embedded intelligent systems',
+          body: 'The undergraduate thesis studied adaptive antenna-feed control for 5G base stations, alongside collaborative work on embedded vision, edge offloading, and robotic tracking.',
+          links: [{ label: 'Projects', href: '/projects/' }],
         },
       ],
-      educationLabel: 'Education',
-      education:
-        'M.Eng. in Network Engineering, B.Eng. in Internet of Things Engineering, and B.A. in Finance, University of Electronic Science and Technology of China (UESTC).',
+      profileLabel: 'Background & recognition',
+      profileIntro:
+        'Education, research experience, and selected recognition supporting the trajectory above.',
+      profileGroups: [
+        {
+          title: 'Education',
+          items: [
+            'PhD in Engineering — Electrical & Computer Engineering, Khalifa University (current)',
+            'M.Eng. in Network Engineering, UESTC (2024)',
+            'B.Eng. in Internet of Things Engineering and B.A. in Finance, UESTC (2021)',
+            'Graduate exchange in Computer Science, Khalifa University (Spring 2024)',
+          ],
+        },
+        {
+          title: 'Experience',
+          items: [
+            'Teaching assistant for Reinforcement Learning at UESTC (2022)',
+            'Network-optimization placement with China Telecom, contributing to adaptive 5G antenna-control research',
+            'Research and engineering collaborations spanning wireless systems, edge computing, signal analysis, and embedded AI',
+          ],
+        },
+        {
+          title: 'Selected recognition',
+          items: [
+            'National Graduate Scholarship and two UESTC First-Class Graduate Scholarships',
+            'IEEE iWRF&AT 2024 Best Paper Award',
+            'National First Prize, National Embedded Chip and System Design Competition (2022)',
+            'Sichuan Province Outstanding Graduate',
+          ],
+        },
+      ],
     },
     zh: {
       eyebrow: '研究概况',
       title: '研究',
       intro:
-        '我的研究以安全无线通信与学习驱动的优化为主线，并延续了此前在协同边缘计算与雾计算方面的系统研究。',
+        '我的研究以安全无线通信与学习驱动的优化为主线，整体脉络从非线性信号分析与协同边缘系统，延伸到面向能量受限无线网络的物理层安全。',
       currentLabel: '当前博士研究',
       currentTitle: '面向零能耗 6G 物联网与万物互联的物理层安全',
       currentBody:
-        '博士阶段主要研究未来无线系统中的安全传输，并关注基于强化学习的优化方法。下方保留培养项目记录的正式论文题目。',
+        '博士阶段主要研究未来无线系统中的安全与韧性传输，并关注现实约束下的学习型决策。下方保留培养项目记录的正式论文题目；面向公众的介绍有意停留在研究问题层面。',
       programLabel: '培养项目',
       program: '工程学博士 — 电气与计算机工程',
       dissertationLabel: '博士论文',
@@ -561,20 +753,20 @@ export const site = {
       ],
       publicStatusLabel: '公开状态',
       publicStatus:
-        '部分博士阶段工作仍在进行中，或尚未形成可公开的正式版本。因此这里先展示研究方向，不用未经核实的论文条目填充数量；待公开版本可用后再补充题目与链接。',
+        '当前公开记录包括一篇 IEEE JSAC Early Access 论文和两篇 IEEE ICMLCN 2026 已接收论文；另有多项物理层安全合作正在审稿，仅在研究主题层面作概括。',
       trajectoryLabel: '研究脉络',
       trajectoryIntro: '从系统与资源协作到安全无线优化，这些工作构成了一条连续的研究路径。',
       stages: [
         {
           marker: '当前',
-          title: '安全的零能耗 6G 系统',
-          body: '面向 IoT 与 IoE 系统，研究物理层安全、无线通信，以及基于强化学习的安全传输优化。',
+          title: '安全且具有韧性的无线智能',
+          body: '面向能量受限 IoT 与 IoE 系统，研究对抗性干扰下的物理层安全与可靠的学习型通信。',
           links: [{ label: '公开论文', href: '/zh/publications/' }],
         },
         {
           marker: '硕士',
           title: '开放资源即服务与协同雾计算',
-          body: '这一阶段把系统与算法连接起来：OpenRaaS 提供去中心化的资源服务基础设施，FogCom 则研究局部可观测条件下的候选资源控制。',
+          body: '围绕异构计算与存储资源如何形成协作服务开展系统与决策研究：OpenRaaS 提供系统基础，FogCom 提供调度问题的实验环境。',
           links: [
             { label: '硕士论文', href: '/zh/research/openraas-thesis/' },
             { label: 'OpenRaaS', href: 'https://github.com/zobinHuang/OpenRaaS' },
@@ -582,14 +774,54 @@ export const site = {
           ],
         },
         {
+          marker: '2021–26',
+          title: '协同与无线供能边缘计算',
+          body: '研究协作边缘系统中的激励机制、面向社会福利的资源分配，以及无线供能条件下的在线能量管理。',
+          links: [{ label: '相关论文', href: '/zh/publications/' }],
+        },
+        {
+          marker: '2020–22',
+          title: '非线性信号分析与等离子体湍流',
+          body: '以第一作者身份研究非线性波耦合的双谱分析方法，并参与其在等离子体湍流分析中的后续应用。',
+          links: [{ label: '相关论文', href: '/zh/publications/' }],
+        },
+        {
           marker: '本科',
-          title: '5G 基站自适应天馈控制',
-          body: '本科毕业论文研究了基于强化学习的 5G 基站自适应天馈系统。',
-          links: [],
+          title: '5G 控制与嵌入式智能系统',
+          body: '本科论文研究 5G 基站自适应天馈控制，并参与融合嵌入式视觉、边缘卸载与机器人追踪的合作工程系统。',
+          links: [{ label: '项目页面', href: '/zh/projects/' }],
         },
       ],
-      educationLabel: '教育经历',
-      education: '电子科技大学网络工程硕士、物联网工程学士，以及金融学文学学士。',
+      profileLabel: '学术背景与代表性荣誉',
+      profileIntro: '以下简要列出支持上述研究脉络的教育背景、研究经历与代表性荣誉。',
+      profileGroups: [
+        {
+          title: '教育经历',
+          items: [
+            '哈利法大学工程学博士（电气与计算机工程，在读）',
+            '电子科技大学网络工程硕士（2024）',
+            '电子科技大学物联网工程学士、金融学文学学士（2021）',
+            '哈利法大学计算机科学研究生交换（2024 年春季）',
+          ],
+        },
+        {
+          title: '经历',
+          items: [
+            '电子科技大学强化学习课程助教（2022）',
+            '中国电信网络优化实践，并参与 5G 自适应天馈控制研究',
+            '持续参与无线系统、边缘计算、信号分析与嵌入式智能方面的研究合作',
+          ],
+        },
+        {
+          title: '代表性荣誉',
+          items: [
+            '国家奖学金（研究生）及两次电子科技大学研究生一等奖学金',
+            'IEEE iWRF&AT 2024 最佳论文奖',
+            '全国大学生嵌入式芯片与系统设计竞赛全国一等奖（2022）',
+            '四川省优秀毕业生',
+          ],
+        },
+      ],
     },
   },
 
@@ -939,24 +1171,24 @@ export const site = {
     localized: {
       en: {
         publications: {
-          eyebrow: 'Verified public record',
+          eyebrow: 'Selected published & accepted record',
           title: 'Publications',
           intro:
-            'Published papers and stable public manuscripts, ordered by year. Current doctoral work is added when an archival version becomes publicly available.',
-          status: 'Transparent by design',
-          statusTitle: 'Current work is not missing; it is not public yet.',
+            'A broad selection of published papers, Early Access articles, accepted conference papers, and stable public manuscripts, ordered by year. Accepted entries without proceedings links are marked accordingly.',
+          status: 'Publication status',
+          statusTitle: 'Every entry reflects its current public status.',
           statusBody:
-            'Several doctoral projects are ongoing, accepted, or awaiting archival publication. I do not list provisional titles, venues, or counts here. This page will be updated as stable records become available.',
+            'Links appear only when a stable public record or proceedings page is available.',
         },
         projects: {
-          eyebrow: 'Systems & code',
+          eyebrow: 'Research programs & systems',
           title: 'Projects',
           intro:
-            'Public research systems, collaboration artifacts, and selected software—ordered to show the research story before utility projects.',
-          status: 'Public subset',
-          statusTitle: 'Not every active project has a public repository.',
+            'Research programs, systems, and selected engineering work—organized by intellectual trajectory rather than by repository count.',
+          status: 'Curated by research value',
+          statusTitle: 'A project is more than a repository card.',
           statusBody:
-            'Ongoing doctoral code remains private until it is ready for release. The projects below are the verifiable public subset, not a measure of current research activity.',
+            'The entries below connect research questions, papers, systems, and public artifacts. Ongoing doctoral code is included only when it is ready for public release.',
         },
         blog: {
           eyebrow: 'Notes & writing',
@@ -1007,23 +1239,22 @@ export const site = {
       },
       zh: {
         publications: {
-          eyebrow: '已核实的公开记录',
+          eyebrow: '精选已发表与已接收记录',
           title: '论文',
           intro:
-            '按年份列出已发表论文和具有稳定公开版本的稿件；博士阶段工作在正式公开版本可用后再加入。',
-          status: '透明呈现',
-          statusTitle: '当前工作并非缺失，而是尚未公开。',
-          statusBody:
-            '部分博士阶段项目仍在进行、已接收待出版，或尚未形成可归档版本。这里不会提前填写临时题目、期刊或数量；公开记录稳定后再更新。',
+            '按年份列出较全面的已发表论文、Early Access 论文、已接收会议论文与具有稳定公开版本的稿件；尚无会议录链接的条目会明确标注。',
+          status: '发表状态',
+          statusTitle: '每个条目均按当前公开状态标注。',
+          statusBody: '仅在稳定公开记录或会议录页面可用时提供链接。',
         },
         projects: {
-          eyebrow: '系统与代码',
+          eyebrow: '研究方向与系统',
           title: '项目',
-          intro: '公开研究系统、合作成果与精选软件，并优先呈现研究脉络。',
-          status: '公开子集',
-          statusTitle: '并非所有活跃项目都有公开代码库。',
+          intro: '按照研究脉络组织研究方向、系统与精选工程成果，而不是按代码库数量罗列。',
+          status: '按研究价值策展',
+          statusTitle: '项目不等于一张代码库卡片。',
           statusBody:
-            '博士阶段仍在推进的代码会在适合公开时再发布。下方只是可核实的公开子集，不能用来衡量当前研究活跃度。',
+            '下方条目把研究问题、论文、系统与公开材料串联起来；博士阶段代码仅在适合公开时纳入。',
         },
         blog: {
           eyebrow: '笔记与写作',

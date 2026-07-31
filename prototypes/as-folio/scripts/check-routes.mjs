@@ -29,7 +29,7 @@ const coreRoutes = [
     switchHref: '/zh/owner/',
     owner: true,
   },
-  { path: '/zh/', lang: 'zh-CN', marker: '近期公开工作', switchHref: '/' },
+  { path: '/zh/', lang: 'zh-CN', marker: '近期已接收与已发表工作', switchHref: '/' },
   {
     path: '/zh/research/',
     lang: 'zh-CN',

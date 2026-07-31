@@ -97,9 +97,25 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
       </ol>
     </section>
 
-    <section class="education" aria-labelledby="education-heading">
-      <h2 id="education-heading">{content.educationLabel}</h2>
-      <p>{content.education}</p>
+    <section class="profile" aria-labelledby="profile-heading">
+      <div class="section-heading">
+        <h2 id="profile-heading">{content.profileLabel}</h2>
+        <p>{content.profileIntro}</p>
+      </div>
+      <div class="profile-grid">
+        {
+          content.profileGroups.map((group) => (
+            <article>
+              <h3>{group.title}</h3>
+              <ul>
+                {group.items.map((item) => (
+                  <li>{item}</li>
+                ))}
+              </ul>
+            </article>
+          ))
+        }
+      </div>
     </section>
   </div>
 </Base>
@@ -170,7 +186,7 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
 
   .doctoral-copy h2,
   .section-heading h2,
-  .education h2 {
+  .profile h2 {
     margin: 0;
     color: var(--global-text-color);
     font-size: clamp(1.6rem, 4vw, 2.5rem);
@@ -180,7 +196,7 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
 
   .doctoral-copy > p:last-child,
   .section-heading p,
-  .education p {
+  .profile p {
     color: var(--global-text-color-light);
     line-height: 1.75;
   }
@@ -316,23 +332,50 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
     text-decoration: none;
   }
 
-  .education {
-    display: grid;
-    grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
-    gap: 2.5rem;
+  .profile {
     padding-top: 4rem;
     border-top: 1px solid var(--global-divider-color);
   }
 
-  .education p {
-    margin: 0.25rem 0 0;
+  .profile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+  }
+
+  .profile-grid article {
+    padding: 1.25rem;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 1rem;
+    background: var(--global-card-bg-color);
+  }
+
+  .profile-grid h3 {
+    margin: 0 0 1rem;
+    color: var(--global-text-color);
+    font-size: 1rem;
+  }
+
+  .profile-grid ul {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding-left: 1.1rem;
+    color: var(--global-text-color-light);
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 960px) {
+    .profile-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   @media (max-width: 760px) {
     .page-hero,
     .doctoral-card,
-    .section-heading,
-    .education {
+    .section-heading {
       grid-template-columns: 1fr;
     }
 
@@ -356,6 +399,10 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
     .trajectory li {
       grid-template-columns: 4.5rem 1fr;
       gap: 1rem;
+    }
+
+    .profile-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>
