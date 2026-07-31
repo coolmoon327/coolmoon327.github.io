@@ -1,0 +1,69 @@
+services:
+  publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: "${NODE_IMAGE:-node:24-alpine}"
+    image: home-endpoint-registry-publisher:local
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      REGISTRY_REMOTE_URL: "${REGISTRY_REMOTE_URL:?Set REGISTRY_REMOTE_URL in .env}"
+      REGISTRY_BRANCH: "${REGISTRY_BRANCH:-main}"
+      PUBLISH_INTERVAL_SECONDS: "${PUBLISH_INTERVAL_SECONDS:-600}"
+      IP_DISCOVERY_TIMEOUT_MS: "${IP_DISCOVERY_TIMEOUT_MS:-5000}"
+      IP_DISCOVERY_MIN_AGREEMENT: "${IP_DISCOVERY_MIN_AGREEMENT:-2}"
+      PBKDF2_ITERATIONS: "${PBKDF2_ITERATIONS:-600000}"
+      HOME_HEARTBEAT_HOURS: "${HOME_HEARTBEAT_HOURS:-6}"
+      HOME_REGISTRY_TTL_HOURS: "${HOME_REGISTRY_TTL_HOURS:-24}"
+      STATE_DIRECTORY: /state
+      PASSWORD_FILE: /run/secrets/home_access_password
+      SERVICES_FILE: /run/secrets/services.json
+      DEPLOY_KEY_FILE: /run/secrets/registry_deploy_key
+      KNOWN_HOSTS_FILE: /run/secrets/known_hosts
+    volumes:
+      - type: volume
+        source: registry-state
+        target: /state
+      - type: bind
+        source: ./secrets/home_access_password
+        target: /run/secrets/home_access_password
+        read_only: true
+      - type: bind
+        source: ./secrets/services.json
+        target: /run/secrets/services.json
+        read_only: true
+      - type: bind
+        source: ./secrets/registry_deploy_key
+        target: /run/secrets/registry_deploy_key
+        read_only: true
+      - type: bind
+        source: ./secrets/known_hosts
+        target: /run/secrets/known_hosts
+        read_only: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 192m
+    cpus: 0.50
+    stop_grace_period: 20s
+    healthcheck:
+      test: ["CMD", "node", "src/healthcheck.mjs"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 1m
+        max-file: "3"
+
+volumes:
+  registry-state:

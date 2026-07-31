@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "services": [
+    {
+      "id": "dashboard",
+      "urlTemplate": "https://{publicIPv4}/",
+      "label": {
+        "en": "Owner dashboard",
+        "zh": "个人控制台"
+      },
+      "description": {
+        "en": "Private home-service entry point.",
+        "zh": "家庭服务的私有入口。"
+      }
+    },
+    {
+      "id": "storage",
+      "urlTemplate": "https://{publicIPv4}/storage",
+      "label": {
+        "en": "Private storage",
+        "zh": "私有存储"
+      },
+      "description": {
+        "en": "Personal storage management entry point.",
+        "zh": "个人存储管理入口。"
+      },
+      "enabled": false
+    }
+  ]
+}

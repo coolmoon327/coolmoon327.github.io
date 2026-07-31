@@ -1,0 +1,7 @@
+.git
+.env
+secrets
+state
+test
+*.log
+endpoint.enc.json

@@ -1,0 +1,5 @@
+.env
+secrets/
+state/
+*.log
+endpoint.enc.json
