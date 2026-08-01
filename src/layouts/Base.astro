@@ -82,6 +82,9 @@ const personJsonLd = isHome ? JSON.stringify({
     site.socials.orcid_id ? `https://orcid.org/${site.socials.orcid_id}` : null,
     site.socials.scholar_userid ? `https://scholar.google.com/citations?user=${site.socials.scholar_userid}` : null,
     site.socials.github_username ? `https://github.com/${site.socials.github_username}` : null,
+    site.socials.researchgate_username
+      ? `https://www.researchgate.net/profile/${site.socials.researchgate_username}`
+      : null,
   ].filter(Boolean),
 }) : null;
 ---

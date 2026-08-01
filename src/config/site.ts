@@ -87,7 +87,7 @@ export const site = {
     orcid_id: '0000-0002-3358-3463',
     /** Inspire HEP author ID */
     inspire_id: undefined as string | undefined,
-    researchgate_username: undefined as string | undefined,
+    researchgate_username: 'Yuhang-Shen-5',
     arxiv_id: undefined as string | undefined,
     youtube_id: undefined as string | undefined,
     instagram_username: undefined as string | undefined,
@@ -437,7 +437,7 @@ export const site = {
           featured: false,
         },
       ],
-      linksLabel: 'Public profiles',
+      linksLabel: 'Profiles & links',
       links: [
         { label: 'ORCID', href: 'https://orcid.org/0000-0002-3358-3463' },
         { label: 'GitHub', href: 'https://github.com/coolmoon327' },
@@ -445,6 +445,11 @@ export const site = {
           label: 'Google Scholar',
           href: 'https://scholar.google.com/citations?user=JNrwfFQAAAAJ',
         },
+        {
+          label: 'ResearchGate',
+          href: 'https://www.researchgate.net/profile/Yuhang-Shen-5',
+        },
+        { label: 'Zobin · friend link', href: 'https://zobinhuang.github.io/' },
       ],
     },
     zh: {
@@ -622,7 +627,7 @@ export const site = {
           featured: false,
         },
       ],
-      linksLabel: '公开主页',
+      linksLabel: '主页与友链',
       links: [
         { label: 'ORCID', href: 'https://orcid.org/0000-0002-3358-3463' },
         { label: 'GitHub', href: 'https://github.com/coolmoon327' },
@@ -630,6 +635,11 @@ export const site = {
           label: 'Google Scholar',
           href: 'https://scholar.google.com/citations?user=JNrwfFQAAAAJ',
         },
+        {
+          label: 'ResearchGate',
+          href: 'https://www.researchgate.net/profile/Yuhang-Shen-5',
+        },
+        { label: 'Zobin · 友链', href: 'https://zobinhuang.github.io/' },
       ],
     },
   },
@@ -654,9 +664,21 @@ export const site = {
       studyMode: 'Full time',
       advisorsLabel: 'Advisory team',
       advisors: [
-        { role: 'Main advisor', name: 'Paschalis Sofotasios' },
-        { role: 'Co-advisor', name: 'Sami Muhaidat' },
-        { role: 'External co-advisor', name: 'Zhiguo Ding' },
+        {
+          role: 'Main advisor',
+          name: 'Paschalis Sofotasios',
+          href: 'https://khazna.ku.ac.ae/en/persons/paschalis-sofotasios-7/',
+        },
+        {
+          role: 'Co-advisor',
+          name: 'Sami Muhaidat',
+          href: 'https://scholar.google.com/citations?user=UDXNqUgAAAAJ&hl=en',
+        },
+        {
+          role: 'External co-advisor',
+          name: 'Zhiguo Ding',
+          href: 'https://scholar.google.com/citations?user=V-nB8scAAAAJ&hl=en',
+        },
       ],
       publicStatusLabel: 'Public record',
       publicStatus:
@@ -749,9 +771,21 @@ export const site = {
       studyMode: '全日制',
       advisorsLabel: '指导团队',
       advisors: [
-        { role: '主导师', name: 'Paschalis Sofotasios' },
-        { role: '联合导师', name: 'Sami Muhaidat' },
-        { role: '校外联合导师', name: 'Zhiguo Ding' },
+        {
+          role: '主导师',
+          name: 'Paschalis Sofotasios',
+          href: 'https://khazna.ku.ac.ae/en/persons/paschalis-sofotasios-7/',
+        },
+        {
+          role: '联合导师',
+          name: 'Sami Muhaidat',
+          href: 'https://scholar.google.com/citations?user=UDXNqUgAAAAJ&hl=en',
+        },
+        {
+          role: '校外联合导师',
+          name: 'Zhiguo Ding',
+          href: 'https://scholar.google.com/citations?user=V-nB8scAAAAJ&hl=en',
+        },
       ],
       publicStatusLabel: '公开状态',
       publicStatus:

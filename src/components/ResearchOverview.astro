@@ -50,7 +50,11 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
             content.advisors.map((advisor) => (
               <li>
                 <span>{advisor.role}</span>
-                <strong>{advisor.name}</strong>
+                <strong>
+                  <a href={advisor.href} target="_blank" rel="noopener noreferrer">
+                    {advisor.name} <span aria-hidden="true">↗</span>
+                  </a>
+                </strong>
               </li>
             ))
           }
@@ -138,7 +142,7 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
   .eyebrow,
   .section-label,
   .program-facts dt,
-  .advisor-block li span,
+  .advisor-block li > span,
   .status-note > span,
   .marker {
     color: var(--global-theme-color);
@@ -255,6 +259,18 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
   .advisor-block li strong {
     color: var(--global-text-color);
     font-size: 0.9rem;
+  }
+
+  .advisor-block li strong a {
+    color: inherit;
+    text-decoration-color: color-mix(in srgb, var(--global-theme-color) 55%, transparent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  .advisor-block li strong a:hover,
+  .advisor-block li strong a:focus-visible {
+    color: var(--global-theme-color);
   }
 
   .status-note {
