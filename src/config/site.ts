@@ -746,7 +746,8 @@ export const site = {
         {
           title: 'Selected recognition',
           items: [
-            'National Graduate Scholarship and two UESTC First-Class Graduate Scholarships',
+            'First-Class University Scholarship in every academic year at UESTC',
+            'National Scholarship, awarded three times: twice during undergraduate study and once during master’s study',
             'IEEE iWRF&AT 2024 Best Paper Award',
             'National First Prize, National Embedded Chip and System Design Competition (2022)',
             'Sichuan Province Outstanding Graduate',
@@ -851,7 +852,8 @@ export const site = {
         {
           title: '代表性荣誉',
           items: [
-            '国家奖学金（研究生）及两次电子科技大学研究生一等奖学金',
+            '在电子科技大学就读期间，每个学年均获一等奖学金',
+            '三次国家奖学金：本科阶段两次，硕士阶段一次',
             'IEEE iWRF&AT 2024 最佳论文奖',
             '全国大学生嵌入式芯片与系统设计竞赛全国一等奖（2022）',
             '四川省优秀毕业生',
