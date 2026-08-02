@@ -8,19 +8,24 @@ const EVALUATION_EPISODES = 80;
 const ALPHA = 0.3;
 const GAMMA = 0.94;
 const SLIP_CHANCE = 0.08;
-const WALLS = new Set([6, 7, 12, 17, 18]);
-const RISKS = new Set([10, 23]);
+const TOPOLOGY_KEY = 'pocket-play.qpath.topology.v1';
+const WALL_COUNT = 5;
+const RISK_COUNT = 2;
 const ACTIONS = [
   { row: -1, column: 0, arrow: '↑' },
   { row: 0, column: 1, arrow: '→' },
   { row: 1, column: 0, arrow: '↓' },
   { row: 0, column: -1, arrow: '←' },
 ];
-const GOALS = [
-  { id: 'A', state: 4, en: 'Summit', zh: '峰顶' },
-  { id: 'B', state: 14, en: 'Harbor', zh: '港湾' },
-  { id: 'C', state: 2, en: 'Grove', zh: '林缘' },
+const GOAL_SPECS = [
+  { id: 'A', en: 'Summit', zh: '峰顶' },
+  { id: 'B', en: 'Harbor', zh: '港湾' },
+  { id: 'C', en: 'Grove', zh: '林缘' },
 ];
+const topology = createTopology();
+const WALLS = topology.walls;
+const RISKS = topology.risks;
+const GOALS = topology.goals;
 
 const board = document.querySelector('#board');
 const metrics = document.querySelector('.metrics');
@@ -30,6 +35,16 @@ const routeSummaryOutput = document.querySelector('#route-summary');
 const successOutput = document.querySelector('#success-rate');
 const returnOutput = document.querySelector('#average-return');
 const stepsOutput = document.querySelector('#path-steps');
+
+board.dataset.topology = topology.signature;
+board.dataset.topologySource = topology.source;
+board.dataset.reachableCount = String(topology.reachableCount);
+board.dataset.config = JSON.stringify({
+  start: START_STATE,
+  walls: [...WALLS].sort((first, second) => first - second),
+  risks: [...RISKS].sort((first, second) => first - second),
+  goals: GOALS.map(({ id, state }) => ({ id, state })),
+});
 
 const cells = [];
 const goalButtons = new Map();
@@ -52,6 +67,164 @@ function t(english, chinese) {
 
 function goalName(goal) {
   return `${goal.id} · ${t(goal.en, goal.zh)}`;
+}
+
+function shuffled(values) {
+  const result = [...values];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
+}
+
+function neighbors(state, walls) {
+  const row = Math.floor(state / SIZE);
+  const column = state % SIZE;
+  return ACTIONS.map((action) => ({ row: row + action.row, column: column + action.column }))
+    .filter((next) => next.row >= 0 && next.row < SIZE && next.column >= 0 && next.column < SIZE)
+    .map((next) => next.row * SIZE + next.column)
+    .filter((nextState) => !walls.has(nextState));
+}
+
+function reachableFrom(start, walls) {
+  const queue = [start];
+  const reached = new Set(queue);
+  for (let index = 0; index < queue.length; index += 1) {
+    neighbors(queue[index], walls).forEach((nextState) => {
+      if (reached.has(nextState)) return;
+      reached.add(nextState);
+      queue.push(nextState);
+    });
+  }
+  return reached;
+}
+
+function distancesFrom(start, walls) {
+  const queue = [start];
+  const distances = new Map([[start, 0]]);
+  for (let index = 0; index < queue.length; index += 1) {
+    neighbors(queue[index], walls).forEach((nextState) => {
+      if (distances.has(nextState)) return;
+      distances.set(nextState, distances.get(queue[index]) + 1);
+      queue.push(nextState);
+    });
+  }
+  return distances;
+}
+
+function shortestPath(goalState, walls) {
+  const queue = [START_STATE];
+  const previous = new Map([[START_STATE, null]]);
+  for (let index = 0; index < queue.length; index += 1) {
+    const state = queue[index];
+    if (state === goalState) break;
+    neighbors(state, walls).forEach((nextState) => {
+      if (previous.has(nextState)) return;
+      previous.set(nextState, state);
+      queue.push(nextState);
+    });
+  }
+
+  const path = [];
+  for (let state = goalState; state !== null; state = previous.get(state)) path.push(state);
+  return path.reverse();
+}
+
+function manhattanDistance(first, second) {
+  return (
+    Math.abs(Math.floor(first / SIZE) - Math.floor(second / SIZE)) +
+    Math.abs((first % SIZE) - (second % SIZE))
+  );
+}
+
+function topologySignature(goals, walls, risks) {
+  const goalPart = goals.map((goal) => `${goal.id}${goal.state}`).join('-');
+  const wallPart = [...walls].sort((first, second) => first - second).join('-');
+  const riskPart = [...risks].sort((first, second) => first - second).join('-');
+  return `${goalPart}|${wallPart}|${riskPart}`;
+}
+
+function readPreviousTopology() {
+  try {
+    return window.sessionStorage.getItem(TOPOLOGY_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+function rememberTopology(signature) {
+  try {
+    window.sessionStorage.setItem(TOPOLOGY_KEY, signature);
+  } catch {
+    // A sandboxed iframe may intentionally deny storage.
+  }
+}
+
+function createTopology() {
+  const previousSignature = readPreviousTopology();
+  const allStates = Array.from({ length: STATE_COUNT }, (_, state) => state);
+
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const walls = new Set(
+      shuffled(allStates.filter((state) => state !== START_STATE)).slice(0, WALL_COUNT),
+    );
+    if (neighbors(START_STATE, walls).length < 2) continue;
+
+    const reachable = reachableFrom(START_STATE, walls);
+    if (reachable.size !== STATE_COUNT - WALL_COUNT) continue;
+
+    const distances = distancesFrom(START_STATE, walls);
+    const goalStates = [];
+    const goalCandidates = shuffled(
+      [...reachable].filter((state) => state !== START_STATE && (distances.get(state) ?? 0) >= 3),
+    );
+    for (const state of goalCandidates) {
+      if (goalStates.every((other) => manhattanDistance(state, other) >= 2)) {
+        goalStates.push(state);
+      }
+      if (goalStates.length === GOAL_SPECS.length) break;
+    }
+    if (goalStates.length !== GOAL_SPECS.length) continue;
+
+    const goals = GOAL_SPECS.map((goal, index) => ({ ...goal, state: goalStates[index] }));
+    const reserved = new Set([START_STATE, ...goalStates]);
+    const routeCells = new Set(
+      goals.flatMap((goal) => shortestPath(goal.state, walls).slice(1, -1)),
+    );
+    const firstRisk = shuffled([...routeCells].filter((state) => !reserved.has(state)))[0];
+    if (firstRisk === undefined) continue;
+
+    const secondRisk = shuffled(
+      [...reachable].filter(
+        (state) => !reserved.has(state) && state !== firstRisk && !walls.has(state),
+      ),
+    )[0];
+    if (secondRisk === undefined) continue;
+
+    const risks = new Set([firstRisk, secondRisk]);
+    if (risks.size !== RISK_COUNT) continue;
+    const signature = topologySignature(goals, walls, risks);
+    if (signature === previousSignature) continue;
+
+    rememberTopology(signature);
+    return { goals, walls, risks, signature, source: 'random', reachableCount: reachable.size };
+  }
+
+  const walls = new Set([6, 7, 12, 17, 18]);
+  const risks = new Set([10, 23]);
+  const fallbackStates = { A: 4, B: 14, C: 2 };
+  const goals = GOAL_SPECS.map((goal) => ({ ...goal, state: fallbackStates[goal.id] }));
+  const signature = topologySignature(goals, walls, risks);
+  rememberTopology(signature);
+  return {
+    goals,
+    walls,
+    risks,
+    signature,
+    source: 'fallback',
+    reachableCount: reachableFrom(START_STATE, walls).size,
+  };
 }
 
 function renderRouteSummary() {

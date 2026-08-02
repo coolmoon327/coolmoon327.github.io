@@ -19,7 +19,12 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
 
 <Base title={page.title} description={page.intro} noindex={kind === 'owner'}>
   <div class="interior page-container">
-    <header class={kind === 'publications' ? 'publication-header' : undefined}>
+    <header
+      class:list={{
+        'publication-header': kind === 'publications',
+        'owner-header--zh': kind === 'owner' && locale === 'zh',
+      }}
+    >
       <p class="eyebrow">{page.eyebrow}</p>
       <h1>{page.title}</h1>
       <p class="intro">{page.intro}</p>
@@ -153,12 +158,14 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
 
   @media (min-width: 901px) {
     header.publication-header {
-      grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+      grid-template-columns: max-content minmax(0, 1fr);
+      column-gap: clamp(1.5rem, 2.5vw, 2rem);
     }
 
     header.publication-header h1 {
       font-size: clamp(3rem, 7vw, 5.25rem);
       letter-spacing: -0.05em;
+      white-space: nowrap;
     }
   }
 
@@ -176,6 +183,28 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
     color: var(--global-text-color-light);
     font-size: 1.05rem;
     line-height: 1.8;
+  }
+
+  header.owner-header--zh h1,
+  header.owner-header--zh .intro {
+    text-wrap: balance;
+  }
+
+  @media (min-width: 721px) {
+    header.owner-header--zh {
+      grid-template-columns: max-content minmax(0, 1fr);
+      column-gap: clamp(0.75rem, 1.2vw, 1rem);
+    }
+
+    header.owner-header--zh h1 {
+      max-inline-size: 2.05em;
+      line-height: 0.98;
+      letter-spacing: -0.04em;
+    }
+
+    header.owner-header--zh .intro {
+      max-inline-size: 34rem;
+    }
   }
 
   .publication-list {

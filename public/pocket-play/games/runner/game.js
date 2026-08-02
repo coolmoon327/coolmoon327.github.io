@@ -13,6 +13,15 @@ const BEST_KEY = 'pocket-play.runner.best.v1';
 const GROUND = 24;
 const AGENT_WIDTH = 24;
 const AGENT_HEIGHT = 30;
+const GRAVITY = 1320;
+const JUMP_VELOCITY = 470;
+const OBSTACLE_MIN_HEIGHT = 20;
+const OBSTACLE_MAX_HEIGHT = 48;
+
+track.dataset.obstacleMinHeight = String(OBSTACLE_MIN_HEIGHT);
+track.dataset.obstacleMaxHeight = String(OBSTACLE_MAX_HEIGHT);
+track.dataset.gravity = String(GRAVITY);
+track.dataset.jumpVelocity = String(JUMP_VELOCITY);
 
 let phase = 'idle';
 let statusKind = 'ready';
@@ -140,7 +149,9 @@ function removeEntity(entity) {
 function spawnGroup() {
   const x = track.clientWidth + 16;
   const obstacleWidth = 20 + Math.round(Math.random() * 8);
-  const obstacleHeight = 28 + Math.round(Math.random() * 12);
+  const obstacleHeight =
+    OBSTACLE_MIN_HEIGHT +
+    Math.floor(Math.random() * (OBSTACLE_MAX_HEIGHT - OBSTACLE_MIN_HEIGHT + 1));
   const rewardSize = 26;
 
   createEntity('reward', x + 1, obstacleHeight + 22, rewardSize, rewardSize);
@@ -220,7 +231,7 @@ function tick(now) {
   elapsed += delta;
   spawnIn -= delta;
 
-  velocity -= 1320 * delta;
+  velocity -= GRAVITY * delta;
   agentY += velocity * delta;
   if (agentY <= 0) {
     agentY = 0;
@@ -260,7 +271,7 @@ function startEpisode() {
 
 function jump() {
   if (agentY > 1) return;
-  velocity = reducedMotion.matches ? 470 : 500;
+  velocity = JUMP_VELOCITY;
   statusKind = 'running';
 }
 

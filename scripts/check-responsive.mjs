@@ -63,8 +63,12 @@ const viewportScenarios = [
   { name: 'phone-landscape-667', width: 667, height: 375, mode: 'viewport' },
   { name: 'phone-landscape-844', width: 844, height: 390, mode: 'viewport' },
   { name: 'phone-landscape-932', width: 932, height: 430, mode: 'viewport' },
+  { name: 'mobile-boundary-720', width: 720, height: 900, mode: 'viewport' },
+  { name: 'tablet-boundary-721', width: 721, height: 900, mode: 'viewport' },
   { name: 'tablet-portrait-768', width: 768, height: 1024, mode: 'viewport' },
   { name: 'tablet-portrait-820', width: 820, height: 1180, mode: 'viewport' },
+  { name: 'tablet-boundary-900', width: 900, height: 700, mode: 'viewport' },
+  { name: 'desktop-boundary-901', width: 901, height: 700, mode: 'viewport' },
   { name: 'tablet-landscape-1024', width: 1024, height: 768, mode: 'viewport' },
   { name: 'tablet-landscape-1180', width: 1180, height: 820, mode: 'viewport' },
   { name: 'desktop-1366', width: 1366, height: 768, mode: 'viewport' },
@@ -200,6 +204,53 @@ async function measurePage(page) {
 
     const firstHeading = document.querySelector('main h1, main h2, main [role="heading"]');
     const headingRect = firstHeading?.getBoundingClientRect();
+    const interiorHeader = document.querySelector('.interior > header');
+    const heroHeading = interiorHeader?.querySelector('h1');
+    const heroIntro = interiorHeader?.querySelector('.intro');
+    const headingRange = heroHeading ? document.createRange() : null;
+    headingRange?.selectNodeContents(heroHeading);
+    const headingLines = headingRange
+      ? [...headingRange.getClientRects()].map((rect) => ({
+          bottom: rect.bottom,
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          width: rect.width,
+        }))
+      : [];
+    const headingLineCharacterCounts = [];
+    if (heroHeading) {
+      const walker = document.createTreeWalker(heroHeading, NodeFilter.SHOW_TEXT);
+      let textNode = walker.nextNode();
+      let previousTop = null;
+      while (textNode) {
+        for (let offset = 0; offset < textNode.length; offset += 1) {
+          if (!textNode.data[offset].trim()) continue;
+          const characterRange = document.createRange();
+          characterRange.setStart(textNode, offset);
+          characterRange.setEnd(textNode, offset + 1);
+          const top = characterRange.getBoundingClientRect().top;
+          if (previousTop === null || Math.abs(top - previousTop) > 1) {
+            headingLineCharacterCounts.push(0);
+            previousTop = top;
+          }
+          headingLineCharacterCounts[headingLineCharacterCounts.length - 1] += 1;
+        }
+        textNode = walker.nextNode();
+      }
+    }
+    const introRange = heroIntro ? document.createRange() : null;
+    introRange?.selectNodeContents(heroIntro);
+    const introLines = introRange
+      ? [...introRange.getClientRects()].map((rect) => ({
+          bottom: rect.bottom,
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          width: rect.width,
+        }))
+      : [];
+    const heroIntroRect = heroIntro?.getBoundingClientRect();
 
     return {
       clientWidth: viewportWidth,
@@ -218,6 +269,22 @@ async function measurePage(page) {
           }
         : null,
       headingTop: headingRect ? Math.round(headingRect.top) : null,
+      hero:
+        heroHeading && heroIntro && heroIntroRect
+          ? {
+              headingLineCharacterCounts,
+              headingLines,
+              intro: {
+                bottom: heroIntroRect.bottom,
+                left: heroIntroRect.left,
+                right: heroIntroRect.right,
+                top: heroIntroRect.top,
+                width: heroIntroRect.width,
+              },
+              introLines,
+              introTextWrap: getComputedStyle(heroIntro).getPropertyValue('text-wrap') || '',
+            }
+          : null,
     };
   });
 }
@@ -415,6 +482,64 @@ async function auditSiteMatrix(browser) {
           scenario.name,
           'Page heading starts underneath the fixed navbar',
           metrics,
+        );
+      }
+      if (route.endsWith('/publications/') && scenario.width >= 901 && metrics.hero) {
+        const headingRight = Math.max(...metrics.hero.headingLines.map((line) => line.right));
+        const horizontalGap = metrics.hero.intro.left - headingRight;
+        if (
+          metrics.hero.headingLines.length !== 1 ||
+          horizontalGap < 20 ||
+          horizontalGap > 34 ||
+          metrics.hero.intro.width < 280
+        ) {
+          addFailure(
+            'site-hero',
+            route,
+            scenario.name,
+            'Publication title and introduction are not tightly separated without overlap',
+            { ...metrics.hero, horizontalGap },
+          );
+        }
+      }
+      if (route === '/zh/owner/' && scenario.width >= 721 && metrics.hero) {
+        const lineWidths = metrics.hero.headingLines.map((line) => line.width);
+        const widthDifference = Math.abs((lineWidths[0] ?? 0) - (lineWidths[1] ?? 0));
+        const maximumLineWidth = Math.max(...lineWidths);
+        const headingRight = Math.max(...metrics.hero.headingLines.map((line) => line.right));
+        const horizontalGap = metrics.hero.intro.left - headingRight;
+        const introLineWidths = metrics.hero.introLines.map((line) => line.width);
+        const introBalance = Math.min(...introLineWidths) / Math.max(...introLineWidths);
+        if (
+          metrics.hero.headingLines.length !== 2 ||
+          metrics.hero.headingLineCharacterCounts.join(',') !== '2,2' ||
+          widthDifference > Math.max(4, maximumLineWidth * 0.05) ||
+          horizontalGap < 20 ||
+          horizontalGap > 34 ||
+          metrics.hero.introLines.length !== 2 ||
+          introBalance < 0.65 ||
+          !metrics.hero.introTextWrap?.includes('balance')
+        ) {
+          addFailure(
+            'site-hero',
+            route,
+            scenario.name,
+            'Chinese private-access hero is not balanced into two non-overlapping title lines',
+            { ...metrics.hero, horizontalGap, introBalance, widthDifference },
+          );
+        }
+      }
+      if (
+        route === '/zh/owner/' &&
+        scenario.name === 'mobile-boundary-720' &&
+        metrics.hero?.headingLineCharacterCounts.join(',') !== '4'
+      ) {
+        addFailure(
+          'site-hero',
+          route,
+          scenario.name,
+          'Chinese private-access title must return to one natural line at the mobile boundary',
+          metrics.hero,
         );
       }
       for (const message of runtimeErrors) {

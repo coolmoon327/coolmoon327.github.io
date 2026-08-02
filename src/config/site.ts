@@ -152,7 +152,7 @@ export const site = {
               label: '更多',
               children: [
                 { label: '小游戏', href: '/zh/playground/' },
-                { label: '主人入口', href: '/zh/owner/' },
+                { label: '专属入口', href: '/zh/owner/' },
               ],
             },
           ] as NavItem[],
@@ -1561,10 +1561,10 @@ export const site = {
         },
         owner: {
           eyebrow: '加密家庭目录',
-          title: '主人入口',
-          intro: '在不把地址、端口或主机名写入网页源码的情况下，解锁最新的家庭服务目录。',
+          title: '专属入口',
+          intro: '安全访问最新的家庭服务目录，无需在网站源码中公开地址、端口或主机名。',
           status: '浏览器端解密',
-          statusTitle: '解锁当前家庭入口',
+          statusTitle: '解锁家庭服务目录',
           statusBody: '密码只在当前浏览器标签页中短暂用于解密最新目录，不会被传输或持久保存。',
           passwordLabel: '个人访问密码',
           passwordPlaceholder: '输入密码',

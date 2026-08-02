@@ -38,6 +38,12 @@ async function openGame(browser, id, options = {}) {
     viewport: { width: options.width ?? 420, height: options.height ?? games[id] },
     reducedMotion: options.reducedMotion ?? 'no-preference',
   });
+  if (options.randomValues) {
+    await page.addInitScript((values) => {
+      let index = 0;
+      Math.random = () => values[index++] ?? 0.5;
+    }, options.randomValues);
+  }
   page.on('pageerror', (error) => browserErrors.push(`${id}: ${error.message}`));
   await page.goto(gameUrl(id, options.language), { waitUntil: 'networkidle' });
   return page;
@@ -63,6 +69,76 @@ async function assertNoOverflow(page, id) {
 async function checkRunner(browser) {
   const page = await openGame(browser, 'runner');
   const track = page.locator('#track');
+  const runnerGeometry = await page.locator('#agent').evaluate((agent) => {
+    const bounds = agent.getBoundingClientRect();
+    const style = getComputedStyle(agent);
+    const legs = getComputedStyle(agent, '::after');
+    const agentCenter = bounds.left + bounds.width / 2;
+    const legOuterWidth =
+      Number.parseFloat(legs.width) +
+      (legs.boxSizing === 'border-box'
+        ? 0
+        : Number.parseFloat(legs.borderLeftWidth) + Number.parseFloat(legs.borderRightWidth));
+    const legLeft =
+      bounds.left + Number.parseFloat(style.borderLeftWidth) + Number.parseFloat(legs.left);
+    const track = agent.closest('#track');
+    const legCenter = legLeft + legOuterWidth / 2;
+    return {
+      agentCenter,
+      agentBottom: Number.parseFloat(style.bottom),
+      agentHeight: bounds.height,
+      legCenter,
+      legBoxSizing: legs.boxSizing,
+      bottomLeftRadius: style.borderBottomLeftRadius,
+      bottomRightRadius: style.borderBottomRightRadius,
+      boxShadow: style.boxShadow,
+      trackClientHeight: track.clientHeight,
+    };
+  });
+  assert.ok(
+    Math.abs(runnerGeometry.agentCenter - runnerGeometry.legCenter) <= 0.5,
+    `Runner body and legs must share a visual center: ${JSON.stringify(runnerGeometry)}`,
+  );
+  assert.equal(runnerGeometry.legBoxSizing, 'border-box');
+  assert.equal(runnerGeometry.bottomLeftRadius, runnerGeometry.bottomRightRadius);
+  assert.equal(runnerGeometry.boxShadow, 'none');
+
+  const runnerPhysics = await track.evaluate((element) => ({
+    gravity: Number(element.dataset.gravity),
+    jumpVelocity: Number(element.dataset.jumpVelocity),
+    maximumHeight: Number(element.dataset.obstacleMaxHeight),
+    minimumHeight: Number(element.dataset.obstacleMinHeight),
+  }));
+  assert.deepEqual([runnerPhysics.minimumHeight, runnerPhysics.maximumHeight], [20, 48]);
+  assert.ok(
+    Object.values(runnerPhysics).every((value) => Number.isFinite(value) && value > 0),
+    `Runner physics values must be finite and positive: ${JSON.stringify(runnerPhysics)}`,
+  );
+  const theoreticalApex = runnerPhysics.jumpVelocity ** 2 / (2 * runnerPhysics.gravity);
+  const visibleApex =
+    runnerGeometry.trackClientHeight - runnerGeometry.agentBottom - runnerGeometry.agentHeight;
+  assert.ok(
+    theoreticalApex <= visibleApex,
+    `Runner jump apex must remain inside the compact track: ${JSON.stringify({ theoreticalApex, visibleApex })}`,
+  );
+  const clearHeight = runnerPhysics.maximumHeight - 3;
+  let simulatedHeight = 0;
+  let simulatedVelocity = runnerPhysics.jumpVelocity;
+  let clearFrames = 0;
+  let simulationSteps = 0;
+  while ((simulatedVelocity > 0 || simulatedHeight > 0) && simulationSteps < 1_000) {
+    simulatedVelocity -= runnerPhysics.gravity * 0.032;
+    simulatedHeight = Math.max(0, simulatedHeight + simulatedVelocity * 0.032);
+    if (simulatedHeight >= clearHeight) clearFrames += 1;
+    simulationSteps += 1;
+  }
+  assert.ok(simulationSteps < 1_000 && simulatedHeight === 0, 'Runner jump simulation must land');
+  const requiredFrames = Math.ceil((28 + (24 - 8)) / (112 * 0.032));
+  assert.ok(
+    clearFrames >= requiredFrames + 1,
+    `Tallest obstacle must remain jumpable at the slowest speed: ${JSON.stringify({ clearFrames, requiredFrames, runnerPhysics })}`,
+  );
+
   await track.click();
   assert.equal(await track.getAttribute('data-phase'), 'running');
   assert.equal(await page.locator('#episode').textContent(), '1');
@@ -72,6 +148,40 @@ async function checkRunner(browser) {
     return /translate3d\(0(px)?, -[1-9]/.test(transform);
   });
   await page.close();
+
+  for (const fixture of [
+    { expectedHeight: 20, randomValues: [0.5, 0, 0.5], reducedMotion: 'no-preference' },
+    {
+      expectedHeight: 48,
+      randomValues: [0.5, 1 - Number.EPSILON, 0.5],
+      reducedMotion: 'reduce',
+    },
+  ]) {
+    const fixturePage = await openGame(browser, 'runner', fixture);
+    const fixtureTrack = fixturePage.locator('#track');
+    await fixtureTrack.click();
+    if (fixture.reducedMotion === 'reduce') {
+      await fixtureTrack.press('ArrowUp');
+      await fixturePage.waitForFunction(() =>
+        /-[1-9]/.test(document.querySelector('#agent').style.transform),
+      );
+      assert.equal(
+        await fixturePage
+          .locator('#agent')
+          .evaluate((agent) => getComputedStyle(agent, '::after').animationName),
+        'none',
+      );
+    }
+    await fixturePage.locator('.obstacle').first().waitFor({ state: 'attached', timeout: 2_000 });
+    assert.equal(
+      await fixturePage
+        .locator('.obstacle')
+        .first()
+        .evaluate((obstacle) => Number.parseFloat(getComputedStyle(obstacle).height)),
+      fixture.expectedHeight,
+    );
+    await fixturePage.close();
+  }
 }
 
 async function checkBandit(browser) {
@@ -90,6 +200,92 @@ async function checkBandit(browser) {
 
 async function checkQPath(browser) {
   const page = await openGame(browser, 'qpath', { width: 280 });
+
+  const readTopology = async () => {
+    const topology = await page.locator('#board').evaluate((board) => ({
+      config: JSON.parse(board.dataset.config),
+      reachableCount: Number(board.dataset.reachableCount),
+      signature: board.dataset.topology,
+      source: board.dataset.topologySource,
+    }));
+    const { config } = topology;
+    assert.equal(config.walls.length, 5);
+    assert.equal(config.risks.length, 2);
+    assert.equal(config.goals.length, 3);
+
+    const goalStates = config.goals.map((goal) => goal.state);
+    const occupied = new Set([config.start, ...config.walls, ...config.risks, ...goalStates]);
+    assert.equal(occupied.size, 11, `Q-path topology sets must not overlap: ${topology.signature}`);
+
+    const walls = new Set(config.walls);
+    const reached = new Set([config.start]);
+    const queue = [config.start];
+    for (let index = 0; index < queue.length; index += 1) {
+      const state = queue[index];
+      const row = Math.floor(state / 5);
+      const column = state % 5;
+      for (const [rowStep, columnStep] of [
+        [-1, 0],
+        [0, 1],
+        [1, 0],
+        [0, -1],
+      ]) {
+        const nextRow = row + rowStep;
+        const nextColumn = column + columnStep;
+        const nextState = nextRow * 5 + nextColumn;
+        if (
+          nextRow < 0 ||
+          nextRow >= 5 ||
+          nextColumn < 0 ||
+          nextColumn >= 5 ||
+          walls.has(nextState) ||
+          reached.has(nextState)
+        ) {
+          continue;
+        }
+        reached.add(nextState);
+        queue.push(nextState);
+      }
+    }
+    assert.equal(
+      reached.size,
+      20,
+      `Q-path open cells must form one connected graph: ${topology.signature}`,
+    );
+    assert.equal(topology.reachableCount, reached.size);
+    assert.ok(goalStates.every((state) => reached.has(state)));
+
+    const domTopology = await page.locator('#board').evaluate((board) => ({
+      goals: [...board.querySelectorAll('[data-goal]')].map((cell) => ({
+        id: cell.dataset.goal,
+        state: Number(cell.dataset.state),
+      })),
+      risks: [...board.querySelectorAll('.risk')].map((cell) => Number(cell.dataset.state)),
+      walls: [...board.querySelectorAll('.wall')].map((cell) => Number(cell.dataset.state)),
+    }));
+    const byState = (first, second) => first - second;
+    assert.deepEqual(domTopology.walls.sort(byState), [...config.walls].sort(byState));
+    assert.deepEqual(domTopology.risks.sort(byState), [...config.risks].sort(byState));
+    assert.deepEqual(
+      domTopology.goals.sort((first, second) => first.id.localeCompare(second.id)),
+      [...config.goals].sort((first, second) => first.id.localeCompare(second.id)),
+    );
+    assert.equal(topology.source, 'random');
+    return topology.signature;
+  };
+
+  let previousTopology = await readTopology();
+  for (let reload = 0; reload < 4; reload += 1) {
+    await page.reload({ waitUntil: 'networkidle' });
+    const nextTopology = await readTopology();
+    assert.notEqual(
+      nextTopology,
+      previousTopology,
+      'Each Q-path refresh must create a new topology',
+    );
+    previousTopology = nextTopology;
+  }
+
   for (const id of ['A', 'B', 'C']) {
     const target = page.locator(`[data-goal="${id}"]`);
     await target.click();
@@ -112,10 +308,18 @@ async function checkQPath(browser) {
     `Q-path targets must be at least 44px: ${JSON.stringify(targetSizes)}`,
   );
 
-  await page.locator('[data-goal="A"]').click();
-  await page.locator('#train').click();
-  assert.notEqual(await page.locator('[data-state="14"] .policy').textContent(), '');
-  assert.notEqual(await page.locator('#success-rate').textContent(), '—');
+  for (const id of ['A', 'B', 'C']) {
+    await page.locator(`[data-goal="${id}"]`).click();
+    await page.locator('#train').click();
+    assert.ok(
+      await page
+        .locator('.cell:not(.wall) .policy')
+        .evaluateAll((policies) => policies.some((policy) => policy.textContent !== '')),
+      `A trained Q-path map toward ${id} must render at least one policy arrow`,
+    );
+    assert.notEqual(await page.locator('#success-rate').textContent(), '—');
+    assert.match(await page.locator('#route-summary').textContent(), new RegExp(`${id} ·`));
+  }
   await page.close();
 }
 

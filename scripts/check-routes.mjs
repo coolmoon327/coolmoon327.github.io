@@ -98,7 +98,7 @@ const coreRoutes = [
   {
     path: '/zh/owner/',
     lang: 'zh-CN',
-    marker: '解锁当前家庭入口',
+    marker: '解锁家庭服务目录',
     switchHref: '/owner/',
     owner: true,
   },
