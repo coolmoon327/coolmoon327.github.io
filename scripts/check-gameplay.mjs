@@ -518,7 +518,7 @@ async function checkSecrecy(browser) {
 }
 
 async function stopOrbitAtAngle(page, expectedAngle, tolerance = 4) {
-  await page.evaluate(
+  return page.evaluate(
     ({ expected, allowed }) =>
       new Promise((resolve, reject) => {
         const timeout = window.setTimeout(
@@ -529,10 +529,27 @@ async function stopOrbitAtAngle(page, expectedAngle, tolerance = 4) {
         function stopWhenAligned() {
           const angle = Number(document.querySelector('#field').dataset.currentAngle);
           const distance = Math.abs(angle - expected) % 360;
-          if (Number.isFinite(angle) && Math.min(distance, 360 - distance) <= allowed) {
+          const hint = document.querySelector('#hint');
+          const assistState = hint.dataset.assistState || '';
+          if (
+            Number.isFinite(angle) &&
+            assistState &&
+            Math.min(distance, 360 - distance) <= allowed
+          ) {
             window.clearTimeout(timeout);
+            const assistStatus = document.querySelector('#assist-status');
+            const targetZone = document.querySelector('.target-zone');
+            const cue = {
+              state: assistState,
+              visibleText: hint.textContent,
+              announcedText: assistStatus.textContent,
+              targetAnimation: getComputedStyle(targetZone).animationName,
+              hintHeight: hint.getBoundingClientRect().height,
+              scrollHeight: document.documentElement.scrollHeight,
+              viewportHeight: window.innerHeight,
+            };
             document.querySelector('#action').click();
-            resolve();
+            resolve(cue);
             return;
           }
           window.requestAnimationFrame(stopWhenAligned);
@@ -563,26 +580,109 @@ async function runOrbitRound(page, offset) {
     angularDistance(state.visualStart, state.target - state.tolerance) <= 0.02,
     'Orbit window start must match the hit boundary',
   );
-  await stopOrbitAtAngle(page, (state.target + offset + 360) % 360);
+  const cueAtStop = await stopOrbitAtAngle(page, (state.target + offset + 360) % 360);
   return {
     ...state,
+    cueAtStop,
     assistStatus: await page.locator('#assist-status').textContent(),
+    hintAssistState: await page.locator('#hint').getAttribute('data-assist-state'),
+    fieldAssistState: await page.locator('#field').getAttribute('data-assist-state'),
+    targetAnimation: await page
+      .locator('.target-zone')
+      .evaluate((targetZone) => getComputedStyle(targetZone).animationName),
     result: await page.locator('#field').getAttribute('data-result'),
   };
 }
 
 async function checkOrbit(browser, reducedMotion = 'no-preference') {
-  const page = await openGame(browser, 'orbit', { reducedMotion });
+  const page = await openGame(browser, 'orbit', {
+    reducedMotion,
+    width: reducedMotion === 'reduce' ? 280 : 420,
+  });
   await page.locator('#assist').click();
+  assert.equal(await page.locator('#assist').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('#hint').getAttribute('data-assist-state'), 'toggle-on');
+  assert.match(await page.locator('#hint').textContent(), /Assist is on/);
+  assert.equal(await page.locator('#assist-status').textContent(), 'Assist cues are on.');
+  const toggleLayout = await page.locator('#hint').evaluate((hint) => ({
+    height: hint.getBoundingClientRect().height,
+    scrollHeight: document.documentElement.scrollHeight,
+    viewportHeight: window.innerHeight,
+  }));
+  assert.ok(
+    toggleLayout.scrollHeight <= toggleLayout.viewportHeight + 1,
+    'Visible assist toggle must fit the game viewport',
+  );
+
   const first = await runOrbitRound(page, 0);
   assert.equal(first.result, 'hit', 'Stopping in the visible window must count as a hit');
+  assert.equal(first.cueAtStop.state, 'target', 'Visible assist must identify the hit window');
+  assert.equal(
+    first.cueAtStop.visibleText,
+    first.cueAtStop.announcedText,
+    'Visible and screen-reader assist cues must stay synchronized',
+  );
+  assert.match(first.cueAtStop.visibleText, /Stop now/);
+  assert.equal(
+    first.cueAtStop.targetAnimation,
+    reducedMotion === 'reduce' ? 'none' : 'assist-target-pulse',
+    'Target emphasis must respect reduced-motion preferences',
+  );
+  assert.ok(
+    Math.abs(first.cueAtStop.hintHeight - toggleLayout.height) <= 1,
+    'Visible assist cues must not shift the game layout',
+  );
+  assert.ok(
+    first.cueAtStop.scrollHeight <= first.cueAtStop.viewportHeight + 1,
+    'Visible target cue must fit the game viewport',
+  );
   assert.equal(first.assistStatus, '', 'Orbit result must clear stale assist cues');
+  assert.equal(first.hintAssistState, null, 'Orbit result must clear the visible assist state');
+  assert.equal(first.fieldAssistState, null, 'Orbit result must clear the field assist state');
+  assert.equal(first.targetAnimation, 'none', 'Orbit result must stop target emphasis');
+
   const second = await runOrbitRound(page, first.tolerance + 8);
   assert.equal(second.result, 'miss', 'Stopping outside the visible window must miss');
+  assert.equal(
+    second.cueAtStop.state,
+    'close',
+    'Visible assist must warn when the target is close',
+  );
+  assert.match(second.cueAtStop.visibleText, /near the window/);
+  assert.ok(
+    Math.abs(second.cueAtStop.hintHeight - toggleLayout.height) <= 1,
+    'Close assist cue must not shift the game layout',
+  );
+  assert.ok(
+    second.cueAtStop.scrollHeight <= second.cueAtStop.viewportHeight + 1,
+    'Visible close cue must fit the game viewport',
+  );
+
+  const third = await runOrbitRound(page, first.tolerance + 32);
+  assert.equal(third.result, 'miss', 'Stopping far outside the window must miss');
+  assert.equal(third.cueAtStop.state, 'far', 'Visible assist must identify a distant target');
+  assert.match(third.cueAtStop.visibleText, /still far/);
+  assert.ok(
+    Math.abs(third.cueAtStop.hintHeight - toggleLayout.height) <= 1,
+    'Far assist cue must not shift the game layout',
+  );
+  assert.ok(
+    third.cueAtStop.scrollHeight <= third.cueAtStop.viewportHeight + 1,
+    'Visible far cue must fit the game viewport',
+  );
   assert.ok(
     angularDistance(first.target, second.target) >= 45,
     'Orbit target must move by a visible amount between rounds',
   );
+
+  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh' }));
+  await page.locator('#assist').click();
+  assert.equal(
+    await page.locator('#hint').textContent(),
+    '辅助提示已关闭，请观察窗口手动停下月球。',
+  );
+  await page.locator('#assist').click();
+  assert.match(await page.locator('#hint').textContent(), /辅助提示已开启/);
   await page.close();
 }
 

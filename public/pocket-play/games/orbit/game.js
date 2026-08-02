@@ -75,25 +75,57 @@ function resultHint() {
   return text('The moon stopped outside the window. Try again.', '月球停在窗口之外，再试一次。');
 }
 
+function assistMessage(bucket) {
+  const messages = {
+    target: text('Inside the window. Stop now!', '已进入窗口，现在停下！'),
+    close: text(
+      'The moon is near the window.',
+      '月球就在窗口附近。',
+    ),
+    far: text(
+      'Keep watching — the moon is still far from the window.',
+      '继续观察：月球距离窗口还远。',
+    ),
+  };
+  return messages[bucket];
+}
+
+function clearAssistVisual() {
+  delete hint.dataset.assistState;
+  delete field.dataset.assistState;
+}
+
 function renderAssistStatus() {
+  clearAssistVisual();
+
   if (!assistNotice) {
-    assistStatus.textContent = '';
+    if (assistStatus.textContent) assistStatus.textContent = '';
     return;
   }
 
   if (assistNotice.kind === 'toggle') {
-    assistStatus.textContent = assistNotice.enabled
+    const announcement = assistNotice.enabled
       ? text('Assist cues are on.', '辅助提示已开启。')
       : text('Assist cues are off.', '辅助提示已关闭。');
+    if (assistStatus.textContent !== announcement) assistStatus.textContent = announcement;
+    hint.textContent = assistNotice.enabled
+      ? text(
+          'Assist is on — start a round to see distance cues.',
+          '辅助提示已开启；开始后会显示距离提示。',
+        )
+      : text(
+          'Assist is off — stop the moon by watching the window.',
+          '辅助提示已关闭，请观察窗口手动停下月球。',
+        );
+    hint.dataset.assistState = assistNotice.enabled ? 'toggle-on' : 'toggle-off';
     return;
   }
 
-  const messages = {
-    target: text('Inside the window. Press Space now.', '已进入窗口，现在按空格。'),
-    close: text('Approaching the window.', '正在接近窗口。'),
-    far: text('Still far from the window.', '距离窗口还远。'),
-  };
-  assistStatus.textContent = messages[assistNotice.bucket];
+  const message = assistMessage(assistNotice.bucket);
+  if (assistStatus.textContent !== message) assistStatus.textContent = message;
+  hint.textContent = message;
+  hint.dataset.assistState = assistNotice.bucket;
+  field.dataset.assistState = assistNotice.bucket;
 }
 
 function renderUI() {
