@@ -1045,7 +1045,7 @@ export const site = {
         eyebrow: 'Motion · Learning · Wireless systems · A small pause',
         title: 'Playground',
         intro:
-          'Eleven small, dependency-free games live inside the site rather than taking it over. Three wireless-system sandboxes turn antenna placement, interference, and physical-layer security into direct interactions; three more explore reinforcement learning.',
+          'Eleven small, dependency-free games live inside the site rather than taking it over. Three wireless-system sandboxes turn antenna placement, interference, and physical-layer security into direct interactions; three more explore reward, learning, and policy concepts.',
         badges: ['Card sized', 'Bilingual', 'Theme aware', 'Static hosting'],
         openLabel: 'Open standalone',
         miniGameLabel: 'mini game',
@@ -1084,7 +1084,7 @@ export const site = {
         eyebrow: '动态 · 学习 · 无线系统 · 一个小休止符',
         title: '小游戏实验室',
         intro:
-          '十一款无需依赖的小型游戏已经住进个人主页，而不会喧宾夺主。三款无线系统沙盒把天线布设、干扰与物理层安全变成直接交互，另有三款用于体验强化学习概念。',
+          '十一款无需依赖的小型游戏已经住进个人主页，而不会喧宾夺主。三款无线系统沙盒把天线布设、干扰与物理层安全变成直接交互，另有三款用于体验奖励、学习与策略概念。',
         badges: ['卡片尺寸', '中英双语', '跟随主题', '纯静态托管'],
         openLabel: '独立打开',
         miniGameLabel: '小游戏',

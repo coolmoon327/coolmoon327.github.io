@@ -464,6 +464,7 @@ async function checkPinching(browser) {
 
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
   assert.equal(await page.locator('h1').textContent(), '夹持天线实验');
+  assert.equal(await page.locator('.metrics').getAttribute('aria-label'), '实时天线指标');
   await page.close();
 }
 

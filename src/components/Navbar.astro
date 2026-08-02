@@ -398,9 +398,8 @@ const items = locale.navbar.items;
     z-index: 100;
   }
 
-  /* Open: hover OR focus-within OR JS .is-open class */
-  .nav-dropdown:hover .nav-dropdown-menu,
-  .nav-dropdown:focus-within .nav-dropdown-menu,
+  /* Open on hover unless a pointer click explicitly closed it, or via JS. */
+  .nav-dropdown:not(.is-pointer-closed):hover .nav-dropdown-menu,
   .nav-dropdown.is-open .nav-dropdown-menu {
     opacity: 1;
     visibility: visible;
@@ -411,8 +410,7 @@ const items = locale.navbar.items;
   }
 
   /* Rotate chevron when open */
-  .nav-dropdown:hover .nav-dropdown-chevron,
-  .nav-dropdown:focus-within .nav-dropdown-chevron,
+  .nav-dropdown:not(.is-pointer-closed):hover .nav-dropdown-chevron,
   .nav-dropdown.is-open .nav-dropdown-chevron {
     transform: rotate(180deg);
   }
@@ -590,31 +588,45 @@ const items = locale.navbar.items;
       const menuItems = [...dropdown.querySelectorAll<HTMLAnchorElement>('[role="menuitem"]')];
 
       function openDropdown() {
+        dropdown.classList.remove('is-pointer-closed');
         dropdown.classList.add('is-open');
         trigger?.setAttribute('aria-expanded', 'true');
         menuItems[0]?.focus();
       }
 
-      function closeDropdown() {
+      function closeDropdown(suppressPointerHover = dropdown.matches(':hover')) {
         dropdown.classList.remove('is-open');
+        dropdown.classList.toggle('is-pointer-closed', suppressPointerHover);
         trigger?.setAttribute('aria-expanded', 'false');
       }
 
       trigger?.addEventListener(
         'click',
         (event) => {
-          if (event.detail === 0) return;
           event.preventDefault();
-          const isOpen = dropdown.classList.toggle('is-open');
-          trigger.setAttribute('aria-expanded', String(isOpen));
+          const isOpen = dropdown.classList.contains('is-open');
+          if (isOpen) {
+            closeDropdown(event.detail > 0);
+          } else {
+            dropdown.classList.remove('is-pointer-closed');
+            dropdown.classList.add('is-open');
+            trigger.setAttribute('aria-expanded', 'true');
+            if (event.detail === 0) menuItems[0]?.focus();
+          }
         },
+        { signal },
+      );
+
+      dropdown.addEventListener(
+        'mouseleave',
+        () => dropdown.classList.remove('is-pointer-closed'),
         { signal },
       );
 
       trigger?.addEventListener(
         'keydown',
         (e: KeyboardEvent) => {
-          if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+          if (e.key === 'ArrowDown') {
             e.preventDefault();
             openDropdown();
           } else if (e.key === 'ArrowUp') {

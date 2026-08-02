@@ -83,8 +83,8 @@ function assistMessage(bucket) {
       '月球就在窗口附近。',
     ),
     far: text(
-      'Keep watching — the moon is still far from the window.',
-      '继续观察：月球距离窗口还远。',
+      'The moon is still far from the window.',
+      '月球距离窗口还远。',
     ),
   };
   return messages[bucket];

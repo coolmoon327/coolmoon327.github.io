@@ -781,26 +781,71 @@ async function auditResponsiveStates(browser) {
   await page.goto(baseUrl + '/', { waitUntil: 'domcontentloaded' });
   await waitForStableLayout(page);
   const dropdownTrigger = page.locator('.nav-dropdown-trigger').first();
+  const dropdownMenu = page.locator('.nav-dropdown-menu').first();
   await dropdownTrigger.click();
   const pointerOpenState = await dropdownTrigger.getAttribute('aria-expanded');
-  const pointerMenuVisibility = await page
-    .locator('.nav-dropdown-menu')
-    .first()
-    .evaluate((menu) => getComputedStyle(menu).visibility);
-  await page.locator('main').click({ position: { x: 4, y: 4 } });
+  const pointerMenuVisibility = await dropdownMenu.evaluate(
+    (menu) => getComputedStyle(menu).visibility,
+  );
+  await dropdownTrigger.click();
+  await page.waitForTimeout(180);
   const pointerClosedState = await dropdownTrigger.getAttribute('aria-expanded');
-  results.stateCases += 1;
+  const pointerClosedVisual = await dropdownMenu.evaluate((menu) => ({
+    visibility: getComputedStyle(menu).visibility,
+    opacity: getComputedStyle(menu).opacity,
+    dropdownClass: menu.closest('.nav-dropdown')?.className,
+    hovered: menu.closest('.nav-dropdown')?.matches(':hover'),
+  }));
+  await page.locator('main').hover({ position: { x: 4, y: 4 } });
+  await dropdownTrigger.evaluate((trigger) =>
+    trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 })),
+  );
+  const assistiveOpenState = await dropdownTrigger.getAttribute('aria-expanded');
+  const assistiveMenuVisibility = await dropdownMenu.evaluate(
+    (menu) => getComputedStyle(menu).visibility,
+  );
+  const assistiveFocusIsMenuitem = await page.evaluate(
+    () => document.activeElement?.getAttribute('role') === 'menuitem',
+  );
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(180);
+  const escapeClosedState = await dropdownTrigger.getAttribute('aria-expanded');
+  const escapeMenuVisibility = await dropdownMenu.evaluate(
+    (menu) => getComputedStyle(menu).visibility,
+  );
+  await dropdownTrigger.click();
+  await page.locator('main').click({ position: { x: 4, y: 4 } });
+  const outsideClosedState = await dropdownTrigger.getAttribute('aria-expanded');
+  results.stateCases += 3;
   if (
     pointerOpenState !== 'true' ||
     pointerMenuVisibility !== 'visible' ||
-    pointerClosedState !== 'false'
+    pointerClosedState !== 'false' ||
+    pointerClosedVisual.visibility !== 'hidden' ||
+    assistiveOpenState !== 'true' ||
+    assistiveMenuVisibility !== 'visible' ||
+    !assistiveFocusIsMenuitem ||
+    escapeClosedState !== 'false' ||
+    escapeMenuVisibility !== 'hidden' ||
+    outsideClosedState !== 'false'
   ) {
     addFailure(
       'responsive-state',
       'desktop-dropdown',
-      'pointer-click',
-      'Pointer-opened dropdown does not keep its visual and ARIA states synchronized',
-      { pointerOpenState, pointerMenuVisibility, pointerClosedState },
+      'pointer-keyboard-assistive-click',
+      'Desktop dropdown visual, focus, and ARIA states diverge across input paths',
+      {
+        pointerOpenState,
+        pointerMenuVisibility,
+        pointerClosedState,
+        pointerClosedVisual,
+        assistiveOpenState,
+        assistiveMenuVisibility,
+        assistiveFocusIsMenuitem,
+        escapeClosedState,
+        escapeMenuVisibility,
+        outsideClosedState,
+      },
     );
   }
   await page.close();
