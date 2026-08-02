@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <title data-en="Resource Net" data-zh="资源连线">Resource Net</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="game" aria-labelledby="game-title" data-game="resource-net">
+      <header class="game-header">
+        <div>
+          <p class="eyebrow" data-en="ROTATION NETWORK" data-zh="旋转网络">
+            ROTATION NETWORK
+          </p>
+          <h1 id="game-title" data-en="Resource Net" data-zh="资源连线">Resource Net</h1>
+        </div>
+        <p class="node-key" aria-hidden="true">
+          <span>C</span><span>CPU</span><span>DB</span><span>IMG</span><span>R</span>
+        </p>
+      </header>
+
+      <dl
+        class="metrics"
+        data-aria-en="Network statistics"
+        data-aria-zh="网络统计"
+        aria-label="Network statistics"
+      >
+        <div>
+          <dt data-en="Moves" data-zh="步数">Moves</dt>
+          <dd><output id="moves">0</output></dd>
+        </div>
+        <div>
+          <dt data-en="Online" data-zh="已连接">Online</dt>
+          <dd><output id="connected-resources">0 / 4</output></dd>
+        </div>
+        <div>
+          <dt data-en="Best" data-zh="最佳">Best</dt>
+          <dd><output id="best">—</output></dd>
+        </div>
+      </dl>
+
+      <section class="board-section" aria-labelledby="board-title">
+        <h2 class="sr-only" id="board-title" data-en="Rotating network board" data-zh="旋转网络棋盘">
+          Rotating network board
+        </h2>
+        <div
+          class="board"
+          id="board"
+          role="group"
+          aria-describedby="board-help"
+          data-testid="resource-board"
+          data-game="resource-net"
+          data-size="4"
+          data-generation="spanning-tree"
+        ></div>
+        <p
+          class="sr-only"
+          id="board-help"
+          data-en="Tab to a tile and press Enter or Space to rotate it clockwise. Arrow keys move between tiles. Connect every tile without loose ends."
+          data-zh="按 Tab 将焦点移到方块，按回车或空格顺时针旋转；方向键可在方块间移动。将所有方块连通，并确保没有悬空接口。"
+        >
+          Tab to a tile and press Enter or Space to rotate it clockwise. Arrow keys move between
+          tiles. Connect every tile without loose ends.
+        </p>
+      </section>
+
+      <div
+        class="controls"
+        data-aria-en="Board controls"
+        data-aria-zh="棋盘控制"
+        aria-label="Board controls"
+      >
+        <button
+          id="new-board"
+          type="button"
+          data-action="new-board"
+          data-en="New board"
+          data-zh="新棋盘"
+        >
+          New board
+        </button>
+        <button
+          id="reset-board"
+          type="button"
+          data-action="reset-board"
+          data-en="Reset"
+          data-zh="重置"
+        >
+          Reset
+        </button>
+      </div>
+
+      <p class="status" id="status"></p>
+      <p class="hint" data-en="Connect C to CPU, DB, IMG, and R." data-zh="将 C 与 CPU、DB、IMG、R 全部连通。">
+        Connect C to CPU, DB, IMG, and R.
+      </p>
+      <p class="sr-only" id="board-summary" aria-live="polite" aria-atomic="true"></p>
+    </main>
+
+    <script src="../shared/runtime.js"></script>
+    <script src="./game.js"></script>
+  </body>
+</html>

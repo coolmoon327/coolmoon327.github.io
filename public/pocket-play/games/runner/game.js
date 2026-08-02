@@ -82,7 +82,7 @@ function statusText() {
   if (phase === 'running') {
     return text(
       `Episode ${episode} is running. Jump for +1 rewards.`,
-      `第 ${episode} 回合进行中。跳起收集 +1 奖励。`,
+      `第 ${episode} 回合进行中。跳跃可收集 +1 奖励。`,
     );
   }
 
@@ -102,7 +102,7 @@ function statusText() {
 
   return text(
     'Start an episode. Rewards give +1; an obstacle gives −1.',
-    '开始一个回合。奖励为 +1，撞上障碍为 −1。',
+    '开始本回合：收集奖励得 +1，撞上障碍得 −1。',
   );
 }
 
@@ -117,7 +117,7 @@ function updateCopy() {
     'aria-label',
     text(
       `Reward Runner track. Episode ${episode}, return ${signed(episodeReturn)}, best ${signed(best)}. ${promptText()}.`,
-      `奖励跃迁跑道。第 ${episode} 回合，回报 ${signed(episodeReturn)}，最佳 ${signed(best)}。${promptText()}。`,
+      `奖励跑酷。第 ${episode} 回合，回报 ${signed(episodeReturn)}，最佳 ${signed(best)}。${promptText()}。`,
     ),
   );
 }

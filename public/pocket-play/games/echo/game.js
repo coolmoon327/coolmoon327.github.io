@@ -80,7 +80,7 @@ function statusText() {
     );
   }
   if (statusState.kind === 'playback') {
-    return text(`Watch · round ${round}`, `观察回声 · 第 ${round} 轮`);
+    return text(`Watch · round ${round}`, `观察序列 · 第 ${round} 轮`);
   }
   if (statusState.kind === 'assist-step') {
     return text(
@@ -89,16 +89,16 @@ function statusText() {
     );
   }
   if (statusState.kind === 'won') {
-    return text('All ten rounds repeated · echo complete', '十轮全部复现 · 回声完整');
+    return text('All ten rounds repeated · echo complete', '十轮全部复现 · 挑战完成');
   }
   if (statusState.kind === 'over') {
-    return text(`Echo lost · reached round ${round}`, `回声断开 · 到达第 ${round} 轮`);
+    return text(`Echo lost · reached round ${round}`, `顺序有误 · 坚持到第 ${round} 轮`);
   }
   if (statusState.kind === 'round-complete') {
     return text(`Round ${round} complete`, `第 ${round} 轮完成`);
   }
   if (statusState.kind === 'preparing') {
-    return text('Preparing the first echo', '准备第一段回声');
+    return text('Preparing the first echo', '准备第一段序列');
   }
   if (statusState.kind === 'paused') {
     return text('Page hidden · game paused', '页面已隐藏 · 游戏暂停');
@@ -109,7 +109,7 @@ function statusText() {
   if (statusState.kind === 'assist-on') {
     return text(
       'Assist cues are on; the sequence will slow down and name each pad on screen.',
-      '辅助提示已开启，序列会放慢并逐项显示色块名称。',
+      '辅助提示已开启，序列播放会放慢，并逐项显示色块名称。',
     );
   }
   if (statusState.kind === 'assist-off') {
@@ -134,7 +134,7 @@ function instructionText() {
   if (instructionState.kind === 'won') {
     return text(
       'Memory aligned. Select restart to try another sequence.',
-      '记忆校准完成。想再挑战一次，点击重新开始。',
+      '记忆挑战完成。想再玩一次，请点击重新开始。',
     );
   }
   if (instructionState.kind === 'over') {
@@ -144,16 +144,16 @@ function instructionText() {
     );
   }
   if (instructionState.kind === 'round-complete') {
-    return text('The next echo adds one step.', '下一段回声会多一步。');
+    return text('The next echo adds one step.', '下一段序列会增加一步。');
   }
   if (instructionState.kind === 'paused') {
     return text(
       'Select continue when you return; the current echo will replay from the start.',
-      '回来后点击继续；当前回声会从头播放。',
+      '回来后点击继续；当前序列会从头播放。',
     );
   }
   if (instructionState.kind === 'resuming') {
-    return text('The next echo will begin shortly.', '下一段回声即将开始。');
+    return text('The next echo will begin shortly.', '下一段序列即将开始。');
   }
   return text(
     'Click a pad or use keys 1–4. You can restart at any time.',
@@ -185,11 +185,11 @@ function renderUI() {
       : text('Turn assist cues on', '开启辅助提示'),
   );
   roundMeter.setAttribute('aria-label', text('Current round', '当前轮数'));
-  grid.setAttribute('aria-label', text('Four echo pads', '四个回声按钮'));
+  grid.setAttribute('aria-label', text('Four echo pads', '四个色块按钮'));
   pads.forEach((pad, index) => {
     pad.setAttribute(
       'aria-label',
-      text(`${padName(index)} echo, key ${index + 1}`, `${padName(index)}回声，按键 ${index + 1}`),
+      text(`${padName(index)} echo, key ${index + 1}`, `${padName(index)}色块，按键 ${index + 1}`),
     );
   });
   renderMessages();

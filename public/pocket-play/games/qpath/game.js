@@ -249,11 +249,11 @@ function renderRouteSummary() {
   routeSummaryOutput.textContent = routeSummaryState.reached
     ? t(
         `Learned greedy route to ${destination}: ${route}.`,
-        `学到的贪心航线通往 ${destination}：${route}。`,
+        `贪心策略生成的路径通往 ${destination}：${route}。`,
       )
     : t(
         `Current greedy attempt toward ${destination} did not arrive: ${route}.`,
-        `当前通往 ${destination} 的贪心尝试尚未到达：${route}。`,
+        `当前贪心策略尚未到达 ${destination}：${route}。`,
       );
 }
 
@@ -346,40 +346,40 @@ function statusMessage(key, data) {
   const goal = data.goal ? goalName(data.goal) : '';
   const rate = Number.isFinite(data.rate) ? `${data.rate}%` : '';
   const messages = {
-    choose: ['Choose target A, B, or C, then train the route.', '选择目标 A、B 或 C，再训练航线。'],
+    choose: ['Choose target A, B, or C, then train the route.', '选择目标 A、B 或 C，再训练策略。'],
     selected: [`Target ${goal} selected. Train when ready.`, `已选择目标 ${goal}，可以开始训练。`],
     training: [
       `Training 200 episodes toward target ${goal}…`,
-      `正在向目标 ${goal} 训练 200 个回合…`,
+      `正在以目标 ${goal} 为终点训练 200 个回合…`,
     ],
     demoStable: [
       `Evaluation success is ${rate}. The agent is following its greedy route.`,
-      `评估成功率为 ${rate}，智能体正沿贪心航线前进。`,
+      `评估成功率为 ${rate}，智能体正沿贪心策略生成的路径前进。`,
     ],
     demoUnstable: [
       `Not yet stable at ${rate}. Showing the current greedy attempt honestly.`,
-      `当前成功率 ${rate}，策略尚未稳定；正在如实演示本次贪心尝试。`,
+      `当前成功率为 ${rate}，策略尚未稳定；下方仍会展示本次贪心策略得到的实际路径。`,
     ],
     complete: [
       `Route complete. The greedy policy reached target ${goal}.`,
-      `航线完成，贪心策略已到达目标 ${goal}。`,
+      `路径完成，贪心策略已到达目标 ${goal}。`,
     ],
     completeUnstable: [
       `This route reached ${goal}, but evaluation remains unstable at ${rate}.`,
-      `本次航线到达了 ${goal}，但评估成功率 ${rate}，仍未稳定。`,
+      `本次路径到达了目标 ${goal}，但评估成功率为 ${rate}，策略仍未稳定。`,
     ],
     stalled: [
       `The learned policy stopped before ${goal}. Train again for a new sample.`,
-      `学到的策略未能到达 ${goal}；可重新训练获取新样本。`,
+      `学到的策略未能到达目标 ${goal}；可重新训练一次，观察新的路径。`,
     ],
-    paused: ['Tab hidden. Route demonstration paused.', '页面已隐藏，航线演示已暂停。'],
+    paused: ['Tab hidden. Route demonstration paused.', '页面已隐藏，路径演示已暂停。'],
     reducedStable: [
       `Reduced motion is on. The full route to ${goal} is shown.`,
-      `已启用减少动态，通往 ${goal} 的完整路径已直接显示。`,
+      `已启用“减少动态效果”，通往 ${goal} 的完整路径已直接显示。`,
     ],
     reducedUnstable: [
       `Reduced motion is on. The current unstable attempt (${rate}) is shown at once.`,
-      `已启用减少动态；当前未稳定的尝试（${rate}）已直接显示。`,
+      `已启用“减少动态效果”；成功率为 ${rate} 的当前路径已直接显示。`,
     ],
   };
   const pair = messages[key] || messages.choose;
@@ -411,7 +411,7 @@ function renderAction() {
 function syncAccessibility() {
   const boardLabel = t(
     'Five-by-five Q-learning world. The agent starts at the lower-left S. Striped cells are blocked and amber dots mark costly cells. Choose one of three target buttons.',
-    '五乘五 Q 学习世界。智能体从左下角的“起”出发；斜纹格不可通行，琥珀色圆点表示高代价格。请选择三个目标按钮之一。',
+    '5×5 Q 学习环境。智能体从左下角的“起”出发；斜纹格不可通行，琥珀色圆点标记高代价网格。请从三个目标按钮中选择一个。',
   );
   board.setAttribute('aria-label', boardLabel);
   metrics.setAttribute('aria-label', t('Evaluation metrics', '评估指标'));

@@ -260,7 +260,7 @@ function statusText(metrics) {
     return metrics.secure
       ? text(
           "Best bearing found: Bob is covered and Eve stays quiet.",
-          "已找到最佳方位：Bob 有效覆盖，Eve 保持静默。",
+          "已找到最佳方位：Bob 获得有效覆盖，Eve 端信号受抑制。",
         )
       : text(
           "Best available bearing found for this reflected channel.",
@@ -270,7 +270,7 @@ function statusText(metrics) {
   if (lastAction === "randomized") {
     return text(
       "New channel drawn. Aim Alice toward a secure path.",
-      "已生成新信道，请调整 Alice 寻找保密路径。",
+      "已生成新的信道场景，请调整 Alice 的波束方向，寻找安全传输路径。",
     );
   }
   if (metrics.secure) {
@@ -288,12 +288,12 @@ function statusText(metrics) {
   if (metrics.eveListening) {
     return text(
       "Eve can intercept this bearing. Steer or use a reflection.",
-      "Eve 可窃听当前方位，请转向或利用反射路径。",
+      "当前方位存在窃听风险，请调整波束方向，或利用反射路径建立安全链路。",
     );
   }
   return text(
     "Bob is linked, but the secrecy margin is still thin.",
-    "Bob 已连接，但保密余量仍然较小。",
+    "Bob 链路已建立，但保密裕量仍然不足。",
   );
 }
 
@@ -334,9 +334,9 @@ function render() {
     metrics.eve.quality,
     metrics.eveListening,
     "Intercepting",
-    "正在窃听",
+    "存在窃听风险",
     "Quiet",
-    "保持静默",
+    "信号受抑制",
   );
   scoreOutput.textContent = `${metrics.score}`;
   scoreOutput.setAttribute(
@@ -377,7 +377,7 @@ function render() {
     "aria-valuetext",
     text(
       `${roundedHeading} degrees. Bob ${metrics.bobCovered ? "covered" : "weak"}; Eve ${metrics.eveListening ? "intercepting" : "quiet"}.`,
-      `${roundedHeading} 度。Bob ${metrics.bobCovered ? "有效覆盖" : "信号较弱"}；Eve ${metrics.eveListening ? "正在窃听" : "保持静默"}。`,
+      `${roundedHeading} 度。Bob ${metrics.bobCovered ? "有效覆盖" : "信号较弱"}；Eve ${metrics.eveListening ? "存在窃听风险" : "信号受抑制"}。`,
     ),
   );
 

@@ -3,20 +3,23 @@
   const defaultBase = new URL('./', scriptUrl || document.baseURI);
   const stylesheetUrl = new URL('./embed.css', defaultBase);
   const games = {
-    runner: { title: { en: 'Reward Runner', zh: '奖励跃迁' }, height: 360 },
-    bandit: { title: { en: 'Explore–Exploit Lab', zh: '探索利用实验' }, height: 430 },
-    qpath: { title: { en: 'Q-Path Lab', zh: '策略航线' }, height: 500 },
-    movable: { title: { en: 'Movable Antenna Lab', zh: '可移动天线实验室' }, height: 720 },
+    runner: { title: { en: 'Reward Runner', zh: '奖励跑酷' }, height: 360 },
+    bandit: { title: { en: 'Explore–Exploit Lab', zh: '探索与利用' }, height: 430 },
+    qpath: { title: { en: 'Q-Path Lab', zh: 'Q 学习寻路' }, height: 500 },
+    return: { title: { en: 'Return Route', zh: '折扣回报' }, height: 430 },
+    movable: { title: { en: 'Movable Antenna Lab', zh: '可移动天线实验' }, height: 720 },
     pinching: { title: { en: 'Pinching Antenna Lab', zh: '夹持天线实验' }, height: 680 },
     secrecy: {
-      title: { en: 'Secrecy Beam Lab', zh: '保密波束实验室' },
+      title: { en: 'Secrecy Beam Lab', zh: '保密波束实验' },
       height: 520,
     },
-    orbit: { title: { en: 'Orbit Alignment', zh: '月轨校准' }, height: 360 },
-    signature: { title: { en: 'Stardust Signature', zh: '星屑签名' }, height: 260 },
-    echo: { title: { en: 'Memory Echo', zh: '记忆回声' }, height: 430 },
-    match: { title: { en: 'Memory Garden', zh: '翻牌花园' }, height: 590 },
-    merge: { title: { en: 'Merge Garden', zh: '方块花园' }, height: 680 },
+    hopper: { title: { en: 'Jammer Hop', zh: '频跳突围' }, height: 520 },
+    orbit: { title: { en: 'Orbit Alignment', zh: '月轨对准' }, height: 360 },
+    signature: { title: { en: 'Stardust Signature', zh: '星图签名' }, height: 260 },
+    echo: { title: { en: 'Memory Echo', zh: '记忆回响' }, height: 430 },
+    match: { title: { en: 'Memory Garden', zh: '花园配对' }, height: 590 },
+    merge: { title: { en: 'Merge Garden', zh: '合成花园' }, height: 700 },
+    resource: { title: { en: 'Resource Net', zh: '资源连线' }, height: 540 },
   };
 
   function normalizeLanguage(value) {

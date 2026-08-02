@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#ffffff" />
-    <title data-en="Q-Path Lab" data-zh="策略航线">Q-Path Lab</title>
+    <title data-en="Q-Path Lab" data-zh="Q 学习寻路">Q-Path Lab</title>
     <link rel="stylesheet" href="../shared/theme.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -15,7 +15,7 @@
           <p class="eyebrow" data-en="TABULAR Q-LEARNING" data-zh="表格型 Q 学习">
             TABULAR Q-LEARNING
           </p>
-          <h1 id="game-title" data-en="Q-Path Lab" data-zh="策略航线">Q-Path Lab</h1>
+          <h1 id="game-title" data-en="Q-Path Lab" data-zh="Q 学习寻路">Q-Path Lab</h1>
         </div>
         <p class="training-spec" id="training-spec">
           <span data-en="200 episodes" data-zh="200 回合">200 episodes</span>
@@ -24,7 +24,7 @@
       </header>
 
       <section class="board-section" aria-labelledby="board-title">
-        <h2 class="sr-only" id="board-title" data-en="Training world" data-zh="训练世界">
+        <h2 class="sr-only" id="board-title" data-en="Training world" data-zh="训练环境">
           Training world
         </h2>
         <div class="board" id="board" role="group" aria-describedby="board-help"></div>
@@ -32,7 +32,7 @@
           class="sr-only"
           id="board-help"
           data-en="Only the three targets are interactive. Use Tab to reach them."
-          data-zh="只有三个候选目标可交互，可用 Tab 键到达。"
+          data-zh="棋盘上只有 A、B、C 三个候选目标可选；按 Tab 键可在它们之间切换焦点。"
         >
           Only the three targets are interactive. Use Tab to reach them.
         </p>
@@ -71,7 +71,7 @@
         aria-live="polite"
         aria-atomic="true"
         data-en="Choose target A, B, or C, then train the route."
-        data-zh="选择目标 A、B 或 C，再训练航线。"
+        data-zh="选择目标 A、B 或 C，再训练策略。"
       >
         Choose target A, B, or C, then train the route.
       </p>

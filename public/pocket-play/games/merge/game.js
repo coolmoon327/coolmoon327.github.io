@@ -8,7 +8,7 @@ const TILE_STAGES = new Map([
   [8, { symbol: '🍃', en: 'Leaf', zh: '叶片' }],
   [16, { symbol: '🌿', en: 'Seedling', zh: '幼苗' }],
   [32, { symbol: '🪴', en: 'Potted plant', zh: '盆栽' }],
-  [64, { symbol: '🌼', en: 'Bloom', zh: '开花' }],
+  [64, { symbol: '🌼', en: 'Bloom', zh: '花朵' }],
   [128, { symbol: '🧫', en: 'Specimen', zh: '标本' }],
   [256, { symbol: '🔬', en: 'Observation', zh: '观察' }],
   [512, { symbol: '📓', en: 'Notes', zh: '记录' }],
@@ -95,11 +95,11 @@ function statusText() {
   if (statusState.kind === 'started') {
     return text(
       'Growing started: push identical samples together.',
-      '培育开始：把相同样本推到一起。',
+      '培育开始：把同阶方块推到一起。',
     );
   }
   if (statusState.kind === 'running') {
-    return text('Growing: push identical samples together.', '培育进行中：把相同样本推到一起。');
+    return text('Growing: push identical samples together.', '培育进行中：把同阶方块推到一起。');
   }
   if (statusState.kind === 'paused') {
     return text('Growing is paused.', '培育已暂停。');
@@ -113,13 +113,13 @@ function statusText() {
   if (statusState.kind === 'gameover') {
     return text(
       'The greenhouse is full and no samples can merge.',
-      '温室已经排满，且没有可继续合并的样本。',
+      '棋盘已经排满，且没有可以继续合并的方块。',
     );
   }
   if (statusState.kind === 'no-change') {
     return text(
       'Nothing moved in that direction. Try another one.',
-      '这个方向没有变化，换个方向试试。',
+      '这一方向无法移动，换个方向试试。',
     );
   }
   if (statusState.kind === 'gained') {
@@ -129,11 +129,11 @@ function statusText() {
     );
   }
   if (statusState.kind === 'rearranged') {
-    return text('Samples rearranged.', '样本已重新排列。');
+    return text('Samples rearranged.', '方块已重新排列。');
   }
   return text(
     'Select “Start growing”, then move every sample.',
-    '点“开始培育”，再用按钮移动所有样本。',
+    '点击“开始培育”，再用方向按钮移动棋盘上的方块。',
   );
 }
 
@@ -148,11 +148,11 @@ function announcementText() {
   if (announcementState.kind === 'discovery') {
     return text(
       `New discovery: ${stageLabel(announcementState.value)}, level ${announcementState.value}.`,
-      `新发现：${stageLabel(announcementState.value)}，等级 ${announcementState.value}。`,
+      `新发现：${stageLabel(announcementState.value)}，方块数值 ${announcementState.value}。`,
     );
   }
   if (announcementState.kind === 'no-change') {
-    return text('Nothing moved in that direction.', '这个方向没有变化。');
+    return text('Nothing moved in that direction.', '这一方向无法移动。');
   }
   if (announcementState.kind === 'move') {
     const gain =
@@ -164,7 +164,7 @@ function announcementText() {
         : '';
     return text(
       `Moved ${directionName(announcementState.direction)}.${gain} Score ${announcementState.score}; highest level ${announcementState.largest}.`,
-      `向${directionName(announcementState.direction)}移动，${gain}当前分数 ${announcementState.score}，最高等级 ${announcementState.largest}。`,
+      `向${directionName(announcementState.direction)}移动，${gain}当前分数 ${announcementState.score}，最高阶方块 ${announcementState.largest}。`,
     );
   }
   if (announcementState.kind === 'hidden-paused') {
@@ -177,10 +177,10 @@ function announcementText() {
     return text('Game paused.', '游戏已暂停。');
   }
   if (announcementState.kind === 'new-round') {
-    return text('A new Merge Garden round began.', '新一轮方块花园开始。');
+    return text('A new Merge Garden round began.', '已开始新一局合成花园。');
   }
   if (announcementState.kind === 'started') {
-    return text('Merge Garden started.', '方块花园开始。');
+    return text('Merge Garden started.', '合成花园已开始。');
   }
   if (announcementState.kind === 'reset') {
     return text('Board reset. Select Start growing.', '棋盘已重置，点击开始培育。');
@@ -413,7 +413,7 @@ function renderBoard() {
     'aria-label',
     text(
       `Four by four Merge Garden, ${occupiedCount} samples, highest level ${largestValue || 0}`,
-      `4×4 方块花园，已有 ${occupiedCount} 个样本，最高等级 ${largestValue || 0}`,
+      `4×4 合成花园，已有 ${occupiedCount} 个方块，最高阶方块 ${largestValue || 0}`,
     ),
   );
   scoreElement.textContent = String(score);

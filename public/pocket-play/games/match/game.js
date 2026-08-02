@@ -120,7 +120,7 @@ function statusText() {
   if (statusState.kind === 'hidden-close') {
     return text(
       'Unmatched cards were closed while the page was hidden.',
-      '已在离开页面时收起未配对的牌。',
+      '页面切到后台时，未配对的牌已自动翻回背面。',
     );
   }
   return text('Find the eight hidden pairs.', '找出八对藏在叶片下的图案。');
@@ -129,8 +129,8 @@ function statusText() {
 function renderUI() {
   updateStats();
   statusOutput.textContent = statusText();
-  resetButton.textContent = text('New board', '重新播种');
-  resetButton.setAttribute('aria-label', text('Start a new matching board', '重新播种翻牌棋盘'));
+  resetButton.textContent = text('New board', '新一局');
+  resetButton.setAttribute('aria-label', text('Start a new matching board', '开始新一局翻牌'));
   stats.setAttribute('aria-label', text('Game status', '本局状态'));
   board.setAttribute(
     'aria-label',

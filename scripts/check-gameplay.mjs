@@ -10,14 +10,17 @@ const games = {
   runner: 360,
   bandit: 430,
   qpath: 500,
+  return: 430,
   movable: 720,
   pinching: 680,
   secrecy: 520,
+  hopper: 520,
   orbit: 360,
   signature: 260,
   echo: 430,
   match: 590,
-  merge: 680,
+  merge: 700,
+  resource: 540,
 };
 
 function gameUrl(id, language = 'en') {
@@ -323,6 +326,33 @@ async function checkQPath(browser) {
   await page.close();
 }
 
+async function checkReturn(browser) {
+  const page = await openGame(browser, 'return');
+  const game = page.locator('#game');
+
+  assert.equal(await game.getAttribute('data-total-rounds'), '6');
+  for (let round = 0; round < 6; round += 1) {
+    const correctRoute = await game.getAttribute('data-correct');
+    await page.locator(`[data-route="${correctRoute}"]`).click();
+    assert.equal(await game.getAttribute('data-result'), 'correct');
+    assert.equal(await page.locator('#reveal').getAttribute('aria-hidden'), 'false');
+
+    if (round === 1) {
+      await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
+      assert.equal(await page.locator('h1').textContent(), '折扣回报');
+      assert.equal(await game.getAttribute('data-score'), '2');
+    }
+    await page.locator('#next').click();
+  }
+
+  assert.equal(await game.getAttribute('data-phase'), 'complete');
+  assert.equal(await game.getAttribute('data-score'), '6');
+  await page.locator('#next').click();
+  assert.equal(await game.getAttribute('data-round'), '1');
+  assert.equal(await game.getAttribute('data-score'), '0');
+  await page.close();
+}
+
 function parsePercent(value) {
   const parsed = Number.parseInt(value, 10);
   assert.ok(
@@ -380,8 +410,10 @@ async function checkMovable(browser) {
     'Keyboard steering must change an angle',
   );
 
-  const handleBox = await firstHandle.boundingBox();
   const fieldBox = await field.boundingBox();
+  await firstHandle.press('Home');
+  await firstHandle.press('ArrowRight');
+  const handleBox = await firstHandle.boundingBox();
   assert.ok(handleBox && fieldBox, 'Movable antenna geometry must be visible');
   const beforeDrag = await field.getAttribute('data-config');
   await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
@@ -411,7 +443,7 @@ async function checkMovable(browser) {
   assert.match(await page.locator('#served').textContent(), /^\d+$/);
 
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
-  assert.equal(await page.locator('h1').textContent(), '可移动天线实验室');
+  assert.equal(await page.locator('h1').textContent(), '可移动天线实验');
   await page.close();
 }
 
@@ -465,6 +497,11 @@ async function checkPinching(browser) {
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
   assert.equal(await page.locator('h1').textContent(), '夹持天线实验');
   assert.equal(await page.locator('.metrics').getAttribute('aria-label'), '实时天线指标');
+  assert.doesNotMatch(
+    await firstPinch.getAttribute('aria-label'),
+    /向向/,
+    'Chinese pinch direction must not repeat the preposition',
+  );
   await page.close();
 }
 
@@ -514,7 +551,44 @@ async function checkSecrecy(browser) {
   assert.ok(secrecyScore >= 0 && secrecyScore <= 100, 'Secrecy score must stay within 0–100');
 
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
-  assert.equal(await page.locator('h1').textContent(), '保密波束实验室');
+  assert.equal(await page.locator('h1').textContent(), '保密波束实验');
+  await page.close();
+}
+
+async function checkHopper(browser) {
+  const page = await openGame(browser, 'hopper');
+  const game = page.locator('#game');
+
+  assert.equal(await page.locator('.channel[data-channel]').count(), 3);
+  assert.equal(await game.getAttribute('data-total-slots'), '20');
+  assert.equal(await game.getAttribute('data-safe-channel-count'), '2');
+  assert.equal(await page.locator('.trail-cell').count(), 60);
+
+  await page.locator('.channel[data-channel="2"]').click();
+  await page.locator('#action-button').click();
+  assert.equal(await game.getAttribute('data-phase'), 'running');
+  assert.equal(await game.getAttribute('data-timer-active'), 'true');
+  assert.equal(
+    await game.getAttribute('data-selected-channel'),
+    '2',
+    'Hopper must preserve the channel selected before the round starts',
+  );
+  await page.locator('.channel[data-channel="0"]').click();
+  await page.waitForFunction(() => document.querySelector('#game').dataset.slot === '1', undefined, {
+    timeout: 3_000,
+  });
+  assert.equal(await game.getAttribute('data-collisions'), '1');
+  assert.equal(await game.getAttribute('data-last-result'), 'collision');
+
+  await page.locator('#action-button').click();
+  assert.equal(await game.getAttribute('data-phase'), 'paused');
+  assert.equal(await game.getAttribute('data-timer-active'), 'false');
+  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
+  assert.equal(await page.locator('h1').textContent(), '频跳突围');
+  assert.equal(await game.getAttribute('data-collisions'), '1');
+  await page.locator('#reset-button').click();
+  assert.equal(await game.getAttribute('data-phase'), 'idle');
+  assert.equal(await game.getAttribute('data-slot'), '0');
   await page.close();
 }
 
@@ -680,7 +754,7 @@ async function checkOrbit(browser, reducedMotion = 'no-preference') {
   await page.locator('#assist').click();
   assert.equal(
     await page.locator('#hint').textContent(),
-    '辅助提示已关闭，请观察窗口手动停下月球。',
+    '辅助提示已关闭，请看准窗口位置，手动让月球停下。',
   );
   await page.locator('#assist').click();
   assert.match(await page.locator('#hint').textContent(), /辅助提示已开启/);
@@ -713,7 +787,7 @@ async function checkEcho(browser) {
   await page.waitForFunction(() => document.querySelector('#round').textContent === '2');
   const roundBeforeLanguageChange = await page.locator('#round').textContent();
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh' }));
-  assert.equal(await page.locator('h1').textContent(), '记忆回声');
+  assert.equal(await page.locator('h1').textContent(), '记忆回响');
   assert.equal(await page.locator('#round').textContent(), roundBeforeLanguageChange);
   await page.close();
 }
@@ -762,10 +836,58 @@ async function checkMerge(browser) {
   const beforeLanguageChange = await boardSignature();
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
   assert.equal(await boardSignature(), beforeLanguageChange);
-  assert.equal(await page.locator('h1').textContent(), '方块花园');
+  assert.equal(await page.locator('h1').textContent(), '合成花园');
   await page.locator('#restart-game').click();
   assert.equal(await page.locator('#score').textContent(), '0');
   assert.equal(await page.locator('.tile').count(), 2);
+  await page.close();
+}
+
+async function checkResource(browser) {
+  const page = await openGame(browser, 'resource');
+  const board = page.locator('#board');
+
+  assert.equal(await page.locator('.tile').count(), 16);
+  assert.equal(await board.getAttribute('data-edge-count'), '15');
+  assert.equal(await board.getAttribute('data-solved'), 'false');
+  assert.ok(Number(await board.getAttribute('data-connected-resources')) <= 2);
+
+  const initialRotations = await board.getAttribute('data-initial-rotations');
+  await page.locator('.tile').first().click();
+  assert.equal(await page.locator('#moves').textContent(), '1');
+  await page.locator('#reset-board').click();
+  assert.equal(await page.locator('#moves').textContent(), '0');
+  assert.equal(await board.getAttribute('data-rotations'), initialRotations);
+
+  await page.locator('.tile').first().focus();
+  await page.locator('.tile').first().press('ArrowRight');
+  assert.equal(
+    await page.evaluate(() => document.activeElement?.getAttribute('data-index')),
+    '1',
+    'Resource Net arrow keys must move focus between tiles',
+  );
+
+  const rotations = (await board.getAttribute('data-rotations')).split('-').map(Number);
+  for (const [index, rotation] of rotations.entries()) {
+    for (let turn = 0; turn < (4 - rotation) % 4; turn += 1) {
+      await page.locator(`[data-index="${index}"]`).click();
+    }
+  }
+  assert.equal(await board.getAttribute('data-solved'), 'true');
+  assert.equal(await board.getAttribute('data-connected-count'), '16');
+  assert.equal(await board.getAttribute('data-connected-resources'), '4');
+  assert.equal(await board.getAttribute('data-loose-ports'), '0');
+  assert.ok(await page.locator('.request-pulse').count());
+
+  const solvedMoves = await page.locator('#moves').textContent();
+  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
+  assert.equal(await page.locator('h1').textContent(), '资源连线');
+  assert.equal(await page.locator('#moves').textContent(), solvedMoves);
+
+  const oldSeed = await board.getAttribute('data-seed');
+  await page.locator('#new-board').click();
+  assert.notEqual(await board.getAttribute('data-seed'), oldSeed);
+  assert.equal(await board.getAttribute('data-solved'), 'false');
   await page.close();
 }
 
@@ -778,15 +900,18 @@ try {
   await checkRunner(browser);
   await checkBandit(browser);
   await checkQPath(browser);
+  await checkReturn(browser);
   await checkMovable(browser);
   await checkPinching(browser);
   await checkSecrecy(browser);
+  await checkHopper(browser);
   await checkOrbit(browser);
   await checkOrbit(browser, 'reduce');
   await checkSignature(browser);
   await checkEcho(browser);
   await checkMatch(browser);
   await checkMerge(browser);
+  await checkResource(browser);
 
   for (const [id, height] of Object.entries(games)) {
     const page = await openGame(browser, id, { width: 280, height });

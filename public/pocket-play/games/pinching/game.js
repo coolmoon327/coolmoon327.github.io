@@ -205,7 +205,7 @@ function handleLabel(emitter, index) {
   const position = Math.round(emitter.x * 100);
   return text(
     `Pinch ${index + 1}, ${position} percent along the guide, radiating ${directionName(emitter.direction)}. Use left and right arrows to move, or up and down arrows to aim.`,
-    `夹持点 ${index + 1}，位于波导 ${position}%，${directionName(emitter.direction)}发射。使用左右方向键移动，上下方向键切换发射方向。`,
+    `夹持点 ${index + 1}，位于波导长度的 ${position}% 处，${directionName(emitter.direction)}发射。使用左右方向键移动，上下方向键切换发射方向。`,
   );
 }
 
@@ -254,7 +254,7 @@ function renderMetrics() {
     "aria-label",
     text(
       `${latestMetrics.served} of ${users.length} users served without interference`,
-      `${users.length} 位用户中有 ${latestMetrics.served} 位无干扰成功`,
+      `${users.length} 位用户中有 ${latestMetrics.served} 位只被一束波束覆盖`,
     ),
   );
 }
@@ -262,7 +262,7 @@ function renderMetrics() {
 function statusMessage() {
   const details = text(
     `${latestMetrics.served} of ${users.length} users are cleanly served.`,
-    `${users.length} 位用户中有 ${latestMetrics.served} 位无干扰成功。`,
+    `${users.length} 位用户中有 ${latestMetrics.served} 位只被一束波束覆盖。`,
   );
 
   if (statusState.kind === "randomized") {
@@ -272,19 +272,19 @@ function statusMessage() {
     const emitter = emitters[statusState.index];
     return text(
       `Pinch ${statusState.index + 1} now aims ${directionName(emitter.direction)} at ${Math.round(emitter.x * 100)} percent. ${details}`,
-      `夹持点 ${statusState.index + 1} 已移至 ${Math.round(emitter.x * 100)}%，并${directionName(emitter.direction)}发射。${details}`,
+      `夹持点 ${statusState.index + 1} 已移至波导长度的 ${Math.round(emitter.x * 100)}% 处，并${directionName(emitter.direction)}发射。${details}`,
     );
   }
   if (statusState.kind === "optimizing") {
     return text(
       "Searching 560 spaced layouts for the most cleanly served users…",
-      "正在搜索 560 种分散布局，尽量增加无干扰成功用户…",
+      "正在搜索 560 种满足间距约束的布局，尽量增加单波束覆盖的用户数…",
     );
   }
   if (statusState.kind === "optimized") {
     return text(
       `Best grid layout found: ${details} Coverage ${latestMetrics.coverageRate} percent; interference ${latestMetrics.interferenceRate} percent.`,
-      `已找到离散网格最优布局：${details}覆盖率 ${latestMetrics.coverageRate}%，干扰率 ${latestMetrics.interferenceRate}%。`,
+      `网格搜索完成：${details}覆盖率 ${latestMetrics.coverageRate}%，干扰率 ${latestMetrics.interferenceRate}%。`,
     );
   }
   if (statusState.kind === "paused") {
@@ -295,7 +295,7 @@ function statusMessage() {
   }
   return text(
     "Move the four pinches to serve each user with exactly one beam.",
-    "移动四个夹持点，让每位用户只被一束波束覆盖。",
+    "移动四个夹持点，尽量让更多用户只被一束波束覆盖。",
   );
 }
 
@@ -325,7 +325,7 @@ function renderScene() {
   optimizeButton.disabled = optimizing;
   optimizeButton.textContent = optimizing
     ? text("Searching…", "搜索中…")
-    : text("Find optimum", "一键最优搜索");
+    : text("Find optimum", "一键优化");
 }
 
 function renderAll() {

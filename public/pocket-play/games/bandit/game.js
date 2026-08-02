@@ -54,29 +54,29 @@ const copy = {
     },
   },
   zh: {
-    title: '探索利用实验',
-    description: '用十五次尝试理解探索与利用权衡的小实验。',
+    title: '探索与利用',
+    description: '用十五次选择理解探索与利用之间的权衡。',
     dashboardLabel: '实验预算与当前结果',
     armsLabel: '三个奖励概率未知的动作',
     outcomeLabel: '已揭晓的实验结果',
     newTrialLabel: '重新打乱概率并开始一次新实验',
-    initial: '请选择一个动作；聚焦本卡片时可按数字 1–3。',
-    reward: (action, left) => `动作 ${action} 获得奖励，还剩 ${left} 次。`,
-    miss: (action, left) => `动作 ${action} 没有奖励，还剩 ${left} 次。`,
+    initial: '请选择一个选项；聚焦本卡片时可按数字 1–3。',
+    reward: (action, left) => `选项 ${action} 获得奖励，还剩 ${left} 次。`,
+    miss: (action, left) => `选项 ${action} 没有奖励，还剩 ${left} 次。`,
     paused: '页面隐藏期间，实验已暂停。',
     resumed: '实验已恢复，请选择任一动作继续。',
     complete: (rewards) => `预算用完：共观察到 ${rewards} 次奖励，真实概率现已揭晓。`,
-    optimal: (action, probability) => `动作 ${action} · ${probability}`,
-    regretUnit: (value) => `${value} 次奖励`,
-    probabilityItem: (action, probability) => `动作${action} ${probability}`,
+    optimal: (action, probability) => `选项 ${action} · ${probability}`,
+    regretUnit: (value) => `${value} 个回报单位`,
+    probabilityItem: (action, probability) => `选项 ${action}：${probability}`,
     armLabel: ({ action, pulls, rewards, estimate, probability, optimal, disabled }) => {
-      const estimateText = estimate === null ? '尚未采样' : `百分之 ${Math.round(estimate * 100)}`;
+      const estimateText = estimate === null ? '尚未尝试' : `${Math.round(estimate * 100)}%`;
       const revealed =
         probability === null
           ? '真实概率仍隐藏。'
-          : `真实概率为百分之 ${Math.round(probability * 100)}。${optimal ? '这是最优动作。' : ''}`;
+          : `真实奖励概率为 ${Math.round(probability * 100)}%。${optimal ? '这是最优选项。' : ''}`;
       const instruction = disabled ? '当前不可选择。' : `按数字 ${action} 选择。`;
-      return `动作 ${action}，尝试 ${pulls} 次，奖励 ${rewards} 次，Q 估计${estimateText}。${revealed}${instruction}`;
+      return `选项 ${action}，已选择 ${pulls} 次，获得 ${rewards} 次奖励，Q 值估计为 ${estimateText}。${revealed}${instruction}`;
     },
   },
 };

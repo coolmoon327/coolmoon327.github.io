@@ -543,7 +543,7 @@
     state.drag = null;
     setStatus(
       `Base ${stationIndex + 1}, antenna ${antennaIndex + 1} updated.`,
-      `已更新基站 ${stationIndex + 1} 的第 ${antennaIndex + 1} 根天线。`,
+      `已更新基站 ${stationIndex + 1} 的第 ${antennaIndex + 1} 副天线。`,
     );
   }
 
@@ -636,7 +636,7 @@
     setOptimizing(true);
     setStatus(
       "Searching each antenna's 120° sector…",
-      "正在逐一搜索每根天线的 120° 扇区…",
+      "正在逐副扫描各天线在所属 120° 扇区内的候选方位…",
       true,
     );
 
@@ -689,7 +689,7 @@
             completedSteps += 1;
             setStatus(
               `Searching antenna ${completedSteps} of ${totalSteps}…`,
-              `正在搜索第 ${completedSteps}/${totalSteps} 根天线…`,
+              `正在执行天线优化第 ${completedSteps}/${totalSteps} 步…`,
             );
             await animateAngle(antenna, bestAngle, token);
             if (!reducedMotion.matches) await pause(24);
@@ -704,7 +704,7 @@
       render();
       setStatus(
         `Search complete: ${state.metrics.served} users clear, ${Math.round(state.metrics.coverage)}% covered.`,
-        `搜索完成：${state.metrics.served} 位用户无干扰，覆盖率 ${Math.round(state.metrics.coverage)}%。`,
+        `优化完成：${state.metrics.served} 位用户只被一束波束覆盖，覆盖率 ${Math.round(state.metrics.coverage)}%。`,
         true,
       );
     } finally {
@@ -722,7 +722,7 @@
     createScene();
     setStatus(
       `New maximin scene: bases stay ${field.dataset.minBaseDistance} units apart.`,
-      `已生成新的最大最小距离场景：基站间距至少 ${field.dataset.minBaseDistance}。`,
+      `已按最大最小距离准则生成新场景：基站间距至少为 ${field.dataset.minBaseDistance}。`,
       true,
     );
   }
@@ -759,7 +759,7 @@
       if (!state.optimizing) {
         setStatus(
           "Drag an antenna, use arrow keys, or press the search button.",
-          "拖动天线、使用方向键，或点击一键搜索。",
+          "拖动天线、使用方向键，或点击“一键优化”。",
         );
       }
     });
@@ -769,6 +769,6 @@
   createScene();
   setStatus(
     "Drag an antenna, use arrow keys, or press the search button.",
-    "拖动天线、使用方向键，或点击一键搜索。",
+    "拖动天线、使用方向键，或点击“一键优化”。",
   );
 })();

@@ -8,17 +8,28 @@ const expectedGames = [
   'runner',
   'bandit',
   'qpath',
+  'return',
   'movable',
   'pinching',
   'secrecy',
+  'hopper',
   'orbit',
   'signature',
   'echo',
   'match',
   'merge',
+  'resource',
 ];
 const sourceExtensions = new Set(['.html', '.css', '.js']);
 const errors = [];
+const gameDirectories = readdirSync(join(siteRoot, 'games'), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && entry.name !== 'shared')
+  .map((entry) => entry.name)
+  .sort();
+
+if (JSON.stringify(gameDirectories) !== JSON.stringify([...expectedGames].sort())) {
+  errors.push(`games/: expected only ${expectedGames.join(', ')}`);
+}
 
 function walk(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -71,9 +82,26 @@ if (JSON.stringify(metadataIds) !== JSON.stringify(expectedGames)) {
   errors.push(`games.json: expected ordered ids ${expectedGames.join(', ')}`);
 }
 
+if (new Set(metadataIds).size !== metadataIds.length) {
+  errors.push('games.json: game ids must be unique');
+}
+
 for (const game of gameMetadata) {
   if (!game.title || !game.title_en || !game.session || !game.session_en) {
     errors.push(`games.json: ${game.id || 'unknown'} is missing bilingual metadata`);
+  }
+  if (!Number.isInteger(game.preferred_height) || game.preferred_height < 240 || game.preferred_height > 720) {
+    errors.push(`games.json: ${game.id || 'unknown'} has an invalid preferred_height`);
+  }
+  if (!Number.isInteger(game.min_width) || game.min_width < 240 || game.min_width > 420) {
+    errors.push(`games.json: ${game.id || 'unknown'} has an invalid min_width`);
+  }
+  if (
+    !Array.isArray(game.inputs) ||
+    game.inputs.length === 0 ||
+    game.inputs.some((input) => !['pointer', 'keyboard'].includes(input))
+  ) {
+    errors.push(`games.json: ${game.id || 'unknown'} has invalid input metadata`);
   }
 }
 
@@ -171,6 +199,6 @@ if (errors.length) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Static QA passed: ${expectedGames.length} games, ${sourceFiles.length} source files, valid JavaScript, relative HTML/CSS asset paths, and synchronized publish files.`,
+    `Static QA passed: ${expectedGames.length} games, ${sourceFiles.length} source files, valid JavaScript, relative HTML/CSS asset paths, and synchronized game metadata.`,
   );
 }

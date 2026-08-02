@@ -67,10 +67,10 @@ function renderAngle(angle) {
 
 function resultHint() {
   if (lastHit && lastPoints >= 90) {
-    return text('Beautiful — almost perfectly aligned.', '漂亮！几乎完美重合。');
+    return text('Beautiful — almost perfectly aligned.', '太准了，几乎完美重合！');
   }
   if (lastHit) {
-    return text('Aligned — the moon is inside the window.', '校准成功，月球已落入窗口。');
+    return text('Aligned — the moon is inside the window.', '对准成功，月球已停在窗口内。');
   }
   return text('The moon stopped outside the window. Try again.', '月球停在窗口之外，再试一次。');
 }
@@ -115,7 +115,7 @@ function renderAssistStatus() {
         )
       : text(
           'Assist is off — stop the moon by watching the window.',
-          '辅助提示已关闭，请观察窗口手动停下月球。',
+          '辅助提示已关闭，请看准窗口位置，手动让月球停下。',
         );
     hint.dataset.assistState = assistNotice.enabled ? 'toggle-on' : 'toggle-off';
     return;
@@ -135,7 +135,7 @@ function renderUI() {
 
   if (viewState === 'running') {
     actionLabel = text('Stop now', '现在停下');
-    scoreLabel = text('Aligning', '校准中');
+    scoreLabel = text('Aligning', '对准中');
     hintLabel = text(
       'Watch the bright window, then click the button or press Space.',
       '看准发光窗口，点击按钮或按空格。',
@@ -149,11 +149,11 @@ function renderUI() {
     scoreLabel = text('Paused', '已暂停');
     hintLabel = text('This round paused when the page was hidden.', '离开页面时已暂停这一轮。');
   } else {
-    actionLabel = text('Start alignment', '开始校准');
+    actionLabel = text('Start alignment', '开始对准');
     scoreLabel = text('Ready', '等待开始');
     hintLabel = text(
       'Click again when the moon enters the bright window.',
-      '第二次点击时，让月球停在发光窗口中。',
+      '月球进入发光窗口时再点一下，让它停住。',
     );
   }
 
@@ -162,7 +162,7 @@ function renderUI() {
   score.textContent = scoreLabel;
   score.setAttribute(
     'aria-label',
-    text(`Alignment status: ${scoreLabel}`, `校准状态：${scoreLabel}`),
+    text(`Alignment status: ${scoreLabel}`, `对准状态：${scoreLabel}`),
   );
   hint.textContent = hintLabel;
   assistButton.textContent = text('Assist', '辅助提示');

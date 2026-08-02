@@ -41,7 +41,7 @@
         class="help"
         id="field-help"
         data-en="Drag a numbered pinch along the guide. Cross the guide to flip its beam; keyboard users can use ← → and ↑ ↓."
-        data-zh="沿波导拖动编号夹持点；拖过波导可翻转波束，键盘可用 ← → 与 ↑ ↓。"
+        data-zh="沿波导拖动编号夹持点；拖到波导另一侧即可切换辐射方向，也可使用方向键操作。"
       >
         Drag a numbered pinch along the guide. Cross the guide to flip its beam;
         keyboard users can use ← → and ↑ ↓.
@@ -110,11 +110,11 @@
         >
         <span
           ><i class="overlap-swatch"></i
-          ><span data-en="Overlap" data-zh="干扰重叠">Overlap</span></span
+          ><span data-en="Overlap" data-zh="重叠干扰">Overlap</span></span
         >
         <span
           ><i class="served-swatch"></i
-          ><span data-en="Clean user" data-zh="无干扰用户"
+          ><span data-en="Clean user" data-zh="单波束覆盖用户"
             >Clean user</span
           ></span
         >
@@ -139,7 +139,7 @@
           <dd><output id="interference">0%</output></dd>
         </div>
         <div>
-          <dt data-en="Clean users" data-zh="无干扰成功用户">Clean users</dt>
+          <dt data-en="Clean users" data-zh="单波束覆盖用户">Clean users</dt>
           <dd><output id="served">0 / 18</output></dd>
         </div>
       </dl>
@@ -159,7 +159,7 @@
           id="optimize"
           type="button"
           data-en="Find optimum"
-          data-zh="一键最优搜索"
+          data-zh="一键优化"
         >
           Find optimum
         </button>
@@ -172,7 +172,7 @@
         aria-live="polite"
         aria-atomic="true"
         data-en="Move the four pinches to serve each user with exactly one beam."
-        data-zh="移动四个夹持点，让每位用户只被一束波束覆盖。"
+        data-zh="移动四个夹持点，尽量让更多用户只被一束波束覆盖。"
       >
         Move the four pinches to serve each user with exactly one beam.
       </p>

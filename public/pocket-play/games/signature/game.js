@@ -16,7 +16,7 @@ const keyboardPoints = [
   { x: 84, y: 57 },
 ];
 const fortunes = [
-  { en: 'May you move slowly and still arrive.', zh: '愿你慢一点，也仍然抵达。' },
+  { en: 'May you move slowly and still arrive.', zh: '愿你慢慢走，也终会抵达。' },
   { en: 'Tonight’s small light has been kept for you.', zh: '今晚的微光，刚好替你留着。' },
   { en: 'No rush; your star will shine in its own time.', zh: '别急，属于你的星会自己亮起来。' },
   { en: 'May this little path lead to a lighter mood.', zh: '愿这条小路，通向一点好心情。' },
@@ -51,44 +51,44 @@ function renderUI() {
   let skyLabel;
 
   if (viewState === 'awakened') {
-    promptText = text('Your next click leaves the first star', '下一次点击，会留下第一颗星');
+    promptText = text('Your next click leaves the first star', '下一次点击会留下第一颗星');
     messageText = text(
       'The night is awake. Draw your stars slowly.',
-      '夜色醒了。慢慢写下你的星点吧。',
+      '夜色醒了，慢慢画下你的星点吧。',
     );
     skyLabel = text(
       'Stardust canvas awake. Click or press Enter to place the first star.',
-      '星屑签名画布已唤醒。点击或按 Enter 放置第一颗星。',
+      '星图签名画布已唤醒。点击或按 Enter 键放置第一颗星。',
     );
   } else if (viewState === 'cleared') {
-    promptText = text('Fresh sky · place the first star', '星纸换新 · 落下第一颗星');
-    messageText = text('The sky is fresh. Place the first star.', '星纸换新了。落下第一颗星吧。');
+    promptText = text('Fresh sky · place the first star', '换一片新夜空 · 落下第一颗星');
+    messageText = text('The sky is fresh. Place the first star.', '夜空已经换新，落下第一颗星吧。');
     skyLabel = text(
       'Fresh stardust canvas. Click or press Enter to place the first star.',
-      '全新的星屑签名画布。点击或按 Enter 放置第一颗星。',
+      '全新的星图签名画布。点击或按 Enter 键放置第一颗星。',
     );
   } else if (viewState === 'drawing') {
     promptText = text(
       `Keep drawing · ${points.length} / ${maxPoints}`,
       `继续写下星点 · ${points.length} / ${maxPoints}`,
     );
-    messageText = text(`Star ${points.length} is in place.`, `第 ${points.length} 颗星，落好了。`);
+    messageText = text(`Star ${points.length} is in place.`, `第 ${points.length} 颗星已经落下。`);
     skyLabel = text(
       `Stardust canvas with ${points.length} stars. Click or press Enter to add the next star.`,
-      `星屑签名画布，已放置 ${points.length} 颗星。点击或按 Enter 添加下一颗。`,
+      `星图签名画布，已放置 ${points.length} 颗星。点击或按 Enter 键添加下一颗。`,
     );
   } else if (viewState === 'complete') {
     const fortune = selectedFortune();
-    promptText = text('Signature complete · activate again to rewrite', '签名完成 · 再点一次重写');
+    promptText = text('Signature complete · activate again to rewrite', '签名完成 · 再点一次重新绘制');
     messageText = fortune;
     skyLabel = text(
       `Stardust signature complete. Note: ${fortune} Activate the canvas again to clear and rewrite it.`,
-      `星屑签名已完成。签语：${fortune} 再次激活画布可以清空并重写。`,
+      `星图签名已完成。签语：${fortune} 再点一下画布即可清空重画。`,
     );
   } else {
-    promptText = text('Click / Enter to wake the sky', '点一下 / Enter，唤醒夜色');
+    promptText = text('Click / Enter to wake the sky', '点击或按 Enter，唤醒夜色');
     messageText = text('Tap softly and wake the night.', '先轻轻点一下，让夜色醒来。');
-    skyLabel = text('Wake the stardust signature canvas', '唤醒星屑签名画布');
+    skyLabel = text('Wake the stardust signature canvas', '唤醒星图签名画布');
   }
 
   count.textContent = `${points.length} / ${maxPoints}`;

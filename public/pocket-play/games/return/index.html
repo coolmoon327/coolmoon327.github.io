@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      id="page-description"
+      name="description"
+      content="Compare short reward routes and learn how discounting changes their return."
+    />
+    <title data-en="Return Route" data-zh="折扣回报">Return Route</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main
+      class="game"
+      id="game"
+      tabindex="0"
+      aria-labelledby="game-title"
+      aria-describedby="prompt keyboard-help"
+      data-phase="choice"
+      data-round="1"
+      data-round-index="0"
+      data-total-rounds="6"
+      data-result="pending"
+    >
+      <header class="topline">
+        <div>
+          <p class="eyebrow" data-en="DISCOUNTED RETURN" data-zh="折扣回报">DISCOUNTED RETURN</p>
+          <h1 id="game-title" data-en="Return Route" data-zh="折扣回报">Return Route</h1>
+        </div>
+        <div class="score-card" aria-label="Score">
+          <span data-en="Score" data-zh="得分">Score</span>
+          <strong><output id="score">0</output><small aria-hidden="true"> / 6</small></strong>
+        </div>
+      </header>
+
+      <section class="round-strip" id="round-strip" aria-label="Round and discount factor">
+        <p>
+          <span data-en="Round" data-zh="回合">Round</span>
+          <strong><output id="round">1</output> / 6</strong>
+        </p>
+        <p class="gamma">
+          <span data-en="Discount" data-zh="折扣因子">Discount</span>
+          <strong>γ = <output id="gamma">0.5</output></strong>
+        </p>
+        <span class="progress" aria-hidden="true"><span id="progress"></span></span>
+      </section>
+
+      <p
+        class="prompt"
+        id="prompt"
+        data-en="Which route has the higher discounted return?"
+        data-zh="哪条路线的折扣回报更高？"
+      >
+        Which route has the higher discounted return?
+      </p>
+
+      <section class="routes" id="routes" aria-label="Two reward routes">
+        <button
+          class="route"
+          id="route-a"
+          type="button"
+          data-route="a"
+          data-correct="false"
+          aria-keyshortcuts="1 A ArrowLeft"
+        >
+          <span class="route-heading">
+            <strong data-en="Route A" data-zh="路线 A">Route A</strong>
+            <span class="keycap" aria-hidden="true">1</span>
+          </span>
+          <span class="rewards" id="rewards-a" aria-hidden="true"></span>
+          <span class="return-line" aria-hidden="true">
+            <span data-en="Return" data-zh="回报">Return</span>
+            <output id="return-a">?</output>
+          </span>
+        </button>
+
+        <button
+          class="route"
+          id="route-b"
+          type="button"
+          data-route="b"
+          data-correct="false"
+          aria-keyshortcuts="2 B ArrowRight"
+        >
+          <span class="route-heading">
+            <strong data-en="Route B" data-zh="路线 B">Route B</strong>
+            <span class="keycap" aria-hidden="true">2</span>
+          </span>
+          <span class="rewards" id="rewards-b" aria-hidden="true"></span>
+          <span class="return-line" aria-hidden="true">
+            <span data-en="Return" data-zh="回报">Return</span>
+            <output id="return-b">?</output>
+          </span>
+        </button>
+      </section>
+
+      <section
+        class="reveal"
+        id="reveal"
+        data-visible="false"
+        aria-hidden="true"
+        aria-labelledby="result-title"
+      >
+        <div class="reveal-heading">
+          <strong id="result-title" data-en="Discounted calculation" data-zh="折扣计算">
+            Discounted calculation
+          </strong>
+          <span id="verdict"></span>
+        </div>
+        <p class="formula" aria-hidden="true">G = r₀ + γr₁ + γ²r₂ + …</p>
+        <div class="calculation" data-calc="a">
+          <b aria-hidden="true">A</b>
+          <span class="terms" id="terms-a"></span>
+          <output id="total-a"></output>
+        </div>
+        <div class="calculation" data-calc="b">
+          <b aria-hidden="true">B</b>
+          <span class="terms" id="terms-b"></span>
+          <output id="total-b"></output>
+        </div>
+      </section>
+
+      <footer class="controls">
+        <p id="status">Pick A or B. Earlier rewards usually matter more.</p>
+        <button id="next" type="button" disabled aria-keyshortcuts="N">
+          Choose a route
+        </button>
+      </footer>
+
+      <p
+        class="sr-only"
+        id="keyboard-help"
+        data-en="Use 1 or Left Arrow for route A, 2 or Right Arrow for route B, and N for the next round."
+        data-zh="按 1 或左方向键选择路线 A，按 2 或右方向键选择路线 B，按 N 进入下一回合。"
+      >
+        Use 1 or Left Arrow for route A, 2 or Right Arrow for route B, and N for the next
+        round.
+      </p>
+      <p class="sr-only" id="announcer" role="status" aria-live="polite" aria-atomic="true"></p>
+    </main>
+
+    <script src="../shared/runtime.js"></script>
+    <script src="./game.js"></script>
+  </body>
+</html>

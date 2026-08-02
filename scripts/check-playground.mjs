@@ -12,27 +12,33 @@ const gameIds = [
   'runner',
   'bandit',
   'qpath',
+  'return',
   'movable',
   'pinching',
   'secrecy',
+  'hopper',
   'orbit',
   'signature',
   'echo',
   'match',
   'merge',
+  'resource',
 ];
 const chineseTitles = {
-  runner: '奖励跃迁',
-  bandit: '探索利用实验',
-  qpath: '策略航线',
-  movable: '可移动天线实验室',
+  runner: '奖励跑酷',
+  bandit: '探索与利用',
+  qpath: 'Q 学习寻路',
+  return: '折扣回报',
+  movable: '可移动天线实验',
   pinching: '夹持天线实验',
-  secrecy: '保密波束实验室',
-  orbit: '月轨校准',
-  signature: '星屑签名',
-  echo: '记忆回声',
-  match: '翻牌花园',
-  merge: '方块花园',
+  secrecy: '保密波束实验',
+  hopper: '频跳突围',
+  orbit: '月轨对准',
+  signature: '星图签名',
+  echo: '记忆回响',
+  match: '花园配对',
+  merge: '合成花园',
+  resource: '资源连线',
 };
 const chinesePlaygroundPath = new URL(`${baseUrl}/zh/playground/`).pathname;
 
@@ -57,6 +63,61 @@ async function loadAllGames(page) {
   }
 }
 
+async function auditCollectionPacking(page, label) {
+  const collections = await page.locator('.collection').evaluateAll((sections) =>
+    sections.map((section) =>
+      [...section.querySelectorAll('.game-column')].map((column) => ({
+        left: Math.round(column.getBoundingClientRect().left),
+        cards: [...column.querySelectorAll('.game-card')].map((card) => {
+          const cardRect = card.getBoundingClientRect();
+          const copyRect = card.querySelector('.game-copy').getBoundingClientRect();
+          const stageRect = card.querySelector('.game-stage').getBoundingClientRect();
+          return {
+            top: cardRect.top,
+            bottom: cardRect.bottom,
+            copyBottom: copyRect.bottom,
+            stageTop: stageRect.top,
+          };
+        }),
+      })),
+    ),
+  );
+
+  for (const [collectionIndex, columns] of collections.entries()) {
+    assert.equal(columns.length, 2, `${label} collection ${collectionIndex + 1} needs two columns`);
+    assert.notEqual(
+      columns[0].left,
+      columns[1].left,
+      `${label} collection ${collectionIndex + 1} columns must be side by side`,
+    );
+    assert.equal(
+      columns[0].cards.length,
+      columns[1].cards.length,
+      `${label} collection ${collectionIndex + 1} must split cards evenly`,
+    );
+
+    for (const column of columns) {
+      for (const card of column.cards) {
+        assert.ok(card.stageTop >= card.copyBottom, 'Each game stage must sit below its copy block');
+      }
+      for (let index = 1; index < column.cards.length; index += 1) {
+        const gap = column.cards[index].top - column.cards[index - 1].bottom;
+        assert.ok(gap >= 0 && gap <= 24, `Unexpected vertical hole of ${gap}px in a game column`);
+      }
+    }
+
+    const columnSpans = columns.map((column) => {
+      const first = column.cards[0];
+      const last = column.cards.at(-1);
+      return last.bottom - first.top;
+    });
+    assert.ok(
+      Math.abs(columnSpans[0] - columnSpans[1]) <= 180,
+      `${label} collection ${collectionIndex + 1} columns differ by ${Math.abs(columnSpans[0] - columnSpans[1])}px`,
+    );
+  }
+}
+
 await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch({
@@ -72,48 +133,14 @@ try {
   const renderedGameIds = await page
     .locator('pocket-game')
     .evaluateAll((games) => games.map((game) => game.getAttribute('game')));
-  assert.deepEqual(renderedGameIds, gameIds, 'English Playground must render all eleven games');
-
-  await loadAllGames(page);
-
-  const collections = await page.locator('.collection').evaluateAll((sections) =>
-    sections.map((section) => {
-      const cards = [...section.querySelectorAll('.game-card')].map((card) => {
-        const cardRect = card.getBoundingClientRect();
-        const copyRect = card.querySelector('.game-copy').getBoundingClientRect();
-        const stageRect = card.querySelector('.game-stage').getBoundingClientRect();
-        return {
-          left: Math.round(cardRect.left),
-          top: cardRect.top,
-          bottom: cardRect.bottom,
-          copyBottom: copyRect.bottom,
-          stageTop: stageRect.top,
-        };
-      });
-      return cards;
-    }),
+  assert.deepEqual(
+    [...renderedGameIds].sort(),
+    [...gameIds].sort(),
+    'English Playground must render all fourteen games once',
   );
 
-  for (const [collectionIndex, cards] of collections.entries()) {
-    const columnLefts = [...new Set(cards.map((card) => card.left))];
-    assert.equal(
-      columnLefts.length,
-      2,
-      `Desktop collection ${collectionIndex + 1} must use two card columns; found left edges ${columnLefts.join(', ')}`,
-    );
-    for (const card of cards) {
-      assert.ok(card.stageTop >= card.copyBottom, 'Each game stage must sit below its copy block');
-    }
-    for (const columnLeft of columnLefts) {
-      const columnCards = cards
-        .filter((card) => card.left === columnLeft)
-        .sort((a, b) => a.top - b.top);
-      for (let index = 1; index < columnCards.length; index += 1) {
-        const gap = columnCards[index].top - columnCards[index - 1].bottom;
-        assert.ok(gap >= 0 && gap <= 24, `Unexpected vertical hole of ${gap}px in a game column`);
-      }
-    }
-  }
+  await loadAllGames(page);
+  await auditCollectionPacking(page, 'English Playground');
 
   await page.screenshot({ path: path.join(outputDir, 'playground-en.png'), fullPage: true });
 
@@ -153,12 +180,29 @@ try {
     assert.equal(game.language, 'zh-CN', `${game.game} iframe must switch to Chinese`);
     assert.equal(game.title, chineseTitles[game.game], `${game.game} title must be Chinese`);
   }
+  await auditCollectionPacking(page, 'Chinese Playground');
 
   const runnerSource = await page
     .locator('pocket-game[game="runner"]')
     .evaluate((game) => game.shadowRoot?.querySelector('iframe')?.getAttribute('src'));
   assert.equal(new URL(runnerSource).searchParams.get('lang'), 'zh');
   await page.screenshot({ path: path.join(outputDir, 'playground-zh.png'), fullPage: true });
+
+  await page.setViewportSize({ width: 761, height: 900 });
+  const boundaryColumnCounts = await page.locator('.collection').evaluateAll((sections) =>
+    sections.map(
+      (section) =>
+        new Set(
+          [...section.querySelectorAll('.game-card')].map((card) =>
+            Math.round(card.getBoundingClientRect().left),
+          ),
+        ).size,
+    ),
+  );
+  assert.ok(
+    boundaryColumnCounts.every((count) => count === 2),
+    '761px Playground must retain two card columns',
+  );
 
   for (const width of [760, 580, 320]) {
     await page.setViewportSize({ width, height: 900 });
@@ -234,36 +278,13 @@ try {
     const standaloneGames = await standalonePage
       .locator('pocket-game')
       .evaluateAll((games) => games.map((game) => game.getAttribute('game')));
-    assert.deepEqual(standaloneGames, gameIds, 'Standalone lab must render all eleven games');
+    assert.deepEqual(
+      [...standaloneGames].sort(),
+      [...gameIds].sort(),
+      'Standalone lab must render all fourteen games once',
+    );
 
-    const standaloneCollections = await standalonePage
-      .locator('.collection')
-      .evaluateAll((sections) =>
-        sections.map((section) => {
-          const cards = [...section.querySelectorAll('.game-card')].map((card) => {
-            const rect = card.getBoundingClientRect();
-            return { left: Math.round(rect.left), top: rect.top, bottom: rect.bottom };
-          });
-          return cards;
-        }),
-      );
-    for (const [collectionIndex, cards] of standaloneCollections.entries()) {
-      const columnLefts = [...new Set(cards.map((card) => card.left))];
-      assert.equal(
-        columnLefts.length,
-        2,
-        `Standalone collection ${collectionIndex + 1} must use two card columns`,
-      );
-      for (const columnLeft of columnLefts) {
-        const columnCards = cards
-          .filter((card) => card.left === columnLeft)
-          .sort((a, b) => a.top - b.top);
-        for (let index = 1; index < columnCards.length; index += 1) {
-          const gap = columnCards[index].top - columnCards[index - 1].bottom;
-          assert.ok(gap >= 0 && gap <= 24, `Standalone game column has a ${gap}px hole`);
-        }
-      }
-    }
+    await auditCollectionPacking(standalonePage, 'Standalone lab');
 
     await standalonePage.locator('[data-language="zh"]').click();
     await standalonePage.waitForURL(/lang=zh-CN/);

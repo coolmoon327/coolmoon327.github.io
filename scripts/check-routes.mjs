@@ -8,14 +8,17 @@ const gameIds = [
   'runner',
   'bandit',
   'qpath',
+  'return',
   'movable',
   'pinching',
   'secrecy',
+  'hopper',
   'orbit',
   'signature',
   'echo',
   'match',
   'merge',
+  'resource',
 ];
 
 const coreRoutes = [
@@ -44,14 +47,14 @@ const coreRoutes = [
   {
     path: '/games/',
     lang: 'en',
-    marker: 'Eleven small, dependency-free games',
+    marker: 'Fourteen small, dependency-free games',
     switchHref: '/zh/games/',
     games: true,
   },
   {
     path: '/playground/',
     lang: 'en',
-    marker: 'Eleven small, dependency-free games',
+    marker: 'Fourteen small, dependency-free games',
     switchHref: '/zh/playground/',
     games: true,
   },
@@ -62,7 +65,7 @@ const coreRoutes = [
     switchHref: '/zh/owner/',
     owner: true,
   },
-  { path: '/zh/', lang: 'zh-CN', marker: '近期已接收与已发表工作', switchHref: '/' },
+  { path: '/zh/', lang: 'zh-CN', marker: '近期发表与录用论文', switchHref: '/' },
   {
     path: '/zh/research/',
     lang: 'zh-CN',
@@ -73,7 +76,7 @@ const coreRoutes = [
   {
     path: '/zh/research/openraas-thesis/',
     lang: 'zh-CN',
-    marker: '公开工程脉络',
+    marker: '相关开源实现',
     switchHref: '/research/openraas-thesis/',
   },
   {
@@ -83,18 +86,18 @@ const coreRoutes = [
     switchHref: '/publications/',
   },
   { path: '/zh/projects/', lang: 'zh-CN', marker: '项目', switchHref: '/projects/' },
-  { path: '/zh/blog/', lang: 'zh-CN', marker: '以后文章会发布在这里', switchHref: '/blog/' },
+  { path: '/zh/blog/', lang: 'zh-CN', marker: '文章将在这里陆续发布', switchHref: '/blog/' },
   {
     path: '/zh/games/',
     lang: 'zh-CN',
-    marker: '十一款无需依赖的小型游戏',
+    marker: '这里有 14 款无需额外依赖的轻量小游戏',
     switchHref: '/games/',
     games: true,
   },
   {
     path: '/zh/playground/',
     lang: 'zh-CN',
-    marker: '十一款无需依赖的小型游戏',
+    marker: '这里有 14 款无需额外依赖的轻量小游戏',
     switchHref: '/playground/',
     games: true,
   },

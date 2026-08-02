@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title data-en="Jammer Hop" data-zh="频跳突围">Jammer Hop</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main
+      class="game"
+      id="game"
+      aria-labelledby="game-title"
+      data-phase="idle"
+      data-channel-count="3"
+      data-total-slots="20"
+      data-slot="0"
+      data-slot-ms="1800"
+      data-jammer-channel="0"
+      data-selected-channel="1"
+      data-jammer-mode="sweep"
+      data-successes="0"
+      data-collisions="0"
+      data-throughput="0"
+      data-last-result="none"
+      data-timer-active="false"
+      data-safe-channel-count="2"
+    >
+      <header class="topline">
+        <div>
+          <p class="kicker" data-en="Pocket network game" data-zh="迷你抗干扰游戏">
+            Pocket network game
+          </p>
+          <h1 id="game-title" data-en="Jammer Hop" data-zh="频跳突围">Jammer Hop</h1>
+        </div>
+        <button
+          class="reset-button"
+          id="reset-button"
+          type="button"
+          data-en="Reset"
+          data-zh="重置"
+          data-aria-en="Reset the round"
+          data-aria-zh="重置本局"
+        >
+          Reset
+        </button>
+      </header>
+
+      <section
+        class="metrics"
+        data-aria-en="Round statistics"
+        data-aria-zh="本局统计"
+        aria-label="Round statistics"
+      >
+        <div class="metric">
+          <span data-en="Throughput" data-zh="吞吐率">Throughput</span>
+          <output id="throughput">0%</output>
+        </div>
+        <div class="metric">
+          <span data-en="Delivered" data-zh="已送达">Delivered</span>
+          <output id="successes">0</output>
+        </div>
+        <div class="metric">
+          <span data-en="Collisions" data-zh="受扰">Collisions</span>
+          <output id="collisions">0</output>
+        </div>
+        <div class="metric">
+          <span data-en="Slot" data-zh="时隙">Slot</span>
+          <output id="slot-count">0/20</output>
+        </div>
+      </section>
+
+      <section class="jammer-panel" aria-labelledby="jammer-heading">
+        <div>
+          <h2 id="jammer-heading" data-en="Jammer occupancy" data-zh="干扰机占用信道">
+            Jammer occupancy
+          </h2>
+          <p id="jammer-status">Channel 1 is occupied. Two safe channels remain.</p>
+        </div>
+        <span class="mode" id="jammer-mode">Sweep</span>
+      </section>
+
+      <div
+        class="channel-group"
+        id="channel-group"
+        role="group"
+        aria-label="Frequency channels"
+        data-aria-en="Frequency channels"
+        data-aria-zh="频率信道"
+      >
+        <button class="channel" type="button" data-channel="0" aria-pressed="false">
+          <span>CH 1</span><small>2.4 GHz</small>
+        </button>
+        <button class="channel" type="button" data-channel="1" aria-pressed="true">
+          <span>CH 2</span><small>5.2 GHz</small>
+        </button>
+        <button class="channel" type="button" data-channel="2" aria-pressed="false">
+          <span>CH 3</span><small>5.8 GHz</small>
+        </button>
+      </div>
+
+      <div class="slot-progress" id="slot-progress" aria-hidden="true"></div>
+
+      <section class="trail-section" aria-labelledby="trail-title">
+        <div class="trail-heading">
+          <h2 id="trail-title" data-en="Time–frequency trail" data-zh="时频轨迹">
+            Time–frequency trail
+          </h2>
+          <div class="legend" aria-hidden="true">
+            <span><i class="key jammer-key"></i><b data-en="jam" data-zh="干扰">jam</b></span>
+            <span><i class="key packet-key"></i><b data-en="packet" data-zh="数据包">packet</b></span>
+          </div>
+        </div>
+        <div class="trail" aria-hidden="true">
+          <div class="trail-labels">
+            <span>CH 1</span><span>CH 2</span><span>CH 3</span>
+          </div>
+          <div class="trail-grid" id="trail-grid"></div>
+        </div>
+      </section>
+
+      <p class="prompt" id="prompt">
+        Pick either safe channel, then start. One packet sends when each slot closes.
+      </p>
+
+      <button class="action-button" id="action-button" type="button">Start round</button>
+      <output class="sr-only" id="live-status" aria-live="polite" aria-atomic="true"></output>
+    </main>
+
+    <script src="../shared/runtime.js"></script>
+    <script src="./game.js"></script>
+  </body>
+</html>

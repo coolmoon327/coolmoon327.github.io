@@ -40,14 +40,17 @@ const gameHeights = {
   runner: 360,
   bandit: 430,
   qpath: 500,
+  return: 430,
   movable: 720,
   pinching: 680,
   secrecy: 520,
+  hopper: 520,
   orbit: 360,
   signature: 260,
   echo: 430,
   match: 590,
-  merge: 680,
+  merge: 700,
+  resource: 540,
 };
 
 const viewportScenarios = [

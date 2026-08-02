@@ -11,6 +11,21 @@ const { locale } = Astro.props;
 const content = site.playground.locales[locale];
 const language = locale === 'zh' ? 'zh-CN' : 'en';
 const assetBase = withBase('/pocket-play/');
+
+type PlaygroundGame = (typeof site.playground.games)[number];
+
+const balanceGameColumns = (games: PlaygroundGame[]) => {
+  const columns: [PlaygroundGame[], PlaygroundGame[]] = [[], []];
+  const heights = [0, 0];
+
+  for (const game of games) {
+    const columnIndex = heights[0] <= heights[1] ? 0 : 1;
+    columns[columnIndex].push(game);
+    heights[columnIndex] += game.height;
+  }
+
+  return columns;
+};
 ---
 
 <Base title={content.title} description={content.intro}>
@@ -29,8 +44,7 @@ const assetBase = withBase('/pocket-play/');
     {
       content.sections.map((section) => {
         const games = site.playground.games.filter((game) => game.category === section.id);
-        const splitIndex = Math.ceil(games.length / 2);
-        const gameColumns = [games.slice(0, splitIndex), games.slice(splitIndex)];
+        const gameColumns = balanceGameColumns(games);
 
         return (
           <section class="collection" aria-labelledby={`playground-${section.id}`}>

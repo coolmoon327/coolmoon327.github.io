@@ -1,7 +1,7 @@
 [
   {
     "id": "runner",
-    "title": "奖励跃迁",
+    "title": "奖励跑酷",
     "title_en": "Reward Runner",
     "kind": "dynamic",
     "session": "20 秒–2 分钟",
@@ -12,7 +12,7 @@
   },
   {
     "id": "bandit",
-    "title": "探索利用实验",
+    "title": "探索与利用",
     "title_en": "Explore–Exploit Lab",
     "kind": "rl",
     "session": "15 次行动",
@@ -23,7 +23,7 @@
   },
   {
     "id": "qpath",
-    "title": "策略航线",
+    "title": "Q 学习寻路",
     "title_en": "Q-Path Lab",
     "kind": "rl",
     "session": "20–60 秒",
@@ -33,8 +33,19 @@
     "inputs": ["pointer", "keyboard"]
   },
   {
+    "id": "return",
+    "title": "折扣回报",
+    "title_en": "Return Route",
+    "kind": "rl",
+    "session": "30 秒–2 分钟",
+    "session_en": "30 sec–2 min",
+    "preferred_height": 430,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
     "id": "movable",
-    "title": "可移动天线实验室",
+    "title": "可移动天线实验",
     "title_en": "Movable Antenna Lab",
     "kind": "research",
     "session": "1–4 分钟",
@@ -56,7 +67,7 @@
   },
   {
     "id": "secrecy",
-    "title": "保密波束实验室",
+    "title": "保密波束实验",
     "title_en": "Secrecy Beam Lab",
     "kind": "research",
     "session": "30 秒–3 分钟",
@@ -66,8 +77,19 @@
     "inputs": ["pointer", "keyboard"]
   },
   {
+    "id": "hopper",
+    "title": "频跳突围",
+    "title_en": "Jammer Hop",
+    "kind": "research",
+    "session": "30 秒–3 分钟",
+    "session_en": "30 sec–3 min",
+    "preferred_height": 520,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
     "id": "orbit",
-    "title": "月轨校准",
+    "title": "月轨对准",
     "title_en": "Orbit Alignment",
     "kind": "micro",
     "session": "10–20 秒",
@@ -78,7 +100,7 @@
   },
   {
     "id": "signature",
-    "title": "星屑签名",
+    "title": "星图签名",
     "title_en": "Stardust Signature",
     "kind": "micro",
     "session": "5–30 秒",
@@ -89,7 +111,7 @@
   },
   {
     "id": "echo",
-    "title": "记忆回声",
+    "title": "记忆回响",
     "title_en": "Memory Echo",
     "kind": "short",
     "session": "30 秒–3 分钟",
@@ -100,7 +122,7 @@
   },
   {
     "id": "match",
-    "title": "翻牌花园",
+    "title": "花园配对",
     "title_en": "Memory Garden",
     "kind": "session",
     "session": "1–4 分钟",
@@ -111,12 +133,23 @@
   },
   {
     "id": "merge",
-    "title": "方块花园",
+    "title": "合成花园",
     "title_en": "Merge Garden",
     "kind": "session",
     "session": "3–10 分钟",
     "session_en": "3–10 min",
-    "preferred_height": 680,
+    "preferred_height": 700,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "resource",
+    "title": "资源连线",
+    "title_en": "Resource Net",
+    "kind": "session",
+    "session": "1–5 分钟",
+    "session_en": "1–5 min",
+    "preferred_height": 540,
     "min_width": 280,
     "inputs": ["pointer", "keyboard"]
   }
