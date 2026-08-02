@@ -677,7 +677,7 @@ export const site = {
         {
           role: 'Main advisor',
           name: 'Paschalis Sofotasios',
-          href: 'https://khazna.ku.ac.ae/en/persons/paschalis-sofotasios-7/',
+          href: 'https://www.ku.ac.ae/college-people/paschalis-sofotasios',
         },
         {
           role: 'Co-advisor',
@@ -785,7 +785,7 @@ export const site = {
         {
           role: '主导师',
           name: 'Paschalis Sofotasios',
-          href: 'https://khazna.ku.ac.ae/en/persons/paschalis-sofotasios-7/',
+          href: 'https://www.ku.ac.ae/college-people/paschalis-sofotasios',
         },
         {
           role: '联合导师',

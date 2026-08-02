@@ -207,6 +207,7 @@ async function measurePage(page) {
     const interiorHeader = document.querySelector('.interior > header');
     const heroHeading = interiorHeader?.querySelector('h1');
     const heroIntro = interiorHeader?.querySelector('.intro');
+    const heroHeaderStyle = interiorHeader ? getComputedStyle(interiorHeader) : null;
     const headingRange = heroHeading ? document.createRange() : null;
     headingRange?.selectNodeContents(heroHeading);
     const headingLines = headingRange
@@ -281,6 +282,11 @@ async function measurePage(page) {
                 top: heroIntroRect.top,
                 width: heroIntroRect.width,
               },
+              headerColumnGap: Number.parseFloat(heroHeaderStyle?.columnGap || '') || 0,
+              headerGridColumns: (heroHeaderStyle?.gridTemplateColumns || '')
+                .split(' ')
+                .map((track) => Number.parseFloat(track))
+                .filter(Number.isFinite),
               introLines,
               introTextWrap: getComputedStyle(heroIntro).getPropertyValue('text-wrap') || '',
             }
@@ -484,7 +490,7 @@ async function auditSiteMatrix(browser) {
           metrics,
         );
       }
-      if (route.endsWith('/publications/') && scenario.width >= 901 && metrics.hero) {
+      if (route === '/publications/' && scenario.width >= 901 && metrics.hero) {
         const headingRight = Math.max(...metrics.hero.headingLines.map((line) => line.right));
         const horizontalGap = metrics.hero.intro.left - headingRight;
         if (
@@ -499,6 +505,29 @@ async function auditSiteMatrix(browser) {
             scenario.name,
             'Publication title and introduction are not tightly separated without overlap',
             { ...metrics.hero, horizontalGap },
+          );
+        }
+      }
+      if (route === '/zh/publications/' && scenario.width >= 721 && metrics.hero) {
+        const [firstTrack, secondTrack] = metrics.hero.headerGridColumns;
+        const trackRatio = firstTrack / secondTrack;
+        const headingRight = Math.max(...metrics.hero.headingLines.map((line) => line.right));
+        const horizontalGap = metrics.hero.intro.left - headingRight;
+        if (
+          metrics.hero.headingLines.length !== 1 ||
+          metrics.hero.headingLineCharacterCounts.join(',') !== '2' ||
+          metrics.hero.headerGridColumns.length !== 2 ||
+          Math.abs(metrics.hero.headerColumnGap - 48) > 1 ||
+          trackRatio < 0.58 ||
+          trackRatio > 0.62 ||
+          horizontalGap < metrics.hero.headerColumnGap - 1
+        ) {
+          addFailure(
+            'site-hero',
+            route,
+            scenario.name,
+            'Chinese publication hero does not use the shared two-column interior spacing',
+            { ...metrics.hero, horizontalGap, trackRatio },
           );
         }
       }

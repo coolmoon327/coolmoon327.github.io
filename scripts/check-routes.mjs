@@ -3,6 +3,7 @@ const previewUrl = new URL(baseUrl);
 const basePath = previewUrl.pathname.replace(/\/$/, '');
 const routeUrl = (path) => new URL(`${basePath}${path}`, previewUrl.origin);
 const routeHref = (path) => `${basePath}${path}` || '/';
+const paschalisProfileUrl = 'https://www.ku.ac.ae/college-people/paschalis-sofotasios';
 const gameIds = [
   'runner',
   'bandit',
@@ -24,6 +25,7 @@ const coreRoutes = [
     lang: 'en',
     marker: 'Current doctoral research',
     switchHref: '/zh/research/',
+    advisorHref: paschalisProfileUrl,
   },
   {
     path: '/research/openraas-thesis/',
@@ -66,6 +68,7 @@ const coreRoutes = [
     lang: 'zh-CN',
     marker: '当前博士研究',
     switchHref: '/research/',
+    advisorHref: paschalisProfileUrl,
   },
   {
     path: '/zh/research/openraas-thesis/',
@@ -132,6 +135,12 @@ for (const route of coreRoutes) {
   }
   if (!html.includes(`href="${routeHref(route.switchHref)}"`)) {
     failures.push(`${route.path}: missing corresponding language switch`);
+  }
+  if (route.advisorHref && !html.includes(`href="${route.advisorHref}"`)) {
+    failures.push(`${route.path}: missing Paschalis Sofotasios KU profile link`);
+  }
+  if (route.advisorHref && html.includes('khazna.ku.ac.ae/en/persons/paschalis-sofotasios')) {
+    failures.push(`${route.path}: still contains the retired Paschalis Sofotasios Khazna link`);
   }
   if (route.games) {
     const embeddedGames = [...html.matchAll(/<pocket-game\b[^>]*\bgame="([^"]+)"/g)].map(

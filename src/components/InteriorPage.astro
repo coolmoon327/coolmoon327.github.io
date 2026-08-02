@@ -21,7 +21,7 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
   <div class="interior page-container">
     <header
       class:list={{
-        'publication-header': kind === 'publications',
+        'publication-header': kind === 'publications' && locale === 'en',
         'owner-header--zh': kind === 'owner' && locale === 'zh',
       }}
     >
