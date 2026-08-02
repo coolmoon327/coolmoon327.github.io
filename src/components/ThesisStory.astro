@@ -326,12 +326,20 @@ const content = site.thesis[locale];
   }
 
   @media (max-width: 760px) {
+    .thesis-page {
+      overflow-wrap: anywhere;
+    }
+
+    .thesis-hero h1 {
+      font-size: min(3rem, 18vw);
+    }
+
     .thesis-facts,
     .overview-grid,
     .section-heading,
     .artifact-grid,
     .record-card {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .thesis-facts .title-fact {
@@ -339,7 +347,7 @@ const content = site.thesis[locale];
     }
 
     .contributions ol {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .contributions li {
@@ -347,7 +355,23 @@ const content = site.thesis[locale];
     }
 
     .record-card > a {
+      max-width: 100%;
+      min-width: 0;
       justify-self: start;
+      overflow-wrap: anywhere;
+      text-align: center;
+      white-space: normal;
+    }
+
+    .record-card > * {
+      min-width: 0;
+    }
+  }
+
+  @media (max-width: 240px) {
+    .thesis-hero h1 {
+      font-size: 2.25rem;
+      overflow-wrap: anywhere;
     }
   }
 </style>

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Arrange four pinching antennas to cover users without overlapping beams."
+    />
+    <title data-en="Pinching Antenna Lab" data-zh="夹持天线实验">
+      Pinching Antenna Lab
+    </title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="lab" id="lab" aria-labelledby="game-title">
+      <header class="intro">
+        <div>
+          <p
+            class="eyebrow"
+            data-en="WAVEGUIDE BEAM LAB"
+            data-zh="波导波束实验"
+          >
+            WAVEGUIDE BEAM LAB
+          </p>
+          <h1
+            id="game-title"
+            data-en="Pinching Antenna Lab"
+            data-zh="夹持天线实验"
+          >
+            Pinching Antenna Lab
+          </h1>
+        </div>
+        <span class="pinch-count" data-en="4 pinches" data-zh="4 个夹持点"
+          >4 pinches</span
+        >
+      </header>
+
+      <p
+        class="help"
+        id="field-help"
+        data-en="Drag a numbered pinch along the guide. Cross the guide to flip its beam; keyboard users can use ← → and ↑ ↓."
+        data-zh="沿波导拖动编号夹持点；拖过波导可翻转波束，键盘可用 ← → 与 ↑ ↓。"
+      >
+        Drag a numbered pinch along the guide. Cross the guide to flip its beam;
+        keyboard users can use ← → and ↑ ↓.
+      </p>
+
+      <section
+        class="field"
+        id="field"
+        role="group"
+        aria-labelledby="game-title"
+        aria-describedby="field-help status"
+        aria-busy="false"
+        data-optimizing="false"
+        data-config=""
+      >
+        <span
+          class="direction-label direction-up"
+          data-en="UPWARD"
+          data-zh="向上发射"
+          >UPWARD</span
+        >
+        <span
+          class="direction-label direction-down"
+          data-en="DOWNWARD"
+          data-zh="向下发射"
+        >
+          DOWNWARD
+        </span>
+
+        <svg
+          class="field-graphic"
+          viewBox="0 0 1000 560"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <defs id="overlap-defs"></defs>
+          <g id="coverage-layer"></g>
+          <g id="overlap-layer"></g>
+          <rect
+            class="waveguide-shadow"
+            x="55"
+            y="270"
+            width="890"
+            height="20"
+            rx="10"
+          ></rect>
+          <rect
+            class="waveguide"
+            x="55"
+            y="274"
+            width="890"
+            height="12"
+            rx="6"
+          ></rect>
+          <line class="guide-core" x1="70" y1="280" x2="930" y2="280"></line>
+          <g id="user-layer"></g>
+        </svg>
+
+        <div class="pinch-layer" id="pinch-layer"></div>
+      </section>
+
+      <div class="legend" aria-hidden="true">
+        <span
+          ><i class="coverage-swatch"></i
+          ><span data-en="Coverage" data-zh="定向覆盖">Coverage</span></span
+        >
+        <span
+          ><i class="overlap-swatch"></i
+          ><span data-en="Overlap" data-zh="干扰重叠">Overlap</span></span
+        >
+        <span
+          ><i class="served-swatch"></i
+          ><span data-en="Clean user" data-zh="无干扰用户"
+            >Clean user</span
+          ></span
+        >
+        <span
+          ><i class="missed-swatch"></i
+          ><span data-en="Uncovered" data-zh="未覆盖">Uncovered</span></span
+        >
+      </div>
+
+      <dl class="metrics" aria-label="Live antenna metrics">
+        <div>
+          <dt data-en="Coverage" data-zh="覆盖率">Coverage</dt>
+          <dd><output id="coverage">0%</output></dd>
+        </div>
+        <div>
+          <dt data-en="Interference" data-zh="干扰率">Interference</dt>
+          <dd><output id="interference">0%</output></dd>
+        </div>
+        <div>
+          <dt data-en="Clean users" data-zh="无干扰成功用户">Clean users</dt>
+          <dd><output id="served">0 / 18</output></dd>
+        </div>
+      </dl>
+
+      <div class="controls">
+        <button
+          class="secondary"
+          id="randomize"
+          type="button"
+          data-en="Random scene"
+          data-zh="随机场景"
+        >
+          Random scene
+        </button>
+        <button
+          class="primary"
+          id="optimize"
+          type="button"
+          data-en="Find optimum"
+          data-zh="一键最优搜索"
+        >
+          Find optimum
+        </button>
+      </div>
+
+      <p
+        class="status"
+        id="status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-en="Move the four pinches to serve each user with exactly one beam."
+        data-zh="移动四个夹持点，让每位用户只被一束波束覆盖。"
+      >
+        Move the four pinches to serve each user with exactly one beam.
+      </p>
+    </main>
+
+    <script src="../shared/runtime.js"></script>
+    <script src="./game.js"></script>
+  </body>
+</html>

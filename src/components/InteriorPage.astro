@@ -342,23 +342,53 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
   }
 
   @media (max-width: 720px) {
+    .interior {
+      overflow-wrap: anywhere;
+    }
+
+    h1 {
+      font-size: min(3rem, 15vw);
+    }
+
     header {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 1.5rem;
       margin-bottom: 3rem;
     }
 
     .project-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .record-note {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 0.5rem;
     }
 
     .publication-list li {
-      grid-template-columns: 3rem 1fr;
+      grid-template-columns: 3rem minmax(0, 1fr);
+    }
+
+    header > *,
+    .record-note > *,
+    .publication-list li > * {
+      min-width: 0;
+    }
+
+    .publication-list li > div {
+      overflow-wrap: anywhere;
+    }
+  }
+
+  @media (max-width: 240px) {
+    h1 {
+      overflow-wrap: anywhere;
+      font-size: clamp(1.9rem, 15vw, 3rem);
+    }
+
+    .publication-list li {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.5rem;
     }
   }
 </style>

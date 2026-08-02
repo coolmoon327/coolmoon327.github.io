@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#eef4f3" />
+    <title data-en="Secrecy Beam Lab" data-zh="保密波束实验室">
+      Secrecy Beam Lab
+    </title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="game" aria-labelledby="game-title">
+      <header class="game-header">
+        <div>
+          <p
+            class="eyebrow"
+            data-en="PHYSICAL-LAYER SECURITY"
+            data-zh="物理层安全"
+          >
+            PHYSICAL-LAYER SECURITY
+          </p>
+          <h1
+            id="game-title"
+            data-en="Secrecy Beam Lab"
+            data-zh="保密波束实验室"
+          >
+            Secrecy Beam Lab
+          </h1>
+        </div>
+        <div class="score-card">
+          <span data-en="Secrecy score" data-zh="保密得分">Secrecy score</span>
+          <output id="secrecy-score" aria-label="Secrecy score">0</output>
+        </div>
+      </header>
+
+      <div
+        class="field"
+        id="field"
+        role="slider"
+        tabindex="0"
+        aria-valuemin="0"
+        aria-valuemax="359"
+        aria-valuenow="0"
+        aria-label="Alice antenna bearing"
+        data-aria-en="Alice antenna bearing"
+        data-aria-zh="Alice 天线方位"
+        aria-describedby="control-help"
+        data-optimizing="false"
+      >
+        <svg id="scene" viewBox="0 0 360 210" aria-hidden="true">
+          <defs>
+            <linearGradient id="beam-fill" x1="0" x2="1">
+              <stop offset="0" stop-color="currentColor" stop-opacity="0.34" />
+              <stop offset="1" stop-color="currentColor" stop-opacity="0" />
+            </linearGradient>
+            <linearGradient id="reflection-fill" x1="0" x2="1">
+              <stop offset="0" stop-color="currentColor" stop-opacity="0.2" />
+              <stop offset="1" stop-color="currentColor" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+
+          <g id="reflection-layer"></g>
+          <path class="beam" id="beam"></path>
+          <line class="beam-axis" id="beam-axis"></line>
+          <g id="path-layer"></g>
+
+          <g class="node alice" transform="translate(50 105)">
+            <circle class="node-halo" r="17"></circle>
+            <circle class="node-core" r="10"></circle>
+            <g id="antenna">
+              <path class="dish" d="M 7 -9 Q 20 0 7 9 Q 12 0 7 -9 Z"></path>
+              <line x1="8" y1="0" x2="25" y2="0"></line>
+              <circle cx="27" cy="0" r="3"></circle>
+            </g>
+            <text y="31">Alice</text>
+          </g>
+
+          <g class="node bob" id="bob-node">
+            <circle class="node-halo" r="17"></circle>
+            <circle class="node-core" r="10"></circle>
+            <path d="M -4 0 L -1 4 L 6 -5"></path>
+            <text y="31">Bob</text>
+          </g>
+
+          <g class="node eve" id="eve-node">
+            <circle class="node-halo" r="17"></circle>
+            <circle class="node-core" r="10"></circle>
+            <path d="M -5 -5 L 5 5 M 5 -5 L -5 5"></path>
+            <text y="31">Eve</text>
+          </g>
+        </svg>
+
+        <div class="bearing-chip">
+          <span data-en="Bearing" data-zh="方位">Bearing</span>
+          <output id="bearing">0°</output>
+        </div>
+      </div>
+
+      <div
+        class="links"
+        aria-label="Link quality"
+        data-aria-en="Link quality"
+        data-aria-zh="链路质量"
+      >
+        <div class="link-card bob-link-card">
+          <span>Bob</span>
+          <output id="bob-link">—</output>
+        </div>
+        <div class="link-card eve-link-card">
+          <span>Eve</span>
+          <output id="eve-link">—</output>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button
+          class="secondary"
+          id="randomize"
+          type="button"
+          data-en="New scene"
+          data-zh="随机场景"
+        >
+          New scene
+        </button>
+        <button
+          class="primary"
+          id="optimize"
+          type="button"
+          data-en="Find best bearing"
+          data-zh="搜索最佳方位"
+        >
+          Find best bearing
+        </button>
+      </div>
+
+      <p class="status" id="status" aria-live="polite"></p>
+      <p
+        class="help"
+        id="control-help"
+        data-en="Drag inside the channel, or focus it and use the arrow keys. Dashed rays are simplified specular reflections."
+        data-zh="在信道图内拖拽，或聚焦后使用方向键。虚线表示简化的镜面反射路径。"
+      >
+        Drag inside the channel, or focus it and use the arrow keys. Dashed rays
+        are simplified specular reflections.
+      </p>
+    </main>
+
+    <script src="../shared/runtime.js"></script>
+    <script src="./game.js"></script>
+  </body>
+</html>

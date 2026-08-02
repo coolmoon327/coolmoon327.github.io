@@ -923,6 +923,51 @@ export const site = {
         },
       },
       {
+        id: 'movable',
+        category: 'wireless',
+        height: 720,
+        title: { en: 'Movable Antenna Lab', zh: '可移动天线实验室' },
+        meta: { en: 'Antenna geometry · 1–4 min', zh: '天线几何 · 1–4分钟' },
+        description: {
+          en: 'Steer twelve sector antennas across four well-spaced base stations, inspect coverage and interference, then watch a search algorithm improve the layout.',
+          zh: '调整四个均匀分散基站上的十二副扇区天线，观察覆盖与干扰，再看搜索算法如何改进配置。',
+        },
+        tags: {
+          en: ['12 steerable beams', 'Coverage map', 'Animated search'],
+          zh: ['十二束可调波束', '覆盖热图', '动画搜索'],
+        },
+      },
+      {
+        id: 'pinching',
+        category: 'wireless',
+        height: 680,
+        title: { en: 'Pinching Antenna Lab', zh: '夹持天线实验' },
+        meta: { en: 'Waveguide placement · 1–4 min', zh: '波导布设 · 1–4分钟' },
+        description: {
+          en: 'Slide four radiating pinch points along a waveguide, flip their emitting side, and balance served users against overlapping beams.',
+          zh: '沿波导滑动四个辐射夹持点、切换发射侧，在成功通信用户与重叠波束之间寻找平衡。',
+        },
+        tags: {
+          en: ['Drag positions', 'Flip direction', 'Animated search'],
+          zh: ['拖拽位置', '切换方向', '动画搜索'],
+        },
+      },
+      {
+        id: 'secrecy',
+        category: 'wireless',
+        height: 520,
+        title: { en: 'Secrecy Beam Lab', zh: '保密波束实验室' },
+        meta: { en: 'Secure beam steering · 30 sec–3 min', zh: '保密波束控制 · 30秒–3分钟' },
+        description: {
+          en: 'Aim Alice’s directional beam toward Bob while keeping Eve outside both the direct and reflected signal paths.',
+          zh: '调整 Alice 的定向波束，在覆盖 Bob 的同时，让 Eve 避开直达与反射信号路径。',
+        },
+        tags: {
+          en: ['Alice / Bob / Eve', 'Reflectors', 'Secrecy score'],
+          zh: ['Alice / Bob / Eve', '反射面', '保密得分'],
+        },
+      },
+      {
         id: 'orbit',
         category: 'micro',
         height: 360,
@@ -997,10 +1042,10 @@ export const site = {
     ],
     locales: {
       en: {
-        eyebrow: 'Motion · Learning · A small pause',
+        eyebrow: 'Motion · Learning · Wireless systems · A small pause',
         title: 'Playground',
         intro:
-          'Eight small, dependency-free games live inside the site rather than taking it over. Three turn reinforcement-learning ideas into immediate motion; the rest are here for a quick pause.',
+          'Eleven small, dependency-free games live inside the site rather than taking it over. Three wireless-system sandboxes turn antenna placement, interference, and physical-layer security into direct interactions; three more explore reinforcement learning.',
         badges: ['Card sized', 'Bilingual', 'Theme aware', 'Static hosting'],
         openLabel: 'Open standalone',
         miniGameLabel: 'mini game',
@@ -1013,15 +1058,22 @@ export const site = {
               'Fast feedback first, terminology second: reward, exploration, and learned policy become direct interactions.',
           },
           {
-            id: 'micro',
+            id: 'wireless',
             number: '02',
+            title: 'Wireless systems you can steer',
+            intro:
+              'Simplified geometric models make coverage, interference, reflection, and secure beam steering visible and playable.',
+          },
+          {
+            id: 'micro',
+            number: '03',
             title: 'Small moments in the page',
             intro:
               'Two-click interactions that can eventually sit beside essays, project notes, or quiet corners of the homepage.',
           },
           {
             id: 'casual',
-            number: '03',
+            number: '04',
             title: 'Stay a little longer',
             intro:
               'Familiar games for an idle minute, still constrained to an embeddable card rather than a full-screen takeover.',
@@ -1029,10 +1081,10 @@ export const site = {
         ],
       },
       zh: {
-        eyebrow: '动态 · 学习 · 一个小休止符',
+        eyebrow: '动态 · 学习 · 无线系统 · 一个小休止符',
         title: '小游戏实验室',
         intro:
-          '八款无需依赖的小型游戏已经住进个人主页，而不会喧宾夺主。其中三款把强化学习概念变成打开就能玩的动态交互，其余则适合短暂放空。',
+          '十一款无需依赖的小型游戏已经住进个人主页，而不会喧宾夺主。三款无线系统沙盒把天线布设、干扰与物理层安全变成直接交互，另有三款用于体验强化学习概念。',
         badges: ['卡片尺寸', '中英双语', '跟随主题', '纯静态托管'],
         openLabel: '独立打开',
         miniGameLabel: '小游戏',
@@ -1044,14 +1096,20 @@ export const site = {
             intro: '先给即时反馈，再讲术语：奖励、探索和学到的策略都变成直接交互。',
           },
           {
-            id: 'micro',
+            id: 'wireless',
             number: '02',
+            title: '可以亲手调整的无线系统',
+            intro: '用简化的几何模型，把覆盖、干扰、反射与保密波束控制变成看得见、可操作的过程。',
+          },
+          {
+            id: 'micro',
+            number: '03',
             title: '网页里的小彩蛋',
             intro: '两下就能完成的轻交互，以后可以自然放进文章、项目说明或主页角落。',
           },
           {
             id: 'casual',
-            number: '03',
+            number: '04',
             title: '无聊时多玩一会儿',
             intro: '熟悉、耐玩的小游戏，但仍被约束在可嵌入卡片内，不会独占整个页面。',
           },

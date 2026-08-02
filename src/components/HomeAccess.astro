@@ -274,6 +274,7 @@ const inputId = `home-access-password-${locale}`;
 <style>
   .home-access {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.25rem;
   }
 
@@ -480,18 +481,28 @@ const inputId = `home-access-password-${locale}`;
   }
 
   @media (max-width: 720px) {
+    .home-access {
+      overflow-wrap: anywhere;
+    }
+
     .unlock-panel,
     .security-note {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .service-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .input-row {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 0.55rem;
+    }
+
+    .unlock-panel > *,
+    .security-note > *,
+    .service-grid > * {
+      min-width: 0;
     }
 
     input,

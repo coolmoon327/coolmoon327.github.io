@@ -3,7 +3,19 @@ const previewUrl = new URL(baseUrl);
 const basePath = previewUrl.pathname.replace(/\/$/, '');
 const routeUrl = (path) => new URL(`${basePath}${path}`, previewUrl.origin);
 const routeHref = (path) => `${basePath}${path}` || '/';
-const gameIds = ['runner', 'bandit', 'qpath', 'orbit', 'signature', 'echo', 'match', 'merge'];
+const gameIds = [
+  'runner',
+  'bandit',
+  'qpath',
+  'movable',
+  'pinching',
+  'secrecy',
+  'orbit',
+  'signature',
+  'echo',
+  'match',
+  'merge',
+];
 
 const coreRoutes = [
   { path: '/', lang: 'en', marker: 'Yuhang Shen', switchHref: '/zh/' },
@@ -30,14 +42,14 @@ const coreRoutes = [
   {
     path: '/games/',
     lang: 'en',
-    marker: 'Eight small, dependency-free games',
+    marker: 'Eleven small, dependency-free games',
     switchHref: '/zh/games/',
     games: true,
   },
   {
     path: '/playground/',
     lang: 'en',
-    marker: 'Eight small, dependency-free games',
+    marker: 'Eleven small, dependency-free games',
     switchHref: '/zh/playground/',
     games: true,
   },
@@ -72,14 +84,14 @@ const coreRoutes = [
   {
     path: '/zh/games/',
     lang: 'zh-CN',
-    marker: '八款无需依赖的小型游戏',
+    marker: '十一款无需依赖的小型游戏',
     switchHref: '/games/',
     games: true,
   },
   {
     path: '/zh/playground/',
     lang: 'zh-CN',
-    marker: '八款无需依赖的小型游戏',
+    marker: '十一款无需依赖的小型游戏',
     switchHref: '/playground/',
     games: true,
   },

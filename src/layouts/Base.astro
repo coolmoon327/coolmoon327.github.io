@@ -210,8 +210,16 @@ const personJsonLd = isHome ? JSON.stringify({
       Re-applies after each View Transition swap to keep the theme consistent.
     -->
     <script is:inline define:vars={{ defaultTheme: site.theme.default }}>
+      function readStoredTheme() {
+        try {
+          return localStorage.getItem('theme');
+        } catch {
+          return null;
+        }
+      }
+
       function applyTheme() {
-        const stored = localStorage.getItem('theme');
+        const stored = readStoredTheme();
         let theme;
         if (stored === 'light' || stored === 'dark') {
           theme = stored;

@@ -13,7 +13,7 @@ const { label } = Astro.props;
   data-light-toggle
   title={label}
   aria-label={label}
-  style="padding: 0; border: 0; background-color: inherit; color: var(--global-text-color); width: 2rem; height: 2rem; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;"
+  style="padding: 0; border: 0; background-color: inherit; color: var(--global-text-color); width: 44px; height: 44px; flex: 0 0 44px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;"
 >
   <!-- Moon icon: shown in light mode (click to go dark) -->
   <span data-light-toggle-icon="moon">
@@ -71,9 +71,25 @@ const { label } = Astro.props;
     });
   }
 
+  function readStoredTheme(): string | null {
+    try {
+      return localStorage.getItem('theme');
+    } catch {
+      return null;
+    }
+  }
+
+  function storeTheme(theme: string): void {
+    try {
+      localStorage.setItem('theme', theme);
+    } catch {
+      // Storage can be unavailable in privacy-restricted browsing contexts.
+    }
+  }
+
   function applyTheme(theme: string) {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
+    storeTheme(theme);
     updateIcons(theme);
   }
 
@@ -102,7 +118,7 @@ const { label } = Astro.props;
 
   // Follow OS preference changes only when the user has no explicit stored preference
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-    if (!localStorage.getItem('theme')) {
+    if (!readStoredTheme()) {
       document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
       updateIcons(e.matches ? 'dark' : 'light');
     }

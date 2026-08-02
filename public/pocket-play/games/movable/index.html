@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A compact antenna-placement puzzle with draggable directional beams."
+    />
+    <title data-en="Movable Antenna Lab" data-zh="可移动天线实验室">
+      Movable Antenna Lab
+    </title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="lab" id="lab">
+      <header class="lab-header">
+        <div>
+          <p
+            class="eyebrow"
+            data-en="MICRO NETWORK LAB"
+            data-zh="微型网络实验室"
+          >
+            MICRO NETWORK LAB
+          </p>
+          <h1 data-en="Movable Antenna Lab" data-zh="可移动天线实验室">
+            Movable Antenna Lab
+          </h1>
+        </div>
+        <span
+          class="method-badge"
+          aria-label="Four stations, three antennas each"
+          data-aria-en="Four stations, three antennas each"
+          data-aria-zh="四个基站，每个基站三根天线"
+        >
+          MAXIMIN · 4×3
+        </span>
+      </header>
+
+      <p
+        class="intro"
+        data-en="Turn each antenna inside its own 120° sector. Cover users without creating hot spots."
+        data-zh="在各自的 120° 扇区内转动天线：尽量覆盖用户，同时避开干扰热区。"
+      >
+        Turn each antenna inside its own 120° sector. Cover users without
+        creating hot spots.
+      </p>
+
+      <section
+        class="metrics"
+        aria-label="Live network metrics"
+        data-aria-en="Live network metrics"
+        data-aria-zh="实时网络指标"
+      >
+        <div class="metric">
+          <span data-en="Coverage" data-zh="覆盖率">Coverage</span>
+          <output id="coverage" aria-live="polite">0%</output>
+        </div>
+        <div class="metric">
+          <span data-en="Interference" data-zh="干扰率">Interference</span>
+          <output id="interference" aria-live="polite">0%</output>
+        </div>
+        <div class="metric">
+          <span data-en="Clear users" data-zh="无干扰用户">Clear users</span>
+          <output id="served" aria-live="polite">0</output>
+        </div>
+      </section>
+
+      <figure class="field-figure">
+        <svg
+          id="field"
+          viewBox="0 0 100 100"
+          role="group"
+          aria-labelledby="field-title field-desc"
+          data-config=""
+          data-optimizing="false"
+        >
+          <title
+            id="field-title"
+            data-en="Interactive antenna coverage field"
+            data-zh="交互式天线覆盖场景"
+          >
+            Interactive antenna coverage field
+          </title>
+          <desc
+            id="field-desc"
+            data-en="Four base stations each have three directional antennas. Drag or focus an antenna and use arrow keys to rotate it within its colored sector."
+            data-zh="四个基站各有三根定向天线。拖动天线，或聚焦后使用方向键，让它在对应的彩色扇区内转动。"
+          >
+            Four base stations each have three directional antennas. Drag or
+            focus an antenna and use arrow keys to rotate it within its colored
+            sector.
+          </desc>
+          <defs>
+            <pattern
+              id="field-grid"
+              width="5"
+              height="5"
+              patternUnits="userSpaceOnUse"
+            >
+              <path class="grid-line" d="M 5 0 L 0 0 0 5" />
+            </pattern>
+            <filter id="soft-glow" x="-80%" y="-80%" width="260%" height="260%">
+              <feGaussianBlur stdDeviation="1.2" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <rect
+            class="field-background"
+            x="0"
+            y="0"
+            width="100"
+            height="100"
+            rx="3"
+          />
+          <rect
+            class="field-grid"
+            x="0"
+            y="0"
+            width="100"
+            height="100"
+            rx="3"
+          />
+          <g id="heat-layer" aria-hidden="true"></g>
+          <g id="beam-layer" aria-hidden="true"></g>
+          <g id="user-layer" aria-hidden="true"></g>
+          <g id="station-layer"></g>
+        </svg>
+
+        <figcaption class="legend">
+          <span
+            ><i class="legend-swatch coverage-swatch"></i
+            ><span data-en="covered" data-zh="已覆盖">covered</span></span
+          >
+          <span
+            ><i class="legend-swatch interference-swatch"></i
+            ><span data-en="interference" data-zh="干扰"
+              >interference</span
+            ></span
+          >
+          <span
+            ><i class="legend-user"></i
+            ><span data-en="user" data-zh="用户">user</span></span
+          >
+        </figcaption>
+      </figure>
+
+      <div class="controls">
+        <button id="optimize" class="button button-primary" type="button">
+          <span aria-hidden="true">✦</span>
+          <span data-en="Search best setup" data-zh="一键搜索最优配置"
+            >Search best setup</span
+          >
+        </button>
+        <button id="randomize" class="button button-secondary" type="button">
+          <span aria-hidden="true">↻</span>
+          <span data-en="Random scene" data-zh="随机场景">Random scene</span>
+        </button>
+      </div>
+
+      <p
+        id="status"
+        class="status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        Drag an antenna, or press the search button.
+      </p>
+      <p
+        id="announcer"
+        class="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      ></p>
+      <p
+        class="sr-only"
+        id="keyboard-help"
+        data-en="Keyboard: focus an antenna, use arrow keys to rotate, hold Shift for larger steps, or press Home and End for sector limits."
+        data-zh="键盘：聚焦一根天线后使用方向键转动；按住 Shift 可大步调整；Home 和 End 可跳到扇区边界。"
+      >
+        Keyboard: focus an antenna, use arrow keys to rotate, hold Shift for
+        larger steps, or press Home and End for sector limits.
+      </p>
+    </main>
+
+    <noscript>This game needs JavaScript to run.</noscript>
+    <script src="../shared/runtime.js"></script>
+    <script src="./game.js"></script>
+  </body>
+</html>

@@ -6,6 +6,12 @@
     runner: { title: { en: 'Reward Runner', zh: '奖励跃迁' }, height: 360 },
     bandit: { title: { en: 'Explore–Exploit Lab', zh: '探索利用实验' }, height: 430 },
     qpath: { title: { en: 'Q-Path Lab', zh: '策略航线' }, height: 500 },
+    movable: { title: { en: 'Movable Antenna Lab', zh: '可移动天线实验室' }, height: 720 },
+    pinching: { title: { en: 'Pinching Antenna Lab', zh: '夹持天线实验' }, height: 680 },
+    secrecy: {
+      title: { en: 'Secrecy Beam Lab', zh: '保密波束实验室' },
+      height: 520,
+    },
     orbit: { title: { en: 'Orbit Alignment', zh: '月轨校准' }, height: 360 },
     signature: { title: { en: 'Stardust Signature', zh: '星屑签名' }, height: 260 },
     echo: { title: { en: 'Memory Echo', zh: '记忆回声' }, height: 430 },

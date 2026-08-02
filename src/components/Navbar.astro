@@ -47,13 +47,13 @@ const items = locale.navbar.items;
   style="background-color: var(--global-bg-color); border-bottom: 1px solid var(--global-divider-color); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); height: 57px;"
 >
   <div
-    class="page-container flex h-full items-center justify-between"
+    class="navbar-shell page-container flex h-full items-center justify-between"
     style="max-width: 930px; margin: 0 auto; padding: 0 1rem;"
   >
     <!-- Brand -->
     <a
       href={`${site.base}${locale.homeHref}`}
-      class="text-lg font-bold"
+      class="navbar-brand text-lg font-bold"
       style="color: var(--global-text-color); text-decoration: none;"
     >
       {site.home[localeKey].name}
@@ -177,11 +177,12 @@ const items = locale.navbar.items;
     </div>
 
     <!-- Mobile controls (icon-only search + theme + hamburger) -->
-    <div class="flex items-center gap-2 md:hidden">
+    <div class="mobile-controls flex items-center gap-2 md:hidden">
       {
         site.features.search && (
           <button
             id="search-toggle"
+            class="mobile-icon-button"
             aria-label="Search"
             type="button"
             style="padding: 0; border: 0; background: inherit; color: var(--global-text-color); cursor: pointer;"
@@ -214,11 +215,11 @@ const items = locale.navbar.items;
       <ThemeToggle label={locale.toggleTheme} />
       <button
         id="navbar-toggler"
-        class="navbar-toggler collapsed"
+        class="navbar-toggler mobile-icon-button collapsed"
         aria-label={locale.toggleNavigation}
         aria-expanded="false"
         type="button"
-        style="padding: 0.25rem; border: 0; background: inherit; cursor: pointer;"
+        style="border: 0; background: inherit; cursor: pointer;"
       >
         <span
           class="icon-bar top-bar"
@@ -240,7 +241,7 @@ const items = locale.navbar.items;
   <div
     id="navbar-collapse"
     class="hidden md:hidden"
-    style="background-color: var(--global-bg-color); border-top: 1px solid var(--global-divider-color); padding: 0.5rem 0;"
+    style="max-height: calc(100dvh - var(--navbar-height)); overflow-y: auto; overscroll-behavior: contain; background-color: var(--global-bg-color); border-top: 1px solid var(--global-divider-color); padding: 0.5rem 0;"
   >
     {
       items.map((item) => {
@@ -317,6 +318,34 @@ const items = locale.navbar.items;
 </script>
 
 <style>
+  .navbar-brand {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-controls {
+    flex-shrink: 0;
+    gap: clamp(0.25rem, 2vw, 0.5rem);
+  }
+
+  .mobile-controls .language-switch {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .mobile-icon-button {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
   /* ── Hamburger animation ────────────────────────────────────────────── */
   .icon-bar {
     transition: all 0.2s;
@@ -481,15 +510,19 @@ const items = locale.navbar.items;
     const toggler = document.getElementById('navbar-toggler') as HTMLButtonElement | null;
     const collapse = document.getElementById('navbar-collapse') as HTMLElement | null;
 
+    function closeMobileMenu(): void {
+      collapse?.classList.add('hidden');
+      toggler?.setAttribute('aria-expanded', 'false');
+      toggler?.classList.add('collapsed');
+      document.body.style.overflow = '';
+    }
+
     toggler?.addEventListener(
       'click',
       () => {
         const isOpen = !collapse?.classList.contains('hidden');
         if (isOpen) {
-          collapse?.classList.add('hidden');
-          toggler.setAttribute('aria-expanded', 'false');
-          toggler.classList.add('collapsed');
-          document.body.style.overflow = '';
+          closeMobileMenu();
         } else {
           collapse?.classList.remove('hidden');
           toggler.setAttribute('aria-expanded', 'true');
@@ -505,14 +538,28 @@ const items = locale.navbar.items;
       link.addEventListener(
         'click',
         () => {
-          collapse?.classList.add('hidden');
-          toggler?.setAttribute('aria-expanded', 'false');
-          toggler?.classList.add('collapsed');
-          document.body.style.overflow = '';
+          closeMobileMenu();
         },
         { signal },
       );
     });
+
+    const desktopNavigation = window.matchMedia('(min-width: 768px)');
+    desktopNavigation.addEventListener(
+      'change',
+      (event) => {
+        if (event.matches) closeMobileMenu();
+      },
+      { signal },
+    );
+    window.addEventListener(
+      'resize',
+      () => {
+        if (window.innerWidth >= 768) closeMobileMenu();
+      },
+      { signal },
+    );
+    if (desktopNavigation.matches) closeMobileMenu();
 
     // ── Mobile sub-dropdowns ──────────────────────────────────────────────
     document.querySelectorAll('.mobile-dropdown-trigger').forEach((btn) => {
@@ -552,6 +599,17 @@ const items = locale.navbar.items;
         dropdown.classList.remove('is-open');
         trigger?.setAttribute('aria-expanded', 'false');
       }
+
+      trigger?.addEventListener(
+        'click',
+        (event) => {
+          if (event.detail === 0) return;
+          event.preventDefault();
+          const isOpen = dropdown.classList.toggle('is-open');
+          trigger.setAttribute('aria-expanded', String(isOpen));
+        },
+        { signal },
+      );
 
       trigger?.addEventListener(
         'keydown',

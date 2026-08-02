@@ -9,7 +9,7 @@ Source for [coolmoon327.github.io](https://coolmoon327.github.io/), a bilingual 
 - `/research/openraas-thesis/` and `/zh/research/openraas-thesis/` — the OpenRaaS and FogCom research lineage, including the master's thesis record
 - `/publications/` and `/zh/publications/` — published and accepted work, with careful status labels
 - `/projects/` and `/zh/projects/` — selected research software and systems work
-- `/playground/` and `/zh/playground/` — eight small, bilingual, dependency-free browser games (`/games/` aliases are retained)
+- `/playground/` and `/zh/playground/` — eleven small, bilingual, dependency-free browser games (`/games/` aliases are retained)
 - `/blog/` and `/zh/blog/` — the in-site writing area
 - `/owner/` and `/zh/owner/` — a private-link directory backed by a separately published encrypted registry
 

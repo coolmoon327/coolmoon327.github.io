@@ -336,8 +336,9 @@ const featuredProjects = content.projects.filter((project) => project.featured).
 
   .topic-grid li {
     display: grid;
-    grid-template-columns: 2rem 1fr;
+    grid-template-columns: 2rem minmax(0, 1fr);
     gap: 0.5rem;
+    min-width: 0;
     min-height: 110px;
     padding: 1.15rem;
     border: 1px solid var(--global-divider-color);
@@ -346,6 +347,7 @@ const featuredProjects = content.projects.filter((project) => project.featured).
     background: var(--global-card-bg-color);
     font-size: 1rem;
     line-height: 1.45;
+    overflow-wrap: anywhere;
   }
 
   .topic-grid span {
@@ -368,7 +370,7 @@ const featuredProjects = content.projects.filter((project) => project.featured).
 
   .publication-list li {
     display: grid;
-    grid-template-columns: 3.2rem 1fr;
+    grid-template-columns: 3.2rem minmax(0, 1fr);
     gap: 1rem;
     padding: 1.35rem 0;
     border-top: 1px solid var(--global-divider-color);
@@ -457,12 +459,20 @@ const featuredProjects = content.projects.filter((project) => project.featured).
   @media (max-width: 760px) {
     .home-shell {
       padding-top: 2.25rem;
+      overflow-wrap: anywhere;
     }
 
     .hero,
     .section-heading,
     .work-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .hero > *,
+    .work-grid > *,
+    .publication-list li > *,
+    .project-list > a {
+      min-width: 0;
     }
 
     .hero {
@@ -477,12 +487,19 @@ const featuredProjects = content.projects.filter((project) => project.featured).
       max-width: 360px;
     }
 
+    .button {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      text-align: center;
+      white-space: normal;
+    }
+
     .topic-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .research-spotlight {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .research-spotlight > span {

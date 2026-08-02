@@ -33,6 +33,39 @@
     "inputs": ["pointer", "keyboard"]
   },
   {
+    "id": "movable",
+    "title": "可移动天线实验室",
+    "title_en": "Movable Antenna Lab",
+    "kind": "research",
+    "session": "1–4 分钟",
+    "session_en": "1–4 min",
+    "preferred_height": 720,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "pinching",
+    "title": "夹持天线实验",
+    "title_en": "Pinching Antenna Lab",
+    "kind": "research",
+    "session": "1–4 分钟",
+    "session_en": "1–4 min",
+    "preferred_height": 680,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "secrecy",
+    "title": "保密波束实验室",
+    "title_en": "Secrecy Beam Lab",
+    "kind": "research",
+    "session": "30 秒–3 分钟",
+    "session_en": "30 sec–3 min",
+    "preferred_height": 520,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
     "id": "orbit",
     "title": "月轨校准",
     "title_en": "Orbit Alignment",

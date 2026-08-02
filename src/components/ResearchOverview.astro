@@ -393,14 +393,28 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
   }
 
   @media (max-width: 760px) {
+    .research-page {
+      overflow-wrap: anywhere;
+    }
+
     .page-hero,
     .doctoral-card,
     .section-heading {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .page-hero {
       gap: 1.5rem;
+    }
+
+    .page-hero h1 {
+      font-size: min(3.2rem, 20vw);
+    }
+
+    .page-hero > *,
+    .doctoral-card > *,
+    .trajectory li > * {
+      min-width: 0;
     }
 
     .advisor-block {
@@ -408,25 +422,42 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
     }
 
     .advisor-block ul {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .status-note {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 0.5rem;
     }
 
     .trajectory li {
-      grid-template-columns: 4.5rem 1fr;
+      grid-template-columns: 4.5rem minmax(0, 1fr);
       gap: 1rem;
     }
 
+    .trajectory h3,
+    .trajectory li p,
+    .stage-links a {
+      overflow-wrap: anywhere;
+    }
+
     .profile-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .profile-grid article:last-child:nth-child(odd) {
       grid-column: auto;
+    }
+  }
+
+  @media (max-width: 240px) {
+    .page-hero h1 {
+      font-size: 2.5rem;
+      overflow-wrap: anywhere;
+    }
+
+    .trajectory li {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 </style>

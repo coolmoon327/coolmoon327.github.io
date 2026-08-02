@@ -1,10 +1,22 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const siteRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'pocket-play');
-const expectedGames = ['runner', 'bandit', 'qpath', 'orbit', 'signature', 'echo', 'match', 'merge'];
+const expectedGames = [
+  'runner',
+  'bandit',
+  'qpath',
+  'movable',
+  'pinching',
+  'secrecy',
+  'orbit',
+  'signature',
+  'echo',
+  'match',
+  'merge',
+];
 const sourceExtensions = new Set(['.html', '.css', '.js']);
 const errors = [];
 
@@ -66,15 +78,32 @@ for (const game of gameMetadata) {
 }
 
 const embedSource = readFileSync(join(siteRoot, 'embed.js'), 'utf8');
-const embedHeights = new Map(
-  [...embedSource.matchAll(/^\s{4}([a-z]+):.*height:\s*(\d+)/gm)].map((match) => [
-    match[1],
-    Number(match[2]),
-  ]),
+const embedGames = new Map(
+  [...embedSource.matchAll(/^\s{4}([a-z]+):\s*\{([\s\S]*?)\bheight:\s*(\d+)/gm)].map((match) => {
+    const title = match[2].match(/title:\s*\{\s*en:\s*'([^']+)',\s*zh:\s*'([^']+)'\s*\}/);
+    return [
+      match[1],
+      {
+        height: Number(match[3]),
+        titleEn: title?.[1],
+        titleZh: title?.[2],
+      },
+    ];
+  }),
 );
 for (const game of gameMetadata) {
-  if (embedHeights.get(game.id) !== game.preferred_height) {
+  const embedGame = embedGames.get(game.id);
+  if (embedGame?.height !== game.preferred_height) {
     errors.push(`embed.js: ${game.id} height does not match games.json (${game.preferred_height})`);
+  }
+  if (embedGame?.titleEn !== game.title_en || embedGame?.titleZh !== game.title) {
+    errors.push(`embed.js: ${game.id} titles do not match games.json`);
+  }
+
+  const markup = readFileSync(join(siteRoot, 'games', game.id, 'index.html'), 'utf8');
+  const heading = markup.match(/<h1\b[^>]*\bdata-en="([^"]+)"[^>]*\bdata-zh="([^"]+)"/i);
+  if (!heading || heading[1] !== game.title_en || heading[2] !== game.title) {
+    errors.push(`games/${game.id}/index.html: h1 titles do not match games.json`);
   }
 }
 
@@ -127,7 +156,10 @@ for (const path of sourceFiles) {
 
 for (const game of expectedGames) {
   const gameRoot = join(siteRoot, 'games', game);
-  const totalBytes = walk(gameRoot).reduce((sum, path) => sum + statSync(path).size, 0);
+  const totalBytes = walk(gameRoot).reduce((sum, path) => {
+    const normalizedSource = readFileSync(path, 'utf8').replaceAll('\r\n', '\n');
+    return sum + Buffer.byteLength(normalizedSource, 'utf8');
+  }, 0);
   if (totalBytes > 40_000) {
     errors.push(`games/${game}: ${totalBytes} bytes exceeds 40 KB source budget`);
   }
