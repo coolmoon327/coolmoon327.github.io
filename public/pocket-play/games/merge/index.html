@@ -1,45 +1,58 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f3eedf">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f3eedf" />
     <meta
       name="description"
-      content="把种子逐步合成为论文与花园的 4×4 轻量合成游戏。"
-    >
-    <title>方块花园</title>
-    <link rel="stylesheet" href="./style.css">
+      content="A compact 4×4 merge game that grows seeds into papers and gardens."
+    />
+    <title data-en="Merge Garden" data-zh="方块花园">Merge Garden</title>
+    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main class="game-card" aria-labelledby="game-title">
       <header class="game-header">
         <div>
-          <p class="eyebrow">MERGE GARDEN · 4×4</p>
-          <h1 id="game-title">方块花园</h1>
-          <p class="subtitle">从一粒种子，培育到一篇论文。</p>
+          <p class="eyebrow" data-en="MERGE GARDEN · 4×4" data-zh="方块花园 · 4×4">
+            MERGE GARDEN · 4×4
+          </p>
+          <h1 id="game-title" data-en="Merge Garden" data-zh="方块花园">Merge Garden</h1>
+          <p
+            class="subtitle"
+            data-en="Grow one seed into a paper."
+            data-zh="从一粒种子，培育到一篇论文。"
+          >
+            Grow one seed into a paper.
+          </p>
         </div>
 
-        <div class="scoreboard" aria-label="本局统计">
+        <div
+          class="scoreboard"
+          aria-label="Game statistics"
+          data-aria-en="Game statistics"
+          data-aria-zh="本局统计"
+        >
           <div>
-            <span>分数</span>
+            <span data-en="Score" data-zh="分数">Score</span>
             <output id="score">0</output>
           </div>
           <div>
-            <span>最高</span>
+            <span data-en="Best" data-zh="最高">Best</span>
             <output id="best-score">0</output>
           </div>
         </div>
       </header>
 
-      <p class="status" id="status">点“开始培育”，再用按钮移动所有样本。</p>
+      <p class="status" id="status">Select “Start growing”, then move every sample.</p>
 
       <div class="board-shell">
         <div
           class="board"
           id="board"
           role="grid"
-          aria-label="4×4 方块花园"
+          aria-label="4×4 merge garden"
           aria-rowcount="4"
           aria-colcount="4"
           aria-describedby="status"
@@ -47,35 +60,67 @@
       </div>
 
       <div class="session-controls">
-        <button class="primary-control" id="toggle-game" type="button">
-          开始培育
-        </button>
+        <button class="primary-control" id="toggle-game" type="button">Start growing</button>
         <button class="secondary-control" id="restart-game" type="button">
-          重置
+          <span data-en="Reset" data-zh="重置">Reset</span>
         </button>
       </div>
 
-      <div class="direction-pad" aria-label="移动方向">
-        <button type="button" data-direction="left" aria-label="向左移动">
+      <div
+        class="direction-pad"
+        aria-label="Move direction"
+        data-aria-en="Move direction"
+        data-aria-zh="移动方向"
+      >
+        <button
+          type="button"
+          data-direction="left"
+          aria-label="Move left"
+          data-aria-en="Move left"
+          data-aria-zh="向左移动"
+        >
           <span aria-hidden="true">←</span>
         </button>
-        <button type="button" data-direction="up" aria-label="向上移动">
+        <button
+          type="button"
+          data-direction="up"
+          aria-label="Move up"
+          data-aria-en="Move up"
+          data-aria-zh="向上移动"
+        >
           <span aria-hidden="true">↑</span>
         </button>
-        <button type="button" data-direction="down" aria-label="向下移动">
+        <button
+          type="button"
+          data-direction="down"
+          aria-label="Move down"
+          data-aria-en="Move down"
+          data-aria-zh="向下移动"
+        >
           <span aria-hidden="true">↓</span>
         </button>
-        <button type="button" data-direction="right" aria-label="向右移动">
+        <button
+          type="button"
+          data-direction="right"
+          aria-label="Move right"
+          data-aria-en="Move right"
+          data-aria-zh="向右移动"
+        >
           <span aria-hidden="true">→</span>
         </button>
       </div>
 
-      <p class="help">
-        相同样本会合并，且每步只合并一次。开始后可用方向键；Esc 暂停。
+      <p
+        class="help"
+        data-en="Equal samples merge once per move. Arrow keys work after starting; Esc pauses."
+        data-zh="相同样本会合并，且每步只合并一次。开始后可用方向键；Esc 暂停。"
+      >
+        Equal samples merge once per move. Arrow keys work after starting; Esc pauses.
       </p>
       <p class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></p>
     </main>
 
+    <script src="../shared/runtime.js"></script>
     <script src="./game.js"></script>
   </body>
 </html>

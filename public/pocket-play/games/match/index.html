@@ -1,31 +1,41 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#eef1e7">
-    <title>翻牌花园</title>
-    <link rel="stylesheet" href="./style.css">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#eef1e7" />
+    <title data-en="Memory Garden" data-zh="翻牌花园">Memory Garden</title>
+    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main class="game" aria-labelledby="game-title">
       <header>
         <div>
-          <p class="kicker">MEMORY GARDEN</p>
-          <h1 id="game-title">翻牌花园</h1>
+          <p class="kicker" data-en="MEMORY GARDEN" data-zh="记忆花园">MEMORY GARDEN</p>
+          <h1 id="game-title" data-en="Memory Garden" data-zh="翻牌花园">Memory Garden</h1>
         </div>
-        <button class="reset" id="reset" type="button">重新播种</button>
+        <button class="reset" id="reset" type="button" data-en="New board" data-zh="重新播种">
+          New board
+        </button>
       </header>
 
-      <div class="stats" aria-label="本局状态">
-        <span>步数 <strong id="moves">0</strong></span>
-        <span>花圃 <strong id="pairs">0 / 8</strong></span>
-        <span>最佳 <strong id="best">—</strong></span>
+      <div
+        class="stats"
+        aria-label="Game status"
+        data-aria-en="Game status"
+        data-aria-zh="本局状态"
+      >
+        <span><span data-en="Moves" data-zh="步数">Moves</span> <strong id="moves">0</strong></span>
+        <span
+          ><span data-en="Pairs" data-zh="花圃">Pairs</span> <strong id="pairs">0 / 8</strong></span
+        >
+        <span><span data-en="Best" data-zh="最佳">Best</span> <strong id="best">—</strong></span>
       </div>
 
-      <section class="board" id="board" aria-label="四乘四翻牌棋盘"></section>
-      <p class="status" id="status" aria-live="polite">找出八对藏在叶片下的图案。</p>
+      <section class="board" id="board" aria-label="Four by four matching board"></section>
+      <p class="status" id="status" aria-live="polite">Find the eight hidden pairs.</p>
     </main>
+    <script src="../shared/runtime.js"></script>
     <script src="./game.js"></script>
   </body>
 </html>

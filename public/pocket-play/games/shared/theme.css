@@ -1,0 +1,47 @@
+:root {
+  color-scheme: light;
+  --game-bg: #ffffff;
+  --game-surface: #f8f9fa;
+  --game-surface-strong: #f3f4f6;
+  --game-text: #1a1a1a;
+  --game-muted: #6c757d;
+  --game-divider: rgba(0, 0, 0, 0.1);
+  --game-accent: #0f766e;
+  --game-accent-strong: #115e59;
+  --game-accent-soft: #ccfbf1;
+  --game-on-accent: #ffffff;
+  --game-danger: #b91c1c;
+  --game-warning: #b45309;
+  --game-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  --game-radius: 4px;
+  --game-font: Roboto, Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --game-mono: 'Source Code Pro', 'Roboto Mono', Consolas, monospace;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --game-bg: #1c1c1d;
+  --game-surface: #212529;
+  --game-surface-strong: #2c3237;
+  --game-text: #e0e0e0;
+  --game-muted: #9e9e9e;
+  --game-divider: #424246;
+  --game-accent: #5eead4;
+  --game-accent-strong: #2dd4bf;
+  --game-accent-soft: #134e4a;
+  --game-on-accent: #10201e;
+  --game-danger: #fca5a5;
+  --game-warning: #fbbf24;
+  --game-shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

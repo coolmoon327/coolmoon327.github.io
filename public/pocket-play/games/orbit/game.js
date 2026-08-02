@@ -1,85 +1,203 @@
-const action = document.querySelector("#action");
-const satellite = document.querySelector("#satellite");
-const score = document.querySelector("#score");
-const hint = document.querySelector("#hint");
-const assistButton = document.querySelector("#assist");
-const assistStatus = document.querySelector("#assist-status");
+const action = document.querySelector('#action');
+const field = document.querySelector('#field');
+const targetZone = document.querySelector('.target-zone');
+const satellite = document.querySelector('#satellite');
+const score = document.querySelector('#score');
+const hint = document.querySelector('#hint');
+const assistButton = document.querySelector('#assist');
+const assistStatus = document.querySelector('#assist-status');
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+const TARGET_TOLERANCE = 16;
+const MIN_TARGET_SHIFT = 60;
+const NORMAL_CYCLE_MS = 2150;
+const REDUCED_CYCLE_MS = 4800;
 
 let running = false;
 let startedAt = 0;
+let targetAngle = Math.round(Math.random() * 359);
+let currentAngle = 0;
+let motionFrame = 0;
 let assistEnabled = false;
-let assistFrame = 0;
-let assistBucket = "";
+let assistBucket = '';
+let assistNotice = null;
+let viewState = 'idle';
+let lastPoints = 0;
+let lastHit = false;
+
+function text(english, chinese) {
+  return window.PocketRuntime.text(english, chinese);
+}
+
+function normalizeAngle(angle) {
+  return ((angle % 360) + 360) % 360;
+}
 
 function orbitCycle() {
-  return Number.parseFloat(getComputedStyle(satellite).animationDuration) * 1000;
+  return reducedMotion.matches ? REDUCED_CYCLE_MS : NORMAL_CYCLE_MS;
 }
 
 function orbitAngle(now = performance.now()) {
-  return (((now - startedAt) % orbitCycle()) / orbitCycle()) * 360;
+  return normalizeAngle(((now - startedAt) / orbitCycle()) * 360);
 }
 
-function angularDistance(angle, target = 34) {
-  return Math.min(
-    Math.abs(angle - target),
-    Math.abs(angle - target + 360),
-    Math.abs(angle - target - 360),
+function angularDistance(angle, target = targetAngle) {
+  const distance = Math.abs(normalizeAngle(angle) - normalizeAngle(target));
+  return Math.min(distance, 360 - distance);
+}
+
+function nextTarget(previous) {
+  const safeArc = 360 - MIN_TARGET_SHIFT * 2;
+  return normalizeAngle(previous + MIN_TARGET_SHIFT + Math.random() * safeArc);
+}
+
+function renderTarget() {
+  const start = normalizeAngle(targetAngle - TARGET_TOLERANCE);
+  targetZone.style.setProperty('--target-start', `${start}deg`);
+  targetZone.style.setProperty('--target-span', `${TARGET_TOLERANCE * 2}deg`);
+  field.dataset.targetAngle = targetAngle.toFixed(2);
+  field.dataset.targetTolerance = String(TARGET_TOLERANCE);
+}
+
+function renderAngle(angle) {
+  currentAngle = normalizeAngle(angle);
+  satellite.style.transform = `rotate(${currentAngle}deg)`;
+  field.dataset.currentAngle = currentAngle.toFixed(2);
+}
+
+function resultHint() {
+  if (lastHit && lastPoints >= 90) {
+    return text('Beautiful — almost perfectly aligned.', '漂亮！几乎完美重合。');
+  }
+  if (lastHit) {
+    return text('Aligned — the moon is inside the window.', '校准成功，月球已落入窗口。');
+  }
+  return text('The moon stopped outside the window. Try again.', '月球停在窗口之外，再试一次。');
+}
+
+function renderAssistStatus() {
+  if (!assistNotice) {
+    assistStatus.textContent = '';
+    return;
+  }
+
+  if (assistNotice.kind === 'toggle') {
+    assistStatus.textContent = assistNotice.enabled
+      ? text('Assist cues are on.', '辅助提示已开启。')
+      : text('Assist cues are off.', '辅助提示已关闭。');
+    return;
+  }
+
+  const messages = {
+    target: text('Inside the window. Press Space now.', '已进入窗口，现在按空格。'),
+    close: text('Approaching the window.', '正在接近窗口。'),
+    far: text('Still far from the window.', '距离窗口还远。'),
+  };
+  assistStatus.textContent = messages[assistNotice.bucket];
+}
+
+function renderUI() {
+  let actionLabel;
+  let scoreLabel;
+  let hintLabel;
+
+  if (viewState === 'running') {
+    actionLabel = text('Stop now', '现在停下');
+    scoreLabel = text('Aligning', '校准中');
+    hintLabel = text(
+      'Watch the bright window, then click the button or press Space.',
+      '看准发光窗口，点击按钮或按空格。',
+    );
+  } else if (viewState === 'result') {
+    actionLabel = text('Try again', '再来一轮');
+    scoreLabel = text(`${lastPoints} points`, `${lastPoints} 分`);
+    hintLabel = resultHint();
+  } else if (viewState === 'paused') {
+    actionLabel = text('Restart', '重新开始');
+    scoreLabel = text('Paused', '已暂停');
+    hintLabel = text('This round paused when the page was hidden.', '离开页面时已暂停这一轮。');
+  } else {
+    actionLabel = text('Start alignment', '开始校准');
+    scoreLabel = text('Ready', '等待开始');
+    hintLabel = text(
+      'Click again when the moon enters the bright window.',
+      '第二次点击时，让月球停在发光窗口中。',
+    );
+  }
+
+  action.textContent = actionLabel;
+  action.setAttribute('aria-label', actionLabel);
+  score.textContent = scoreLabel;
+  score.setAttribute(
+    'aria-label',
+    text(`Alignment status: ${scoreLabel}`, `校准状态：${scoreLabel}`),
   );
+  hint.textContent = hintLabel;
+  assistButton.textContent = text('Assist', '辅助提示');
+  assistButton.setAttribute('aria-pressed', String(assistEnabled));
+  assistButton.setAttribute(
+    'aria-label',
+    assistEnabled
+      ? text('Turn assist cues off', '关闭辅助提示')
+      : text('Turn assist cues on', '开启辅助提示'),
+  );
+  renderAssistStatus();
 }
 
-function updateAssist(now) {
+function updateAssist(angle) {
   if (!running || !assistEnabled) return;
 
-  const distance = angularDistance(orbitAngle(now));
-  const bucket = distance <= 10 ? "target" : distance <= 38 ? "close" : "far";
+  const distance = angularDistance(angle);
+  const bucket =
+    distance <= TARGET_TOLERANCE ? 'target' : distance <= TARGET_TOLERANCE + 24 ? 'close' : 'far';
   if (bucket !== assistBucket) {
     assistBucket = bucket;
-    const messages = {
-      target: "正对窗口，现在按空格。",
-      close: "正在接近窗口。",
-      far: "距离窗口还远。",
-    };
-    assistStatus.textContent = messages[bucket];
+    assistNotice = { kind: 'bucket', bucket };
+    renderAssistStatus();
   }
-  assistFrame = window.requestAnimationFrame(updateAssist);
 }
 
-function stopAssist() {
-  window.cancelAnimationFrame(assistFrame);
-  assistFrame = 0;
-  assistBucket = "";
+function updateMotion(now) {
+  if (!running) return;
+  const angle = orbitAngle(now);
+  renderAngle(angle);
+  updateAssist(angle);
+  motionFrame = window.requestAnimationFrame(updateMotion);
+}
+
+function stopMotion() {
+  window.cancelAnimationFrame(motionFrame);
+  motionFrame = 0;
+  assistBucket = '';
 }
 
 function startRound() {
+  stopMotion();
+  targetAngle = nextTarget(targetAngle);
+  renderTarget();
+  renderAngle(0);
   running = true;
+  viewState = 'running';
   startedAt = performance.now();
-  satellite.style.transform = "";
-  satellite.classList.add("running");
-  action.textContent = "现在停下";
-  score.textContent = "校准中";
-  hint.textContent = "看准发光窗口，点击按钮或按空格。";
-  if (assistEnabled) assistFrame = window.requestAnimationFrame(updateAssist);
+  assistNotice = null;
+  field.dataset.result = 'running';
+  renderUI();
+  motionFrame = window.requestAnimationFrame(updateMotion);
 }
 
 function stopRound() {
-  const elapsed = performance.now() - startedAt;
-  const angle = ((elapsed % orbitCycle()) / orbitCycle()) * 360;
-  const target = 34;
-  const distance = angularDistance(angle, target);
-  const points = Math.max(0, Math.round(100 - distance * 2.4));
+  const angle = orbitAngle();
+  const distance = angularDistance(angle);
 
+  renderAngle(angle);
+  lastHit = distance <= TARGET_TOLERANCE;
+  lastPoints = Math.max(0, Math.round(100 - distance * (40 / TARGET_TOLERANCE)));
   running = false;
-  stopAssist();
-  satellite.classList.remove("running");
-  satellite.style.transform = `rotate(${angle}deg)`;
-  score.textContent = `${points} 分`;
-  action.textContent = "再来一轮";
-  hint.textContent =
-    points >= 90
-      ? "漂亮！几乎完美重合。"
-      : points >= 60
-        ? "很接近，再微调一点。"
-        : "轨道偏离了，再试一次。";
+  viewState = 'result';
+  field.dataset.result = lastHit ? 'hit' : 'miss';
+  stopMotion();
+  assistNotice = null;
+  renderUI();
 }
 
 function toggleRound() {
@@ -90,34 +208,44 @@ function toggleRound() {
   }
 }
 
-action.addEventListener("click", toggleRound);
+action.addEventListener('click', toggleRound);
 
-assistButton.addEventListener("click", () => {
+assistButton.addEventListener('click', () => {
   assistEnabled = !assistEnabled;
-  assistButton.setAttribute("aria-pressed", String(assistEnabled));
-  assistStatus.textContent = assistEnabled
-    ? "辅助提示已开启。"
-    : "辅助提示已关闭。";
+  assistNotice = { kind: 'toggle', enabled: assistEnabled };
   if (!assistEnabled) {
-    stopAssist();
+    assistBucket = '';
   } else if (running) {
-    assistFrame = window.requestAnimationFrame(updateAssist);
+    updateAssist(currentAngle);
   }
+  renderUI();
 });
 
-window.addEventListener("keydown", (event) => {
-  if (event.code !== "Space" || event.repeat || event.target === assistButton) return;
+window.addEventListener('keydown', (event) => {
+  if (event.code !== 'Space' || event.repeat || event.target === assistButton) return;
   event.preventDefault();
   toggleRound();
 });
 
-document.addEventListener("visibilitychange", () => {
+document.addEventListener('visibilitychange', () => {
   if (!document.hidden || !running) return;
+  renderAngle(orbitAngle());
   running = false;
-  stopAssist();
-  satellite.classList.remove("running");
-  satellite.style.transform = "rotate(0deg)";
-  score.textContent = "已暂停";
-  action.textContent = "重新开始";
-  hint.textContent = "离开页面时已暂停这一轮。";
+  viewState = 'paused';
+  field.dataset.result = 'paused';
+  stopMotion();
+  assistNotice = null;
+  renderUI();
 });
+
+reducedMotion.addEventListener('change', () => {
+  if (!running) return;
+  const now = performance.now();
+  startedAt = now - (currentAngle / 360) * orbitCycle();
+});
+
+window.PocketRuntime.onChange(renderUI);
+renderTarget();
+renderAngle(0);
+field.dataset.result = 'idle';
+renderUI();

@@ -1,27 +1,44 @@
 const params = new URLSearchParams(window.location.search);
 
-if (params.get("embed") === "1") {
-  document.documentElement.dataset.embed = "true";
+if (params.get('embed') === '1') {
+  document.documentElement.dataset.embed = 'true';
 }
 
 const TARGET_ROUNDS = 10;
-const pads = Array.from(document.querySelectorAll(".echo-pad"));
-const grid = document.querySelector("#echo-grid");
-const roundOutput = document.querySelector("#round");
-const progress = document.querySelector("#progress");
-const status = document.querySelector("#status");
-const action = document.querySelector("#action");
-const assist = document.querySelector("#assist");
-const instructions = document.querySelector("#instructions");
-const padNames = ["珊瑚", "金色", "薄荷", "蓝色"];
+const pads = Array.from(document.querySelectorAll('.echo-pad'));
+const grid = document.querySelector('#echo-grid');
+const roundMeter = document.querySelector('.round-meter');
+const roundOutput = document.querySelector('#round');
+const progress = document.querySelector('#progress');
+const status = document.querySelector('#status');
+const action = document.querySelector('#action');
+const assist = document.querySelector('#assist');
+const instructions = document.querySelector('#instructions');
+const padNames = [
+  { en: 'Coral', zh: '珊瑚' },
+  { en: 'Gold', zh: '金色' },
+  { en: 'Mint', zh: '薄荷' },
+  { en: 'Blue', zh: '蓝色' },
+];
 
 const timers = new Set();
 let sequence = [];
 let round = 0;
 let inputIndex = 0;
-let phase = "idle";
+let phase = 'idle';
 let pausedFrom = null;
 let assistEnabled = false;
+let statusState = { kind: 'idle' };
+let instructionState = { kind: 'idle' };
+
+function text(english, chinese) {
+  return window.PocketRuntime.text(english, chinese);
+}
+
+function padName(index) {
+  const name = padNames[index];
+  return text(name.en, name.zh);
+}
 
 function schedule(callback, delay) {
   const timer = window.setTimeout(() => {
@@ -34,8 +51,8 @@ function schedule(callback, delay) {
 function clearScheduledWork() {
   timers.forEach((timer) => window.clearTimeout(timer));
   timers.clear();
-  pads.forEach((pad) => pad.classList.remove("is-active"));
-  grid.classList.remove("is-wrong");
+  pads.forEach((pad) => pad.classList.remove('is-active'));
+  grid.classList.remove('is-wrong');
 }
 
 function setPadsEnabled(enabled) {
@@ -51,30 +68,154 @@ function setProgress(completed = 0) {
 
 function pulsePad(index) {
   const pad = pads[index];
-  pad.classList.add("is-active");
-  schedule(() => pad.classList.remove("is-active"), 170);
+  pad.classList.add('is-active');
+  schedule(() => pad.classList.remove('is-active'), 170);
+}
+
+function statusText() {
+  if (statusState.kind === 'input') {
+    return text(
+      `Your turn · repeat ${sequence.length} steps`,
+      `轮到你 · 复现 ${sequence.length} 步`,
+    );
+  }
+  if (statusState.kind === 'playback') {
+    return text(`Watch · round ${round}`, `观察回声 · 第 ${round} 轮`);
+  }
+  if (statusState.kind === 'assist-step') {
+    return text(
+      `Cue ${statusState.position + 1} / ${sequence.length}: ${padName(statusState.padIndex)}`,
+      `辅助提示 ${statusState.position + 1} / ${sequence.length}：${padName(statusState.padIndex)}`,
+    );
+  }
+  if (statusState.kind === 'won') {
+    return text('All ten rounds repeated · echo complete', '十轮全部复现 · 回声完整');
+  }
+  if (statusState.kind === 'over') {
+    return text(`Echo lost · reached round ${round}`, `回声断开 · 到达第 ${round} 轮`);
+  }
+  if (statusState.kind === 'round-complete') {
+    return text(`Round ${round} complete`, `第 ${round} 轮完成`);
+  }
+  if (statusState.kind === 'preparing') {
+    return text('Preparing the first echo', '准备第一段回声');
+  }
+  if (statusState.kind === 'paused') {
+    return text('Page hidden · game paused', '页面已隐藏 · 游戏暂停');
+  }
+  if (statusState.kind === 'resuming') {
+    return text('Continuing game', '继续游戏');
+  }
+  if (statusState.kind === 'assist-on') {
+    return text(
+      'Assist cues are on; the sequence will slow down and name each pad on screen.',
+      '辅助提示已开启，序列会放慢并逐项显示色块名称。',
+    );
+  }
+  if (statusState.kind === 'assist-off') {
+    return text('Assist cues are off.', '辅助提示已关闭。');
+  }
+  return text('Ready', '等待开始');
+}
+
+function instructionText() {
+  if (instructionState.kind === 'input') {
+    return text(
+      'Select the pads in order, or use number keys 1–4.',
+      '按顺序点击色块，或使用键盘数字 1–4。',
+    );
+  }
+  if (instructionState.kind === 'playback') {
+    return text(
+      'Watch the sequence first, then repeat it after playback.',
+      '先观察亮起顺序，播放结束后再复现。',
+    );
+  }
+  if (instructionState.kind === 'won') {
+    return text(
+      'Memory aligned. Select restart to try another sequence.',
+      '记忆校准完成。想再挑战一次，点击重新开始。',
+    );
+  }
+  if (instructionState.kind === 'over') {
+    return text(
+      'The sequence drifted. Select restart and try again.',
+      '顺序有一点偏差。点击重新开始，再试一次。',
+    );
+  }
+  if (instructionState.kind === 'round-complete') {
+    return text('The next echo adds one step.', '下一段回声会多一步。');
+  }
+  if (instructionState.kind === 'paused') {
+    return text(
+      'Select continue when you return; the current echo will replay from the start.',
+      '回来后点击继续；当前回声会从头播放。',
+    );
+  }
+  if (instructionState.kind === 'resuming') {
+    return text('The next echo will begin shortly.', '下一段回声即将开始。');
+  }
+  return text(
+    'Click a pad or use keys 1–4. You can restart at any time.',
+    '点击色块，或使用键盘数字 1–4。游戏进行中可随时重新开始。',
+  );
+}
+
+function renderMessages() {
+  status.textContent = statusText();
+  instructions.textContent = instructionText();
+}
+
+function renderUI() {
+  const actionLabel =
+    phase === 'idle'
+      ? text('Start game', '开始游戏')
+      : phase === 'paused'
+        ? text('Continue', '继续')
+        : text('Restart', '重新开始');
+
+  action.textContent = actionLabel;
+  action.setAttribute('aria-label', actionLabel);
+  assist.textContent = text('Assist cues', '辅助提示');
+  assist.setAttribute('aria-pressed', String(assistEnabled));
+  assist.setAttribute(
+    'aria-label',
+    assistEnabled
+      ? text('Turn assist cues off', '关闭辅助提示')
+      : text('Turn assist cues on', '开启辅助提示'),
+  );
+  roundMeter.setAttribute('aria-label', text('Current round', '当前轮数'));
+  grid.setAttribute('aria-label', text('Four echo pads', '四个回声按钮'));
+  pads.forEach((pad, index) => {
+    pad.setAttribute(
+      'aria-label',
+      text(`${padName(index)} echo, key ${index + 1}`, `${padName(index)}回声，按键 ${index + 1}`),
+    );
+  });
+  renderMessages();
 }
 
 function beginInput() {
-  if (phase !== "playback") return;
+  if (phase !== 'playback') return;
 
-  phase = "input";
+  phase = 'input';
   inputIndex = 0;
+  statusState = { kind: 'input' };
+  instructionState = { kind: 'input' };
   setProgress();
   setPadsEnabled(true);
-  status.textContent = `轮到你 · 复现 ${sequence.length} 步`;
-  instructions.textContent = "按顺序点击色块，或使用键盘数字 1–4。";
+  renderUI();
 }
 
 function playSequence() {
   clearScheduledWork();
-  phase = "playback";
+  phase = 'playback';
   inputIndex = 0;
+  statusState = { kind: 'playback' };
+  instructionState = { kind: 'playback' };
   setProgress();
   setPadsEnabled(false);
-  action.textContent = "重新开始";
-  status.textContent = `听回声 · 第 ${round} 轮`;
-  instructions.textContent = "先观察亮起顺序，播放结束后再复现。";
+  renderUI();
 
   const leadIn = 380;
   const litTime = assistEnabled ? 760 : Math.max(300, 500 - round * 18);
@@ -83,19 +224,20 @@ function playSequence() {
   sequence.forEach((padIndex, position) => {
     const startsAt = leadIn + position * stepTime;
     schedule(() => {
-      pads[padIndex].classList.add("is-active");
+      pads[padIndex].classList.add('is-active');
       if (assistEnabled) {
-        status.textContent = `辅助播报 ${position + 1} / ${sequence.length}：${padNames[padIndex]}`;
+        statusState = { kind: 'assist-step', position, padIndex };
+        renderMessages();
       }
     }, startsAt);
-    schedule(() => pads[padIndex].classList.remove("is-active"), startsAt + litTime);
+    schedule(() => pads[padIndex].classList.remove('is-active'), startsAt + litTime);
   });
 
   schedule(beginInput, leadIn + sequence.length * stepTime + 80);
 }
 
 function nextRound() {
-  if (phase !== "transition") return;
+  if (phase !== 'transition') return;
 
   round += 1;
   roundOutput.textContent = String(round);
@@ -104,25 +246,21 @@ function nextRound() {
 }
 
 function finishGame(won) {
-  phase = won ? "won" : "over";
+  phase = won ? 'won' : 'over';
+  statusState = { kind: won ? 'won' : 'over' };
+  instructionState = { kind: won ? 'won' : 'over' };
   setPadsEnabled(false);
   setProgress(won ? sequence.length : inputIndex);
-  action.textContent = "重新开始";
 
-  if (won) {
-    status.textContent = "十轮全部复现 · 回声完整";
-    instructions.textContent = "记忆校准完成。想再挑战一次，点击重新开始。";
-    return;
+  if (!won) {
+    grid.classList.add('is-wrong');
+    schedule(() => grid.classList.remove('is-wrong'), 260);
   }
-
-  grid.classList.add("is-wrong");
-  schedule(() => grid.classList.remove("is-wrong"), 260);
-  status.textContent = `回声断开 · 到达第 ${round} 轮`;
-  instructions.textContent = "顺序有一点偏差。点击重新开始，再试一次。";
+  renderUI();
 }
 
 function choosePad(index) {
-  if (phase !== "input") return;
+  if (phase !== 'input') return;
 
   pulsePad(index);
 
@@ -143,9 +281,10 @@ function choosePad(index) {
     return;
   }
 
-  phase = "transition";
-  status.textContent = `第 ${round} 轮完成`;
-  instructions.textContent = "下一段回声会多一步。";
+  phase = 'transition';
+  statusState = { kind: 'round-complete' };
+  instructionState = { kind: 'round-complete' };
+  renderUI();
   schedule(nextRound, 720);
 }
 
@@ -155,39 +294,39 @@ function startGame() {
   round = 0;
   inputIndex = 0;
   pausedFrom = null;
-  phase = "transition";
-  roundOutput.textContent = "0";
+  phase = 'transition';
+  statusState = { kind: 'preparing' };
+  instructionState = { kind: 'playback' };
+  roundOutput.textContent = '0';
   setProgress();
   setPadsEnabled(false);
-  action.textContent = "重新开始";
-  status.textContent = "准备第一段回声";
-  instructions.textContent = "先观察亮起顺序，播放结束后再复现。";
+  renderUI();
   schedule(nextRound, 600);
 }
 
 function pauseGame() {
-  if (!["playback", "input", "transition"].includes(phase)) return;
+  if (!['playback', 'input', 'transition'].includes(phase)) return;
 
   pausedFrom = phase;
   clearScheduledWork();
-  phase = "paused";
+  phase = 'paused';
+  statusState = { kind: 'paused' };
+  instructionState = { kind: 'paused' };
   setPadsEnabled(false);
-  action.textContent = "继续";
-  status.textContent = "页面已隐藏 · 游戏暂停";
-  instructions.textContent = "回来后点击继续；当前回声会从头播放。";
+  renderUI();
 }
 
 function resumeGame() {
-  if (phase !== "paused") return;
+  if (phase !== 'paused') return;
 
   const previousPhase = pausedFrom;
   pausedFrom = null;
-  action.textContent = "重新开始";
 
-  if (previousPhase === "transition") {
-    phase = "transition";
-    status.textContent = "继续游戏";
-    instructions.textContent = "下一段回声即将开始。";
+  if (previousPhase === 'transition') {
+    phase = 'transition';
+    statusState = { kind: 'resuming' };
+    instructionState = { kind: 'resuming' };
+    renderUI();
     schedule(nextRound, 420);
     return;
   }
@@ -196,34 +335,25 @@ function resumeGame() {
 }
 
 pads.forEach((pad, index) => {
-  pad.addEventListener("click", () => choosePad(index));
+  pad.addEventListener('click', () => choosePad(index));
 });
 
-action.addEventListener("click", () => {
-  if (phase === "paused") {
+action.addEventListener('click', () => {
+  if (phase === 'paused') {
     resumeGame();
   } else {
     startGame();
   }
 });
 
-assist.addEventListener("click", () => {
+assist.addEventListener('click', () => {
   assistEnabled = !assistEnabled;
-  assist.setAttribute("aria-pressed", String(assistEnabled));
-  assist.setAttribute("aria-label", `辅助播报${assistEnabled ? "开启" : "关闭"}`);
-  status.textContent = assistEnabled
-    ? "辅助播报已开启，序列会放慢并逐项读出。"
-    : "辅助播报已关闭。";
+  statusState = { kind: assistEnabled ? 'assist-on' : 'assist-off' };
+  renderUI();
 });
 
-window.addEventListener("keydown", (event) => {
-  if (
-    phase !== "input" ||
-    event.repeat ||
-    event.altKey ||
-    event.ctrlKey ||
-    event.metaKey
-  ) {
+window.addEventListener('keydown', (event) => {
+  if (phase !== 'input' || event.repeat || event.altKey || event.ctrlKey || event.metaKey) {
     return;
   }
 
@@ -234,8 +364,10 @@ window.addEventListener("keydown", (event) => {
   choosePad(index);
 });
 
-document.addEventListener("visibilitychange", () => {
+document.addEventListener('visibilitychange', () => {
   if (document.hidden) pauseGame();
 });
 
+window.PocketRuntime.onChange(renderUI);
 setPadsEnabled(false);
+renderUI();

@@ -1,18 +1,18 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#142a35">
-    <title>月轨校准</title>
-    <link rel="stylesheet" href="./style.css">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#142a35" />
+    <title data-en="Orbit Alignment" data-zh="月轨校准">Orbit Alignment</title>
+    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main class="game" aria-labelledby="game-title">
       <div class="topline">
         <div>
-          <p>ORBIT ALIGNMENT</p>
-          <h1 id="game-title">月轨校准</h1>
+          <p data-en="ORBIT ALIGNMENT" data-zh="月轨校准">ORBIT ALIGNMENT</p>
+          <h1 id="game-title" data-en="Orbit Alignment" data-zh="月轨校准">Orbit Alignment</h1>
         </div>
         <div class="status-actions">
           <button
@@ -21,8 +21,12 @@
             type="button"
             aria-pressed="false"
             aria-describedby="assist-note"
-          >辅助提示</button>
-          <output id="score" aria-live="polite">等待开始</output>
+            data-en="Assist"
+            data-zh="辅助提示"
+          >
+            Assist
+          </button>
+          <output id="score" aria-live="polite" data-en="Ready" data-zh="等待开始">Ready</output>
         </div>
       </div>
 
@@ -35,13 +39,28 @@
         </div>
       </div>
 
-      <button id="action" type="button">开始校准</button>
-      <p class="hint" id="hint">第二次点击时，让月球停在发光窗口中。</p>
+      <button id="action" type="button" data-en="Start alignment" data-zh="开始校准">
+        Start alignment
+      </button>
+      <p
+        class="hint"
+        id="hint"
+        data-en="Click again when the moon enters the bright window."
+        data-zh="第二次点击时，让月球停在发光窗口中。"
+      >
+        Click again when the moon enters the bright window.
+      </p>
       <output class="sr-only" id="assist-status" aria-live="assertive"></output>
-      <span class="sr-only" id="assist-note">
-        开启后会播报月球正在远离、接近或正对窗口。
+      <span
+        class="sr-only"
+        id="assist-note"
+        data-en="When enabled, announces whether the moon is far from, approaching, or inside the window."
+        data-zh="开启后会播报月球正在远离、接近或正对窗口。"
+      >
+        When enabled, announces whether the moon is far from, approaching, or inside the window.
       </span>
     </main>
+    <script src="../shared/runtime.js"></script>
     <script src="./game.js"></script>
   </body>
 </html>

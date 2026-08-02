@@ -1,0 +1,432 @@
+---
+import { site } from '@config/site';
+import Base from '@layouts/Base.astro';
+import { withBase } from '@utils/base';
+
+interface Props {
+  locale: 'en' | 'zh';
+}
+
+const { locale } = Astro.props;
+const content = site.playground.locales[locale];
+const language = locale === 'zh' ? 'zh-CN' : 'en';
+const assetBase = withBase('/pocket-play/');
+---
+
+<Base title={content.title} description={content.intro}>
+  <script slot="head" is:inline data-astro-rerun defer src={`${assetBase}embed.js`}></script>
+
+  <div class="playground-shell page-container" data-locale={locale}>
+    <header class="hero">
+      <p class="eyebrow">{content.eyebrow}</p>
+      <h1>{content.title}</h1>
+      <p class="intro">{content.intro}</p>
+      <ul class="principles" aria-label={content.title}>
+        {content.badges.map((badge) => <li>{badge}</li>)}
+      </ul>
+    </header>
+
+    {
+      content.sections.map((section) => {
+        const games = site.playground.games.filter((game) => game.category === section.id);
+        const splitIndex = Math.ceil(games.length / 2);
+        const gameColumns = [games.slice(0, splitIndex), games.slice(splitIndex)];
+
+        return (
+          <section class="collection" aria-labelledby={`playground-${section.id}`}>
+            <div class="section-heading">
+              <div>
+                <p class="section-number">{section.number}</p>
+                <h2 id={`playground-${section.id}`}>{section.title}</h2>
+              </div>
+              <p>{section.intro}</p>
+            </div>
+
+            <div class="game-columns">
+              {gameColumns.map((column) => (
+                <div class="game-column">
+                  {column.map((game) => {
+                    const gameIndex = site.playground.games.indexOf(game) + 1;
+                    const standaloneHref = `${assetBase}games/${game.id}/?lang=${encodeURIComponent(language)}`;
+
+                    return (
+                      <article class="game-card">
+                        <div class="game-copy">
+                          <span class="game-index">{String(gameIndex).padStart(2, '0')}</span>
+                          <div>
+                            <p class="game-kind">{game.meta[locale]}</p>
+                            <h3>{game.title[locale]}</h3>
+                            <p class="game-description">{game.description[locale]}</p>
+                            <ul class="game-meta" aria-label={game.title[locale]}>
+                              {game.tags[locale].map((tag) => (
+                                <li>{tag}</li>
+                              ))}
+                            </ul>
+                            <a
+                              class="standalone-link"
+                              href={standaloneHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {content.openLabel} <span aria-hidden="true">↗</span>
+                            </a>
+                          </div>
+                        </div>
+
+                        <div class="game-stage">
+                          <pocket-game
+                            game={game.id}
+                            height={game.height}
+                            lang={language}
+                            label={`${game.title[locale]} ${content.miniGameLabel}`}
+                            base={assetBase}
+                            loading={game.id === 'runner' ? 'eager' : 'lazy'}
+                          />
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })
+    }
+  </div>
+</Base>
+
+<style>
+  .playground-shell {
+    max-width: 1040px;
+    padding: clamp(3.5rem, 8vw, 6rem) 1.25rem 5rem;
+  }
+
+  .hero {
+    display: grid;
+    min-height: 430px;
+    align-content: center;
+    padding-bottom: 5rem;
+  }
+
+  .eyebrow,
+  .section-number,
+  .game-kind,
+  .game-index,
+  .game-meta {
+    font-family: var(--font-mono);
+  }
+
+  .eyebrow,
+  .section-number {
+    margin: 0 0 0.8rem;
+    color: var(--global-theme-color);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  h1,
+  h2,
+  h3 {
+    color: var(--global-text-color);
+  }
+
+  h1 {
+    max-width: 9ch;
+    margin: 0;
+    font-size: clamp(3.6rem, 10vw, 7rem);
+    font-weight: 800;
+    letter-spacing: -0.065em;
+    line-height: 0.9;
+  }
+
+  .playground-shell[data-locale='zh'] h1 {
+    max-width: none;
+    font-size: clamp(2.8rem, 10vw, 6.4rem);
+    letter-spacing: -0.08em;
+  }
+
+  .intro {
+    max-width: 720px;
+    margin: 1.5rem 0 0;
+    color: var(--global-text-color-light);
+    font-size: 1.05rem;
+    line-height: 1.8;
+  }
+
+  .principles,
+  .game-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .principles {
+    margin: 1.7rem 0 0;
+  }
+
+  .principles li,
+  .game-meta li {
+    border: 1px solid var(--global-divider-color);
+    border-radius: 3px;
+  }
+
+  .principles li {
+    padding: 0.42rem 0.62rem;
+    color: var(--global-text-color-light);
+    background: var(--global-card-bg-color);
+    font-size: 0.76rem;
+  }
+
+  .collection {
+    padding: 5rem 0;
+    border-top: 1px solid var(--global-divider-color);
+  }
+
+  .section-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+    gap: 2.5rem;
+    align-items: end;
+    margin-bottom: 2.5rem;
+  }
+
+  .section-heading h2 {
+    margin: 0;
+    font-size: clamp(2rem, 4.5vw, 3.2rem);
+    letter-spacing: -0.045em;
+    line-height: 1.02;
+  }
+
+  .section-heading > p {
+    margin: 0;
+    color: var(--global-text-color-light);
+    line-height: 1.7;
+  }
+
+  .game-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .game-column {
+    display: grid;
+    min-width: 0;
+    gap: 1rem;
+    align-content: start;
+  }
+
+  .game-card {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+    padding: 1rem;
+    margin: 0;
+    background: var(--global-card-bg-color);
+    border: 1px solid var(--global-divider-color);
+    border-radius: 4px;
+  }
+
+  .game-copy {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.9rem;
+  }
+
+  .game-index {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    color: var(--global-theme-color);
+    border: 1px solid var(--global-theme-color);
+    border-radius: 4px;
+    font-size: 0.64rem;
+    font-weight: 700;
+  }
+
+  .game-kind {
+    margin: 0 0 0.42rem;
+    color: var(--global-theme-color);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .game-copy h3 {
+    margin: 0 0 0.72rem;
+    font-size: clamp(1.55rem, 3vw, 2.15rem);
+    letter-spacing: -0.035em;
+  }
+
+  .game-description {
+    margin: 0;
+    color: var(--global-text-color-light);
+    line-height: 1.65;
+  }
+
+  .game-meta {
+    margin: 1.4rem 0 0;
+    font-size: 0.66rem;
+  }
+
+  .game-meta li {
+    padding: 0.36rem 0.48rem;
+    color: var(--global-theme-color);
+    background: color-mix(in srgb, var(--global-theme-color) 8%, transparent);
+  }
+
+  .standalone-link {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.7rem;
+    color: var(--global-theme-color);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-underline-offset: 0.2rem;
+  }
+
+  .game-stage {
+    width: min(100%, 446px);
+    min-width: 0;
+    overflow: hidden;
+    padding: 0.75rem;
+    justify-self: center;
+    background: color-mix(in srgb, var(--global-divider-color) 45%, transparent);
+    border: 1px solid var(--global-divider-color);
+    border-radius: 4px;
+  }
+
+  pocket-game {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    min-width: 0;
+    margin-inline: auto;
+  }
+
+  pocket-game::part(frame) {
+    border-radius: 4px;
+  }
+
+  @media (hover: hover) {
+    .game-card {
+      transition:
+        transform 0.15s ease,
+        border-color 0.15s ease;
+    }
+
+    .game-card:hover {
+      border-color: var(--global-theme-color);
+      transform: translateY(-2px);
+    }
+  }
+
+  @media (max-width: 900px) {
+    .section-heading {
+      grid-template-columns: 1fr;
+    }
+
+    .section-heading {
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .game-card {
+      gap: 1.75rem;
+      padding: 1rem;
+    }
+
+    .game-copy {
+      padding: 0.5rem 0.25rem 0;
+    }
+
+    .game-stage {
+      justify-self: center;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .game-columns {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 580px) {
+    .playground-shell {
+      width: 100%;
+      padding-inline: 0;
+    }
+
+    .hero,
+    .section-heading {
+      padding-inline: 1rem;
+    }
+
+    .hero {
+      min-height: 380px;
+      padding-bottom: 4rem;
+    }
+
+    .collection {
+      padding: 4rem 0;
+    }
+
+    .game-card {
+      padding: 0;
+      border-right: 0;
+      border-left: 0;
+      border-radius: 0;
+    }
+
+    .game-copy {
+      padding: 1rem 1rem 0.5rem;
+    }
+
+    .game-stage {
+      width: 100%;
+      padding: 0;
+      border-right: 0;
+      border-left: 0;
+      border-radius: 0;
+    }
+
+    pocket-game::part(frame) {
+      border-radius: 0;
+    }
+  }
+
+  @media (max-width: 340px) {
+    h1 {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      font-size: clamp(2.75rem, 17vw, 3.6rem);
+    }
+
+    .hero,
+    .section-heading {
+      padding-inline: 0.75rem;
+    }
+
+    .game-copy {
+      padding-inline: 0.75rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .game-card {
+      transition: none;
+    }
+  }
+</style>

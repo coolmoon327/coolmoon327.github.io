@@ -1,0 +1,340 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-width: 280px;
+  min-height: 100%;
+}
+
+body {
+  display: grid;
+  min-height: 100svh;
+  margin: 0;
+  place-items: stretch;
+  color: var(--game-text);
+  background: var(--game-bg);
+  font-family: var(--game-font);
+}
+
+button,
+output {
+  font: inherit;
+}
+
+.runner-card {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 0.6rem;
+  width: min(100%, 420px);
+  min-height: 100svh;
+  margin-inline: auto;
+  padding: 0.9rem;
+  background: var(--game-bg);
+  border: 1px solid var(--game-divider);
+  border-radius: calc(var(--game-radius) * 2);
+  box-shadow: var(--game-shadow);
+}
+
+.game-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.12rem;
+  color: var(--game-accent);
+  font-family: var(--game-mono);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.15rem, 5vw, 1.45rem);
+  line-height: 1.1;
+}
+
+.reward-key {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.5rem;
+  color: var(--game-muted);
+  background: var(--game-surface);
+  border: 1px solid var(--game-divider);
+  border-radius: var(--game-radius);
+  font-family: var(--game-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  background: var(--game-divider);
+  border: 1px solid var(--game-divider);
+  border-radius: var(--game-radius);
+}
+
+.metrics > div {
+  min-width: 0;
+  padding: 0.38rem 0.45rem;
+  background: var(--game-surface);
+  text-align: center;
+}
+
+.metrics dt {
+  overflow: hidden;
+  color: var(--game-muted);
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.metrics dd {
+  margin: 0.08rem 0 0;
+  font-family: var(--game-mono);
+  font-size: 0.88rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  position: relative;
+  align-self: stretch;
+  width: 100%;
+  height: clamp(142px, 43svh, 166px);
+  min-height: 142px;
+  padding: 0;
+  overflow: hidden;
+  color: var(--game-text);
+  background:
+    linear-gradient(var(--game-divider) 1px, transparent 1px),
+    linear-gradient(90deg, var(--game-divider) 1px, transparent 1px), var(--game-surface);
+  background-size: 24px 24px;
+  border: 1px solid var(--game-divider);
+  border-radius: var(--game-radius);
+  cursor: pointer;
+  touch-action: manipulation;
+  contain: layout paint;
+}
+
+.track:hover {
+  border-color: var(--game-accent);
+}
+
+.track:focus-visible {
+  outline: 3px solid var(--game-accent);
+  outline-offset: 2px;
+}
+
+.ground {
+  position: absolute;
+  right: 0;
+  bottom: 22px;
+  left: 0;
+  height: 2px;
+  background: var(--game-text);
+  opacity: 0.55;
+}
+
+.agent {
+  position: absolute;
+  bottom: 24px;
+  left: 10%;
+  z-index: 3;
+  width: 24px;
+  height: 30px;
+  background: var(--game-accent);
+  border: 2px solid var(--game-accent-strong);
+  border-radius: var(--game-radius) var(--game-radius) 8px 4px;
+  box-shadow: 6px 8px 0 -4px var(--game-accent-strong);
+  will-change: transform;
+}
+
+.agent::before {
+  position: absolute;
+  top: 6px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  background: var(--game-on-accent);
+  border-radius: 50%;
+  content: '';
+}
+
+.agent::after {
+  position: absolute;
+  bottom: -7px;
+  left: 3px;
+  width: 16px;
+  height: 7px;
+  border-right: 4px solid var(--game-accent-strong);
+  border-left: 4px solid var(--game-accent-strong);
+  content: '';
+}
+
+.track[data-phase='over'] .agent {
+  background: var(--game-danger);
+  border-color: var(--game-danger);
+}
+
+.entities {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.entity {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  font-family: var(--game-mono);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1;
+  will-change: transform;
+}
+
+.obstacle {
+  color: var(--game-danger);
+  background: var(--game-surface-strong);
+  border: 2px solid var(--game-danger);
+  border-radius: var(--game-radius) var(--game-radius) 0 0;
+}
+
+.reward {
+  color: var(--game-on-accent);
+  background: var(--game-accent);
+  border: 2px solid var(--game-accent-strong);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--game-accent-soft);
+}
+
+.track-prompt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  max-width: calc(100% - 2rem);
+  padding: 0.5rem 0.7rem;
+  color: var(--game-text);
+  background: var(--game-bg);
+  border: 1px solid var(--game-divider);
+  border-radius: var(--game-radius);
+  box-shadow: var(--game-shadow);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  transition: opacity 120ms ease;
+}
+
+.track[data-phase='running'] .track-prompt {
+  opacity: 0;
+}
+
+.feedback {
+  display: grid;
+  gap: 0.18rem;
+  align-content: start;
+}
+
+.status,
+.help {
+  margin: 0;
+  text-align: center;
+}
+
+.status {
+  min-height: 2.5em;
+  color: var(--game-text);
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.help {
+  color: var(--game-muted);
+  font-size: 0.6rem;
+  line-height: 1.35;
+}
+
+html[data-embed='true'] body {
+  background: transparent;
+}
+
+html[data-embed='true'] .runner-card {
+  min-height: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 320px) {
+  .runner-card {
+    padding-inline: 0.7rem;
+  }
+
+  .game-header {
+    gap: 0.4rem;
+  }
+
+  .reward-key {
+    padding-inline: 0.35rem;
+  }
+}
+
+@media (max-height: 360px) {
+  .runner-card {
+    gap: 0.45rem;
+    padding-block: 0.65rem;
+  }
+
+  .track {
+    height: 142px;
+  }
+
+  .help {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .track[data-phase='running'] .agent::after {
+    animation: stride 180ms steps(2, end) infinite;
+  }
+
+  .reward {
+    animation: reward-pulse 900ms ease-in-out infinite alternate;
+  }
+
+  @keyframes stride {
+    to {
+      transform: skewX(-18deg);
+    }
+  }
+
+  @keyframes reward-pulse {
+    to {
+      box-shadow: 0 0 0 6px var(--game-accent-soft);
+    }
+  }
+}

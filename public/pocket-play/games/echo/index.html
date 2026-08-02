@@ -1,82 +1,101 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#17182a">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#17182a" />
     <meta
       name="description"
-      content="记住四个按钮亮起的顺序，再用点击、触屏或键盘 1–4 复现。"
-    >
-    <title>记忆回声</title>
-    <link rel="stylesheet" href="./style.css">
+      content="Remember the four-pad sequence, then replay it with pointer, touch, or keys 1–4."
+    />
+    <title data-en="Memory Echo" data-zh="记忆回声">Memory Echo</title>
+    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main class="echo-card" aria-labelledby="game-title">
       <header class="card-header">
         <div>
-          <p class="eyebrow">MEMORY ECHO</p>
-          <h1 id="game-title">记忆回声</h1>
+          <p class="eyebrow" data-en="MEMORY ECHO" data-zh="记忆回声">MEMORY ECHO</p>
+          <h1 id="game-title" data-en="Memory Echo" data-zh="记忆回声">Memory Echo</h1>
         </div>
-        <p class="round-meter" aria-label="当前轮数">
+        <p
+          class="round-meter"
+          aria-label="Current round"
+          data-aria-en="Current round"
+          data-aria-zh="当前轮数"
+        >
           <span id="round">0</span><small>/ 10</small>
         </p>
       </header>
 
-      <p class="intro">
-        先看四格依次亮起，再把越来越长的顺序完整复现。
+      <p
+        class="intro"
+        data-en="Watch the four pads light up, then replay the growing sequence."
+        data-zh="先看四格依次亮起，再把越来越长的顺序完整复现。"
+      >
+        Watch the four pads light up, then replay the growing sequence.
       </p>
 
       <section
         class="echo-grid"
         id="echo-grid"
         role="group"
-        aria-label="四个回声按钮"
+        aria-label="Four echo pads"
+        data-aria-en="Four echo pads"
+        data-aria-zh="四个回声按钮"
         aria-describedby="instructions"
       >
         <button
           class="echo-pad pad-coral"
           type="button"
           data-pad="0"
-          aria-label="珊瑚回声，按键 1"
+          aria-label="Coral echo, key 1"
+          data-aria-en="Coral echo, key 1"
+          data-aria-zh="珊瑚回声，按键 1"
           aria-keyshortcuts="1"
           disabled
         >
           <span class="pad-number" aria-hidden="true">1</span>
-          <span aria-hidden="true">珊瑚</span>
+          <span aria-hidden="true" data-en="Coral" data-zh="珊瑚">Coral</span>
         </button>
         <button
           class="echo-pad pad-gold"
           type="button"
           data-pad="1"
-          aria-label="金色回声，按键 2"
+          aria-label="Gold echo, key 2"
+          data-aria-en="Gold echo, key 2"
+          data-aria-zh="金色回声，按键 2"
           aria-keyshortcuts="2"
           disabled
         >
           <span class="pad-number" aria-hidden="true">2</span>
-          <span aria-hidden="true">金色</span>
+          <span aria-hidden="true" data-en="Gold" data-zh="金色">Gold</span>
         </button>
         <button
           class="echo-pad pad-mint"
           type="button"
           data-pad="2"
-          aria-label="薄荷回声，按键 3"
+          aria-label="Mint echo, key 3"
+          data-aria-en="Mint echo, key 3"
+          data-aria-zh="薄荷回声，按键 3"
           aria-keyshortcuts="3"
           disabled
         >
           <span class="pad-number" aria-hidden="true">3</span>
-          <span aria-hidden="true">薄荷</span>
+          <span aria-hidden="true" data-en="Mint" data-zh="薄荷">Mint</span>
         </button>
         <button
           class="echo-pad pad-blue"
           type="button"
           data-pad="3"
-          aria-label="蓝色回声，按键 4"
+          aria-label="Blue echo, key 4"
+          data-aria-en="Blue echo, key 4"
+          data-aria-zh="蓝色回声，按键 4"
           aria-keyshortcuts="4"
           disabled
         >
           <span class="pad-number" aria-hidden="true">4</span>
-          <span aria-hidden="true">蓝色</span>
+          <span aria-hidden="true" data-en="Blue" data-zh="蓝色">Blue</span>
         </button>
       </section>
 
@@ -85,25 +104,39 @@
           <span id="progress"></span>
         </div>
         <p id="status" role="status" aria-live="polite" aria-atomic="true">
-          等待开始
+          <span data-en="Ready" data-zh="等待开始">Ready</span>
         </p>
       </div>
 
       <div class="controls">
-        <button class="action" id="action" type="button">开始游戏</button>
+        <button class="action" id="action" type="button" data-en="Start game" data-zh="开始游戏">
+          Start game
+        </button>
         <button
           class="assist"
           id="assist"
           type="button"
           aria-pressed="false"
-          aria-label="辅助播报关闭"
-        >辅助播报</button>
+          aria-label="Assist cues off"
+          data-aria-en="Assist cues off"
+          data-aria-zh="辅助提示关闭"
+          data-en="Assist cues"
+          data-zh="辅助提示"
+        >
+          Assist cues
+        </button>
       </div>
-      <p class="instructions" id="instructions">
-        点击色块，或使用键盘数字 1–4。游戏进行中可随时重新开始。
+      <p
+        class="instructions"
+        id="instructions"
+        data-en="Click a pad or use keys 1–4. You can restart at any time."
+        data-zh="点击色块，或使用键盘数字 1–4。游戏进行中可随时重新开始。"
+      >
+        Click a pad or use keys 1–4. You can restart at any time.
       </p>
     </main>
 
+    <script src="../shared/runtime.js"></script>
     <script src="./game.js"></script>
   </body>
 </html>

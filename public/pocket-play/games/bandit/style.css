@@ -1,0 +1,392 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-width: 280px;
+  margin: 0;
+}
+
+body {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 0.75rem;
+  color: var(--game-text);
+  background: var(--game-bg);
+  font-family: var(--game-font);
+}
+
+button,
+output {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+.lab {
+  width: min(100%, 420px);
+  min-height: min(100svh, 400px);
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  gap: 0.65rem;
+  padding: 0.9rem;
+  overflow: hidden;
+  border: 1px solid var(--game-divider);
+  border-radius: var(--game-radius);
+  background: var(--game-bg);
+  box-shadow: var(--game-shadow);
+}
+
+.intro,
+.intro p,
+.intro h1,
+.dashboard p,
+.outcome p,
+.controls p {
+  margin: 0;
+}
+
+.eyebrow {
+  color: var(--game-accent);
+  font-family: var(--game-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+h1 {
+  margin: 0.12rem 0 0.18rem;
+  font-size: clamp(1.3rem, 5vw, 1.72rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.subtitle {
+  color: var(--game-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.42rem;
+}
+
+.counter {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.42rem 0.55rem;
+  border: 1px solid var(--game-divider);
+  background: var(--game-surface);
+}
+
+.counter > span {
+  color: var(--game-muted);
+  font-size: 0.68rem;
+}
+
+.counter strong {
+  font-family: var(--game-mono);
+  font-size: 0.92rem;
+}
+
+.counter small {
+  color: var(--game-muted);
+  font-size: 0.66rem;
+}
+
+#status {
+  grid-column: 1 / -1;
+  min-height: 1.2rem;
+  color: var(--game-muted);
+  font-size: 0.73rem;
+  line-height: 1.3;
+}
+
+.arms {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.arm {
+  min-width: 0;
+  min-height: 142px;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 0.48rem;
+  padding: 0.58rem;
+  border: 1px solid var(--game-divider);
+  border-radius: var(--game-radius);
+  background: var(--game-surface);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.arm:hover:not(:disabled) {
+  border-color: var(--game-accent);
+  transform: translateY(-2px);
+}
+
+.arm:focus-visible,
+.new-trial:focus-visible,
+.lab:focus-visible {
+  outline: 3px solid var(--game-accent);
+  outline-offset: 2px;
+}
+
+.lab:focus-visible {
+  outline-offset: -3px;
+}
+
+.arm:disabled {
+  cursor: default;
+}
+
+.arm[data-last='reward'] {
+  border-color: var(--game-accent);
+  background: var(--game-accent-soft);
+}
+
+.arm[data-last='miss'] {
+  border-color: var(--game-warning);
+}
+
+.arm.is-best {
+  border-color: var(--game-accent);
+  box-shadow: inset 0 0 0 1px var(--game-accent);
+}
+
+.arm-heading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.arm-heading strong {
+  min-width: 0;
+  font-size: 0.76rem;
+  line-height: 1.1;
+}
+
+.keycap {
+  flex: 0 0 1.25rem;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid var(--game-divider);
+  background: var(--game-bg);
+  font-family: var(--game-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.metrics {
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+}
+
+.metrics > span {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.2rem;
+}
+
+.metrics small {
+  color: var(--game-muted);
+  font-size: 0.58rem;
+  line-height: 1.08;
+}
+
+.metrics output {
+  font-family: var(--game-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.estimate-track {
+  height: 4px;
+  overflow: hidden;
+  background: var(--game-divider);
+}
+
+.estimate-fill {
+  width: 0;
+  height: 100%;
+  display: block;
+  background: var(--game-accent);
+  transition: width 180ms ease;
+}
+
+.true-probability {
+  color: var(--game-muted);
+  font-family: var(--game-mono);
+  font-size: 0.61rem;
+  text-align: right;
+}
+
+.outcome {
+  align-self: end;
+  padding: 0.55rem 0.65rem;
+  border-left: 3px solid var(--game-accent);
+  background: var(--game-accent-soft);
+}
+
+.outcome[hidden] {
+  display: none;
+}
+
+.outcome > strong {
+  font-size: 0.74rem;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.28rem;
+}
+
+.result-grid p {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem;
+  color: var(--game-muted);
+  font-size: 0.63rem;
+}
+
+.result-grid output {
+  color: var(--game-text);
+  font-family: var(--game-mono);
+  font-weight: 700;
+  text-align: right;
+}
+
+.probability-summary {
+  margin-top: 0.25rem !important;
+  color: var(--game-muted);
+  font-family: var(--game-mono);
+  font-size: 0.6rem;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.controls p {
+  color: var(--game-muted);
+  font-size: 0.64rem;
+  line-height: 1.3;
+}
+
+.new-trial {
+  min-width: 82px;
+  min-height: 44px;
+  padding: 0.5rem 0.68rem;
+  border: 1px solid var(--game-accent);
+  border-radius: var(--game-radius);
+  color: var(--game-on-accent);
+  background: var(--game-accent);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.new-trial:hover {
+  background: var(--game-accent-strong);
+}
+
+html[data-embed='true'] body {
+  padding: 0;
+}
+
+html[data-embed='true'] .lab {
+  min-height: 100svh;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 320px) {
+  .lab {
+    gap: 0.5rem;
+    padding: 0.7rem;
+  }
+
+  .arms {
+    gap: 0.3rem;
+  }
+
+  .arm {
+    min-height: 136px;
+    padding: 0.46rem;
+  }
+
+  .arm-heading {
+    gap: 0.22rem;
+  }
+
+  .arm-heading strong {
+    font-size: 0.69rem;
+  }
+
+  .controls {
+    gap: 0.42rem;
+  }
+}
+
+@media (max-height: 430px) {
+  body {
+    padding: 0;
+  }
+
+  .lab {
+    gap: 0.35rem;
+    padding: 0.55rem;
+  }
+
+  .subtitle {
+    font-size: 0.72rem;
+  }
+
+  .arm {
+    min-height: 116px;
+    gap: 0.32rem;
+    padding-block: 0.4rem;
+  }
+
+  .lab.is-finished .subtitle {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arm,
+  .estimate-fill {
+    transition: none;
+  }
+
+  .arm:hover:not(:disabled) {
+    transform: none;
+  }
+}

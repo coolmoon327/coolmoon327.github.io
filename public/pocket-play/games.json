@@ -1,0 +1,90 @@
+[
+  {
+    "id": "runner",
+    "title": "奖励跃迁",
+    "title_en": "Reward Runner",
+    "kind": "dynamic",
+    "session": "20 秒–2 分钟",
+    "session_en": "20 sec–2 min",
+    "preferred_height": 360,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "bandit",
+    "title": "探索利用实验",
+    "title_en": "Explore–Exploit Lab",
+    "kind": "rl",
+    "session": "15 次行动",
+    "session_en": "15 actions",
+    "preferred_height": 430,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "qpath",
+    "title": "策略航线",
+    "title_en": "Q-Path Lab",
+    "kind": "rl",
+    "session": "20–60 秒",
+    "session_en": "20–60 sec",
+    "preferred_height": 500,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "orbit",
+    "title": "月轨校准",
+    "title_en": "Orbit Alignment",
+    "kind": "micro",
+    "session": "10–20 秒",
+    "session_en": "10–20 sec",
+    "preferred_height": 360,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "signature",
+    "title": "星屑签名",
+    "title_en": "Stardust Signature",
+    "kind": "micro",
+    "session": "5–30 秒",
+    "session_en": "5–30 sec",
+    "preferred_height": 260,
+    "min_width": 240,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "echo",
+    "title": "记忆回声",
+    "title_en": "Memory Echo",
+    "kind": "short",
+    "session": "30 秒–3 分钟",
+    "session_en": "30 sec–3 min",
+    "preferred_height": 430,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "match",
+    "title": "翻牌花园",
+    "title_en": "Memory Garden",
+    "kind": "session",
+    "session": "1–4 分钟",
+    "session_en": "1–4 min",
+    "preferred_height": 590,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "merge",
+    "title": "方块花园",
+    "title_en": "Merge Garden",
+    "kind": "session",
+    "session": "3–10 分钟",
+    "session_en": "3–10 min",
+    "preferred_height": 680,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  }
+]

@@ -1,52 +1,60 @@
 const SIZE = 4;
 const CELL_COUNT = SIZE * SIZE;
-const BEST_SCORE_KEY = "pocket-play.merge-garden.best.v1";
+const BEST_SCORE_KEY = 'pocket-play.merge-garden.best.v1';
 
 const TILE_STAGES = new Map([
-  [2, { symbol: "🌰", label: "种子" }],
-  [4, { symbol: "🌱", label: "萌芽" }],
-  [8, { symbol: "🍃", label: "叶片" }],
-  [16, { symbol: "🌿", label: "幼苗" }],
-  [32, { symbol: "🪴", label: "盆栽" }],
-  [64, { symbol: "🌼", label: "开花" }],
-  [128, { symbol: "🧫", label: "标本" }],
-  [256, { symbol: "🔬", label: "观察" }],
-  [512, { symbol: "📓", label: "记录" }],
-  [1024, { symbol: "💡", label: "发现" }],
-  [2048, { symbol: "📄", label: "论文" }],
-  [4096, { symbol: "🌳", label: "花园" }],
+  [2, { symbol: '🌰', en: 'Seed', zh: '种子' }],
+  [4, { symbol: '🌱', en: 'Sprout', zh: '萌芽' }],
+  [8, { symbol: '🍃', en: 'Leaf', zh: '叶片' }],
+  [16, { symbol: '🌿', en: 'Seedling', zh: '幼苗' }],
+  [32, { symbol: '🪴', en: 'Potted plant', zh: '盆栽' }],
+  [64, { symbol: '🌼', en: 'Bloom', zh: '开花' }],
+  [128, { symbol: '🧫', en: 'Specimen', zh: '标本' }],
+  [256, { symbol: '🔬', en: 'Observation', zh: '观察' }],
+  [512, { symbol: '📓', en: 'Notes', zh: '记录' }],
+  [1024, { symbol: '💡', en: 'Discovery', zh: '发现' }],
+  [2048, { symbol: '📄', en: 'Paper', zh: '论文' }],
+  [4096, { symbol: '🌳', en: 'Garden', zh: '花园' }],
 ]);
 
 const KEY_DIRECTIONS = {
-  ArrowLeft: "left",
-  ArrowUp: "up",
-  ArrowDown: "down",
-  ArrowRight: "right",
+  ArrowLeft: 'left',
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  ArrowRight: 'right',
 };
 
-const boardElement = document.querySelector("#board");
-const scoreElement = document.querySelector("#score");
-const bestScoreElement = document.querySelector("#best-score");
-const statusElement = document.querySelector("#status");
-const announcerElement = document.querySelector("#announcer");
-const toggleButton = document.querySelector("#toggle-game");
-const restartButton = document.querySelector("#restart-game");
-const directionButtons = [...document.querySelectorAll("[data-direction]")];
+const boardElement = document.querySelector('#board');
+const scoreboardElement = document.querySelector('.scoreboard');
+const directionPad = document.querySelector('.direction-pad');
+const scoreElement = document.querySelector('#score');
+const bestScoreElement = document.querySelector('#best-score');
+const statusElement = document.querySelector('#status');
+const announcerElement = document.querySelector('#announcer');
+const toggleButton = document.querySelector('#toggle-game');
+const restartButton = document.querySelector('#restart-game');
+const directionButtons = [...document.querySelectorAll('[data-direction]')];
 
 let board = Array(CELL_COUNT).fill(0);
 let score = 0;
 let storageAvailable = true;
 let bestScore = readBestScore();
-let phase = "idle";
+let phase = 'idle';
 let keyboardArmed = false;
 let newestTileIndex = -1;
 let mergedTileIndices = new Set();
 let highestAnnouncedValue = 32;
 let announceTimer = 0;
+let statusState = { kind: 'idle' };
+let announcementState = null;
+
+function text(english, chinese) {
+  return window.PocketRuntime.text(english, chinese);
+}
 
 function readBestScore() {
   try {
-    const storedValue = Number.parseInt(localStorage.getItem(BEST_SCORE_KEY) ?? "0", 10);
+    const storedValue = Number.parseInt(localStorage.getItem(BEST_SCORE_KEY) ?? '0', 10);
     return Number.isFinite(storedValue) && storedValue >= 0 ? storedValue : 0;
   } catch {
     storageAvailable = false;
@@ -65,19 +73,139 @@ function saveBestScore() {
 }
 
 function tileStage(value) {
-  return TILE_STAGES.get(value) ?? { symbol: "🧬", label: "新物种" };
+  return TILE_STAGES.get(value) ?? { symbol: '🧬', en: 'New species', zh: '新物种' };
 }
 
-function announce(message) {
+function stageLabel(value) {
+  const stage = tileStage(value);
+  return text(stage.en, stage.zh);
+}
+
+function directionName(direction) {
+  const names = {
+    left: text('left', '左'),
+    right: text('right', '右'),
+    up: text('up', '上'),
+    down: text('down', '下'),
+  };
+  return names[direction];
+}
+
+function statusText() {
+  if (statusState.kind === 'started') {
+    return text(
+      'Growing started: push identical samples together.',
+      '培育开始：把相同样本推到一起。',
+    );
+  }
+  if (statusState.kind === 'running') {
+    return text('Growing: push identical samples together.', '培育进行中：把相同样本推到一起。');
+  }
+  if (statusState.kind === 'paused') {
+    return text('Growing is paused.', '培育已暂停。');
+  }
+  if (statusState.kind === 'hidden-paused') {
+    return text(
+      'The page was hidden, so growing paused automatically.',
+      '页面已隐藏，已自动暂停。',
+    );
+  }
+  if (statusState.kind === 'gameover') {
+    return text(
+      'The greenhouse is full and no samples can merge.',
+      '温室已经排满，且没有可继续合并的样本。',
+    );
+  }
+  if (statusState.kind === 'no-change') {
+    return text(
+      'Nothing moved in that direction. Try another one.',
+      '这个方向没有变化，换个方向试试。',
+    );
+  }
+  if (statusState.kind === 'gained') {
+    return text(
+      `This move gained ${statusState.gained} points.`,
+      `本步收获 ${statusState.gained} 分。`,
+    );
+  }
+  if (statusState.kind === 'rearranged') {
+    return text('Samples rearranged.', '样本已重新排列。');
+  }
+  return text(
+    'Select “Start growing”, then move every sample.',
+    '点“开始培育”，再用按钮移动所有样本。',
+  );
+}
+
+function announcementText() {
+  if (!announcementState) return '';
+  if (announcementState.kind === 'gameover') {
+    return text(
+      `Game over. Final score ${announcementState.score}.`,
+      `本局结束，最终得分 ${announcementState.score}。`,
+    );
+  }
+  if (announcementState.kind === 'discovery') {
+    return text(
+      `New discovery: ${stageLabel(announcementState.value)}, level ${announcementState.value}.`,
+      `新发现：${stageLabel(announcementState.value)}，等级 ${announcementState.value}。`,
+    );
+  }
+  if (announcementState.kind === 'no-change') {
+    return text('Nothing moved in that direction.', '这个方向没有变化。');
+  }
+  if (announcementState.kind === 'move') {
+    const gain =
+      announcementState.gained > 0
+        ? text(
+            ` Gained ${announcementState.gained} points.`,
+            `获得 ${announcementState.gained} 分，`,
+          )
+        : '';
+    return text(
+      `Moved ${directionName(announcementState.direction)}.${gain} Score ${announcementState.score}; highest level ${announcementState.largest}.`,
+      `向${directionName(announcementState.direction)}移动，${gain}当前分数 ${announcementState.score}，最高等级 ${announcementState.largest}。`,
+    );
+  }
+  if (announcementState.kind === 'hidden-paused') {
+    return text(
+      'The page was hidden. The game paused automatically.',
+      '页面已隐藏，游戏已自动暂停。',
+    );
+  }
+  if (announcementState.kind === 'paused') {
+    return text('Game paused.', '游戏已暂停。');
+  }
+  if (announcementState.kind === 'new-round') {
+    return text('A new Merge Garden round began.', '新一轮方块花园开始。');
+  }
+  if (announcementState.kind === 'started') {
+    return text('Merge Garden started.', '方块花园开始。');
+  }
+  if (announcementState.kind === 'reset') {
+    return text('Board reset. Select Start growing.', '棋盘已重置，点击开始培育。');
+  }
+  return '';
+}
+
+function renderStatus() {
+  statusElement.textContent = statusText();
+}
+
+function renderAnnouncement() {
+  announcerElement.textContent = announcementText();
+}
+
+function setStatus(kind, details = {}) {
+  statusState = { kind, ...details };
+  renderStatus();
+}
+
+function announce(kind, details = {}) {
+  announcementState = { kind, ...details };
   window.clearTimeout(announceTimer);
-  announcerElement.textContent = "";
-  announceTimer = window.setTimeout(() => {
-    announcerElement.textContent = message;
-  }, 20);
-}
-
-function setStatus(message) {
-  statusElement.textContent = message;
+  announcerElement.textContent = '';
+  announceTimer = window.setTimeout(renderAnnouncement, 20);
 }
 
 function addRandomTile() {
@@ -124,13 +252,13 @@ function lineIndices(direction, line) {
   const backward = [...forward].reverse();
 
   switch (direction) {
-    case "left":
+    case 'left':
       return forward.map((column) => line * SIZE + column);
-    case "right":
+    case 'right':
       return backward.map((column) => line * SIZE + column);
-    case "up":
+    case 'up':
       return forward.map((row) => row * SIZE + line);
-    case "down":
+    case 'down':
       return backward.map((row) => row * SIZE + line);
     default:
       return [];
@@ -187,19 +315,31 @@ function updateBestScore() {
 }
 
 function updateControls() {
-  const isActive = phase === "active";
+  const isActive = phase === 'active';
+  const labels = {
+    idle: text('Start growing', '开始培育'),
+    active: text('Pause', '暂停'),
+    paused: text('Continue growing', '继续培育'),
+    gameover: text('Plant again', '重新播种'),
+  };
+  const directionLabels = {
+    left: text('Move left', '向左移动'),
+    right: text('Move right', '向右移动'),
+    up: text('Move up', '向上移动'),
+    down: text('Move down', '向下移动'),
+  };
+
   directionButtons.forEach((button) => {
     button.disabled = !isActive;
+    button.setAttribute('aria-label', directionLabels[button.dataset.direction]);
   });
 
-  const labels = {
-    idle: "开始培育",
-    active: "暂停",
-    paused: "继续培育",
-    gameover: "重新播种",
-  };
   toggleButton.textContent = labels[phase];
-  toggleButton.setAttribute("aria-pressed", String(isActive));
+  toggleButton.setAttribute('aria-label', labels[phase]);
+  toggleButton.setAttribute('aria-pressed', String(isActive));
+  restartButton.setAttribute('aria-label', text('Reset the board', '重置棋盘'));
+  scoreboardElement.setAttribute('aria-label', text('Game statistics', '本局统计'));
+  directionPad.setAttribute('aria-label', text('Move direction', '移动方向'));
 }
 
 function renderBoard() {
@@ -208,50 +348,57 @@ function renderBoard() {
   const largestValue = Math.max(...board);
 
   for (let rowIndex = 0; rowIndex < SIZE; rowIndex += 1) {
-    const rowElement = document.createElement("div");
-    rowElement.className = "board-row";
-    rowElement.setAttribute("role", "row");
+    const rowElement = document.createElement('div');
+    rowElement.className = 'board-row';
+    rowElement.setAttribute('role', 'row');
 
     for (let columnIndex = 0; columnIndex < SIZE; columnIndex += 1) {
       const index = rowIndex * SIZE + columnIndex;
       const value = board[index];
       const row = rowIndex + 1;
       const column = columnIndex + 1;
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      cell.setAttribute("role", "gridcell");
-      cell.setAttribute("aria-rowindex", String(row));
-      cell.setAttribute("aria-colindex", String(column));
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.setAttribute('role', 'gridcell');
+      cell.setAttribute('aria-rowindex', String(row));
+      cell.setAttribute('aria-colindex', String(column));
 
       if (value === 0) {
-        cell.setAttribute("aria-label", `第 ${row} 行第 ${column} 列，空地`);
+        cell.setAttribute(
+          'aria-label',
+          text(`Row ${row}, column ${column}, empty plot`, `第 ${row} 行第 ${column} 列，空地`),
+        );
       } else {
         const stage = tileStage(value);
-        const tile = document.createElement("div");
-        tile.className = "tile";
+        const labelText = stageLabel(value);
+        const tile = document.createElement('div');
+        tile.className = 'tile';
         tile.dataset.value = String(value);
-        if (value > 4096) tile.dataset.large = "true";
-        if (index === newestTileIndex) tile.classList.add("is-new");
-        if (mergedTileIndices.has(index)) tile.classList.add("is-merged");
+        if (value > 4096) tile.dataset.large = 'true';
+        if (index === newestTileIndex) tile.classList.add('is-new');
+        if (mergedTileIndices.has(index)) tile.classList.add('is-merged');
 
-        const symbol = document.createElement("span");
-        symbol.className = "tile-symbol";
-        symbol.setAttribute("aria-hidden", "true");
+        const symbol = document.createElement('span');
+        symbol.className = 'tile-symbol';
+        symbol.setAttribute('aria-hidden', 'true');
         symbol.textContent = stage.symbol;
 
-        const label = document.createElement("span");
-        label.className = "tile-label";
-        label.textContent = stage.label;
+        const label = document.createElement('span');
+        label.className = 'tile-label';
+        label.textContent = labelText;
 
-        const number = document.createElement("span");
-        number.className = "tile-number";
+        const number = document.createElement('span');
+        number.className = 'tile-number';
         number.textContent = String(value);
 
         tile.append(symbol, label, number);
         cell.append(tile);
         cell.setAttribute(
-          "aria-label",
-          `第 ${row} 行第 ${column} 列，${value}，${stage.label}`,
+          'aria-label',
+          text(
+            `Row ${row}, column ${column}, ${value}, ${labelText}`,
+            `第 ${row} 行第 ${column} 列，${value}，${labelText}`,
+          ),
         );
       }
 
@@ -263,19 +410,28 @@ function renderBoard() {
 
   boardElement.replaceChildren(fragment);
   boardElement.setAttribute(
-    "aria-label",
-    `4×4 方块花园，已有 ${occupiedCount} 个样本，最高等级 ${largestValue || 0}`,
+    'aria-label',
+    text(
+      `Four by four Merge Garden, ${occupiedCount} samples, highest level ${largestValue || 0}`,
+      `4×4 方块花园，已有 ${occupiedCount} 个样本，最高等级 ${largestValue || 0}`,
+    ),
   );
   scoreElement.textContent = String(score);
   bestScoreElement.textContent = String(bestScore);
   updateControls();
 }
 
+function renderUI() {
+  renderStatus();
+  renderBoard();
+  renderAnnouncement();
+}
+
 function endGame() {
-  phase = "gameover";
-  setStatus("温室已经排满，且没有可继续合并的样本。");
+  phase = 'gameover';
+  setStatus('gameover');
   updateControls();
-  announce(`本局结束，最终得分 ${score}。`);
+  announce('gameover', { score });
 }
 
 function maybeAnnounceDiscovery() {
@@ -283,20 +439,19 @@ function maybeAnnounceDiscovery() {
   if (largestValue < 64 || largestValue <= highestAnnouncedValue) return;
 
   highestAnnouncedValue = largestValue;
-  const stage = tileStage(largestValue);
-  announce(`新发现：${stage.label}，等级 ${largestValue}。`);
+  announce('discovery', { value: largestValue });
 }
 
 function move(direction) {
-  if (phase !== "active") return;
+  if (phase !== 'active') return;
 
   const result = calculateMove(direction);
   newestTileIndex = -1;
   mergedTileIndices = result.mergedIndices;
 
   if (!result.changed) {
-    setStatus("这个方向没有变化，换个方向试试。");
-    announce("这个方向没有变化。");
+    setStatus('no-change');
+    announce('no-change');
     if (!hasAvailableMove()) endGame();
     return;
   }
@@ -305,13 +460,14 @@ function move(direction) {
   score += result.gained;
   updateBestScore();
   newestTileIndex = addRandomTile();
-  setStatus(result.gained > 0 ? `本步收获 ${result.gained} 分。` : "样本已重新排列。");
+  setStatus(result.gained > 0 ? 'gained' : 'rearranged', { gained: result.gained });
   renderBoard();
-  const largestValue = Math.max(...board);
-  const directionNames = { left: "左", right: "右", up: "上", down: "下" };
-  announce(
-    `向${directionNames[direction]}移动，${result.gained > 0 ? `获得 ${result.gained} 分，` : ""}当前分数 ${score}，最高等级 ${largestValue}。`,
-  );
+  announce('move', {
+    direction,
+    gained: result.gained,
+    score,
+    largest: Math.max(...board),
+  });
   maybeAnnounceDiscovery();
 
   if (!hasAvailableMove()) endGame();
@@ -324,60 +480,57 @@ function resetGame(activate = false) {
   addRandomTile();
   mergedTileIndices = new Set();
   highestAnnouncedValue = 32;
-  phase = activate ? "active" : "idle";
+  phase = activate ? 'active' : 'idle';
   keyboardArmed = activate;
-  setStatus(
-    activate
-      ? "培育开始：把相同样本推到一起。"
-      : "点“开始培育”，再用按钮移动所有样本。",
-  );
+  statusState = { kind: activate ? 'started' : 'idle' };
+  renderStatus();
   renderBoard();
 }
 
-function pauseGame(message = "培育已暂停。", announcement = "游戏已暂停。") {
-  if (phase !== "active") return;
-  phase = "paused";
-  setStatus(message);
+function pauseGame(statusKind = 'paused', announcementKind = 'paused') {
+  if (phase !== 'active') return;
+  phase = 'paused';
+  setStatus(statusKind);
   updateControls();
-  announce(announcement);
+  announce(announcementKind);
 }
 
 function toggleGame() {
-  if (phase === "active") {
+  if (phase === 'active') {
     pauseGame();
     return;
   }
 
-  if (phase === "gameover") {
+  if (phase === 'gameover') {
     resetGame(true);
-    announce("新一轮方块花园开始。");
+    announce('new-round');
     return;
   }
 
-  phase = "active";
+  phase = 'active';
   keyboardArmed = true;
-  setStatus(phase === "active" ? "培育进行中：把相同样本推到一起。" : "");
+  setStatus('running');
   updateControls();
-  announce("方块花园开始。");
+  announce('started');
 }
 
-toggleButton.addEventListener("click", toggleGame);
+toggleButton.addEventListener('click', toggleGame);
 
-restartButton.addEventListener("click", () => {
+restartButton.addEventListener('click', () => {
   resetGame(false);
-  announce("棋盘已重置，点击开始培育。");
+  announce('reset');
 });
 
 directionButtons.forEach((button) => {
-  button.addEventListener("click", () => {
+  button.addEventListener('click', () => {
     move(button.dataset.direction);
   });
 });
 
-window.addEventListener("keydown", (event) => {
-  if (!keyboardArmed || phase !== "active") return;
+window.addEventListener('keydown', (event) => {
+  if (!keyboardArmed || phase !== 'active') return;
 
-  if (event.key === "Escape") {
+  if (event.key === 'Escape') {
     event.preventDefault();
     pauseGame();
     return;
@@ -389,16 +542,15 @@ window.addEventListener("keydown", (event) => {
   move(direction);
 });
 
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden && phase === "active") {
-    pauseGame("页面已隐藏，已自动暂停。", "页面已隐藏，游戏已自动暂停。");
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && phase === 'active') {
+    pauseGame('hidden-paused', 'hidden-paused');
   }
 });
 
 const embedRequested =
-  new URLSearchParams(window.location.search).get("embed") === "1" ||
-  window.self !== window.top;
-if (embedRequested) document.documentElement.dataset.embed = "true";
+  new URLSearchParams(window.location.search).get('embed') === '1' || window.self !== window.top;
+if (embedRequested) document.documentElement.dataset.embed = 'true';
 
-bestScoreElement.textContent = String(bestScore);
+window.PocketRuntime.onChange(renderUI);
 resetGame(false);

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      id="page-description"
+      name="description"
+      content="A fifteen-pull lab for learning the explore–exploit trade-off."
+    />
+    <title>Explore–Exploit Lab</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main
+      class="lab"
+      id="lab"
+      tabindex="0"
+      aria-labelledby="game-title"
+      aria-describedby="subtitle keyboard-hint"
+    >
+      <header class="intro">
+        <p class="eyebrow" data-en="EXPLORE × EXPLOIT" data-zh="探索 × 利用">EXPLORE × EXPLOIT</p>
+        <h1 id="game-title" data-en="Explore–Exploit Lab" data-zh="探索利用实验">
+          Explore–Exploit Lab
+        </h1>
+        <p
+          class="subtitle"
+          id="subtitle"
+          data-en="Learn three unknown actions, then spend your evidence wisely."
+          data-zh="摸清三个未知动作，再把有限证据用在值得的地方。"
+        >
+          Learn three unknown actions, then spend your evidence wisely.
+        </p>
+      </header>
+
+      <section class="dashboard" id="dashboard">
+        <div class="counter">
+          <span data-en="Pulls left" data-zh="剩余次数">Pulls left</span>
+          <strong><output id="remaining">15</output><small> / 15</small></strong>
+        </div>
+        <div class="counter">
+          <span data-en="Rewards" data-zh="累计奖励">Rewards</span>
+          <strong><output id="total-rewards">0</output></strong>
+        </div>
+        <p id="status" role="status" aria-live="polite" aria-atomic="true">
+          Choose an action. Numbers 1–3 work while this card has focus.
+        </p>
+      </section>
+
+      <section class="arms" id="arms">
+        <button class="arm" type="button" data-arm="0" aria-keyshortcuts="1">
+          <span class="arm-heading">
+            <span class="keycap" aria-hidden="true">1</span>
+            <strong data-en="Action 1" data-zh="动作 1">Action 1</strong>
+          </span>
+          <span class="metrics" aria-hidden="true">
+            <span>
+              <small data-en="Pulls" data-zh="尝试">Pulls</small>
+              <output id="arm-0-pulls">0</output>
+            </span>
+            <span>
+              <small data-en="Rewards" data-zh="奖励">Rewards</small>
+              <output id="arm-0-rewards">0</output>
+            </span>
+            <span>
+              <small data-en="Q estimate" data-zh="Q 估计">Q estimate</small>
+              <output id="arm-0-estimate">—</output>
+            </span>
+          </span>
+          <span class="estimate-track" aria-hidden="true">
+            <span class="estimate-fill" id="arm-0-fill"></span>
+          </span>
+          <span class="true-probability" id="arm-0-probability" aria-hidden="true">p = ?</span>
+        </button>
+
+        <button class="arm" type="button" data-arm="1" aria-keyshortcuts="2">
+          <span class="arm-heading">
+            <span class="keycap" aria-hidden="true">2</span>
+            <strong data-en="Action 2" data-zh="动作 2">Action 2</strong>
+          </span>
+          <span class="metrics" aria-hidden="true">
+            <span>
+              <small data-en="Pulls" data-zh="尝试">Pulls</small>
+              <output id="arm-1-pulls">0</output>
+            </span>
+            <span>
+              <small data-en="Rewards" data-zh="奖励">Rewards</small>
+              <output id="arm-1-rewards">0</output>
+            </span>
+            <span>
+              <small data-en="Q estimate" data-zh="Q 估计">Q estimate</small>
+              <output id="arm-1-estimate">—</output>
+            </span>
+          </span>
+          <span class="estimate-track" aria-hidden="true">
+            <span class="estimate-fill" id="arm-1-fill"></span>
+          </span>
+          <span class="true-probability" id="arm-1-probability" aria-hidden="true">p = ?</span>
+        </button>
+
+        <button class="arm" type="button" data-arm="2" aria-keyshortcuts="3">
+          <span class="arm-heading">
+            <span class="keycap" aria-hidden="true">3</span>
+            <strong data-en="Action 3" data-zh="动作 3">Action 3</strong>
+          </span>
+          <span class="metrics" aria-hidden="true">
+            <span>
+              <small data-en="Pulls" data-zh="尝试">Pulls</small>
+              <output id="arm-2-pulls">0</output>
+            </span>
+            <span>
+              <small data-en="Rewards" data-zh="奖励">Rewards</small>
+              <output id="arm-2-rewards">0</output>
+            </span>
+            <span>
+              <small data-en="Q estimate" data-zh="Q 估计">Q estimate</small>
+              <output id="arm-2-estimate">—</output>
+            </span>
+          </span>
+          <span class="estimate-track" aria-hidden="true">
+            <span class="estimate-fill" id="arm-2-fill"></span>
+          </span>
+          <span class="true-probability" id="arm-2-probability" aria-hidden="true">p = ?</span>
+        </button>
+      </section>
+
+      <section class="outcome" id="outcome" hidden>
+        <strong data-en="Experiment revealed" data-zh="实验结果揭晓">Experiment revealed</strong>
+        <div class="result-grid">
+          <p>
+            <span data-en="Optimal action" data-zh="最优动作">Optimal action</span>
+            <output id="optimal-action"></output>
+          </p>
+          <p>
+            <span data-en="Expected regret" data-zh="期望遗憾">Expected regret</span>
+            <output id="expected-regret"></output>
+          </p>
+        </div>
+        <p class="probability-summary" id="probability-summary"></p>
+      </section>
+
+      <footer class="controls">
+        <p
+          id="keyboard-hint"
+          data-en="Focus this card, then press 1–3. Probabilities stay hidden until pull 15."
+          data-zh="聚焦卡片后可按 1–3；真实概率会在第 15 次后揭示。"
+        >
+          Focus this card, then press 1–3. Probabilities stay hidden until pull 15.
+        </p>
+        <button class="new-trial" id="new-trial" type="button" data-en="New trial" data-zh="新实验">
+          New trial
+        </button>
+      </footer>
+    </main>
+
+    <script src="../shared/runtime.js"></script>
+    <script src="./game.js"></script>
+  </body>
+</html>

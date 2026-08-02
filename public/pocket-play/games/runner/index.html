@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <title data-en="Reward Runner" data-zh="奖励跃迁">Reward Runner</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script src="../shared/runtime.js" defer></script>
+    <script src="./game.js" defer></script>
+  </head>
+  <body>
+    <main class="runner-card" aria-labelledby="game-title">
+      <header class="game-header">
+        <div>
+          <p class="eyebrow" data-en="RL MICROGAME · ONE KEY" data-zh="强化学习微游戏 · 单键">
+            RL MICROGAME · ONE KEY
+          </p>
+          <h1 id="game-title" data-en="Reward Runner" data-zh="奖励跃迁">Reward Runner</h1>
+        </div>
+        <span class="reward-key" aria-hidden="true">+1 / −1</span>
+      </header>
+
+      <dl class="metrics">
+        <div>
+          <dt data-en="Episode" data-zh="回合">Episode</dt>
+          <dd><output id="episode">0</output></dd>
+        </div>
+        <div>
+          <dt data-en="Return" data-zh="回报">Return</dt>
+          <dd><output id="return">0</output></dd>
+        </div>
+        <div>
+          <dt data-en="Best" data-zh="最佳">Best</dt>
+          <dd><output id="best">0</output></dd>
+        </div>
+      </dl>
+
+      <button
+        class="track"
+        id="track"
+        type="button"
+        aria-describedby="status controls-note"
+        aria-keyshortcuts="Space Enter ArrowUp"
+        data-phase="idle"
+      >
+        <span class="ground" aria-hidden="true"></span>
+        <span class="agent" id="agent" aria-hidden="true"></span>
+        <span class="entities" id="entities" aria-hidden="true"></span>
+        <span class="track-prompt" id="track-prompt"></span>
+      </button>
+
+      <div class="feedback">
+        <p class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+        <p
+          class="help"
+          id="controls-note"
+          data-en="Focus the track, then click or press Space, Enter, or ↑."
+          data-zh="聚焦跑道后，点击或按空格、回车或 ↑。"
+        >
+          Focus the track, then click or press Space, Enter, or ↑.
+        </p>
+      </div>
+    </main>
+  </body>
+</html>

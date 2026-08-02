@@ -8,6 +8,7 @@ const routes = [
   '/research/',
   '/research/openraas-thesis/',
   '/games/',
+  '/playground/',
   '/blog/',
   '/zh/',
   '/zh/publications/',
@@ -15,6 +16,7 @@ const routes = [
   '/zh/research/',
   '/zh/research/openraas-thesis/',
   '/zh/games/',
+  '/zh/playground/',
   '/zh/blog/',
 ] as const;
 

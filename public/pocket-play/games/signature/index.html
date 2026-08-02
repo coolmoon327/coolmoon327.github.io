@@ -1,43 +1,67 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#132832">
-    <title>星屑签名</title>
-    <link rel="stylesheet" href="./style.css">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#132832" />
+    <title data-en="Stardust Signature" data-zh="星屑签名">Stardust Signature</title>
+    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main class="signature" aria-labelledby="game-title">
       <header>
         <div>
-          <p class="eyebrow">STARDUST NOTE</p>
-          <h1 id="game-title">星屑签名</h1>
+          <p class="eyebrow" data-en="STARDUST NOTE" data-zh="星屑签语">STARDUST NOTE</p>
+          <h1 id="game-title" data-en="Stardust Signature" data-zh="星屑签名">
+            Stardust Signature
+          </h1>
         </div>
-        <output id="count" aria-label="星点数量">0 / 7</output>
+        <output id="count" aria-label="Star count" data-aria-en="Star count" data-aria-zh="星点数量"
+          >0 / 7</output
+        >
       </header>
 
       <button
         class="sky"
         id="sky"
         type="button"
-        aria-label="唤醒星屑签名画布"
+        aria-label="Wake the stardust signature canvas"
+        data-aria-en="Wake the stardust signature canvas"
+        data-aria-zh="唤醒星屑签名画布"
         aria-describedby="controls message"
       >
-        <svg class="threads" viewBox="0 0 100 100" aria-hidden="true">
+        <svg class="threads" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           <g id="lines"></g>
         </svg>
-        <span class="sky-prompt" id="prompt">点一下 / Enter，唤醒夜色</span>
+        <span
+          class="sky-prompt"
+          id="prompt"
+          data-en="Click / Enter to wake the sky"
+          data-zh="点一下 / Enter，唤醒夜色"
+          >Click / Enter to wake the sky</span
+        >
       </button>
 
-      <span class="sr-only" id="controls">
-        使用鼠标或触屏点击夜空，或聚焦画布后按 Enter 或空格。
+      <span
+        class="sr-only"
+        id="controls"
+        data-en="Click the sky with a mouse or touch, or focus the canvas and press Enter or Space."
+        data-zh="使用鼠标或触屏点击夜空，或聚焦画布后按 Enter 或空格。"
+      >
+        Click the sky with a mouse or touch, or focus the canvas and press Enter or Space.
       </span>
-      <output class="message" id="message" aria-live="polite">
-        先轻轻点一下，让夜色醒来。
+      <output
+        class="message"
+        id="message"
+        aria-live="polite"
+        data-en="Tap softly and wake the night."
+        data-zh="先轻轻点一下，让夜色醒来。"
+      >
+        Tap softly and wake the night.
       </output>
     </main>
 
+    <script src="../shared/runtime.js"></script>
     <script src="./game.js"></script>
   </body>
 </html>
