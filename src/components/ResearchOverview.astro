@@ -101,7 +101,10 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
       </ol>
     </section>
 
-    <section class="academic-background" aria-labelledby="profile-heading">
+    <section
+      class:list={['academic-background', { 'academic-background--zh': locale === 'zh' }]}
+      aria-labelledby="profile-heading"
+    >
       <div class="section-heading">
         <h2 id="profile-heading">{content.profileLabel}</h2>
         <p>{content.profileIntro}</p>
@@ -109,11 +112,24 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
       <div class="profile-grid">
         {
           content.profileGroups.map((group) => (
-            <article>
+            <article class:list={['profile-card', `profile-card--${group.kind}`]}>
               <h3>{group.title}</h3>
-              <ul>
-                {group.items.map((item) => (
-                  <li>{item}</li>
+              <ul role="list">
+                {group.items.map((item, index) => (
+                  <li
+                    class:list={{
+                      'profile-item--featured': group.kind === 'recognition' && index === 0,
+                    }}
+                  >
+                    {typeof item === 'string' ? (
+                      item
+                    ) : (
+                      <>
+                        <strong>{item.title}</strong>
+                        <span>{item.detail}</span>
+                      </>
+                    )}
+                  </li>
                 ))}
               </ul>
             </article>
@@ -353,16 +369,35 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
     border-top: 1px solid var(--global-divider-color);
   }
 
+  @media (min-width: 901px) {
+    .academic-background--zh .section-heading {
+      grid-template-columns: max-content minmax(0, 1fr);
+    }
+
+    .academic-background--zh .section-heading h2 {
+      white-space: nowrap;
+    }
+  }
+
+  @media (min-width: 761px) and (max-width: 900px) {
+    .academic-background--zh .section-heading {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
   .profile-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.9rem;
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+    gap: 1px;
+    padding: 1px;
+    overflow: hidden;
+    border-radius: 1.2rem;
+    background: var(--global-divider-color);
   }
 
   .profile-grid article {
-    padding: 1.25rem;
-    border: 1px solid var(--global-divider-color);
-    border-radius: 1rem;
+    min-width: 0;
+    padding: clamp(1.25rem, 3vw, 1.8rem);
     background: var(--global-card-bg-color);
   }
 
@@ -376,20 +411,72 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
     display: grid;
     gap: 0.75rem;
     margin: 0;
-    padding-left: 1.1rem;
+    padding: 0;
     color: var(--global-text-color-light);
     font-size: 0.88rem;
     line-height: 1.6;
+    list-style: none;
   }
 
-  @media (max-width: 960px) {
-    .profile-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+  .profile-card--education li {
+    position: relative;
+    padding-left: 1rem;
+  }
 
-    .profile-grid article:last-child:nth-child(odd) {
-      grid-column: 1 / -1;
-    }
+  .profile-card--education li::before {
+    position: absolute;
+    top: 0.62em;
+    left: 0;
+    width: 0.32rem;
+    height: 0.32rem;
+    border-radius: 999px;
+    background: var(--global-theme-color);
+    content: '';
+  }
+
+  .profile-card--recognition ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-card--recognition li {
+    min-width: 0;
+    padding: 0.8rem 0.9rem;
+    border-radius: 0.75rem;
+    background: var(--global-bg-color);
+  }
+
+  .profile-card--recognition li:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .profile-card--recognition li strong,
+  .profile-card--recognition li span {
+    display: block;
+  }
+
+  .profile-card--recognition li strong {
+    color: var(--global-text-color);
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+
+  .profile-card--recognition li span {
+    margin-top: 0.25rem;
+    color: var(--global-text-color-light);
+    font-size: 0.84rem;
+    line-height: 1.55;
+  }
+
+  .profile-card--recognition .profile-item--featured {
+    grid-column: 1 / -1;
+    padding: 1rem 1rem 1rem 1.15rem;
+    border-left: 3px solid var(--global-theme-color);
+    background: color-mix(in srgb, var(--global-theme-color) 9%, var(--global-bg-color));
+  }
+
+  .profile-card--recognition .profile-item--featured strong {
+    color: var(--global-theme-color);
+    font-size: 0.98rem;
   }
 
   @media (max-width: 760px) {
@@ -444,8 +531,15 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
     .profile-grid {
       grid-template-columns: minmax(0, 1fr);
     }
+  }
 
-    .profile-grid article:last-child:nth-child(odd) {
+  @media (max-width: 520px) {
+    .profile-card--recognition ul {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .profile-card--recognition li:last-child,
+    .profile-card--recognition .profile-item--featured {
       grid-column: auto;
     }
   }

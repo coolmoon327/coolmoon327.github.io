@@ -29,6 +29,20 @@ const coreRoutes = [
     marker: 'Current doctoral research',
     switchHref: '/zh/research/',
     advisorHref: paschalisProfileUrl,
+    requiredMarkers: [
+      'Academic background',
+      'selected recognition',
+      'PhD Research-Path Scholarship',
+      'Annual stipend: AED 240,000',
+      'B.Econ. in Finance',
+    ],
+    forbiddenMarkers: [
+      'official working title recorded by the program',
+      'public descriptions intentionally remain',
+      'under review and are summarized only at the theme level',
+      '>Experience</h3>',
+      'B.A. in Finance',
+    ],
   },
   {
     path: '/research/openraas-thesis/',
@@ -42,8 +56,22 @@ const coreRoutes = [
     marker: 'Publications',
     switchHref: '/zh/publications/',
   },
-  { path: '/projects/', lang: 'en', marker: 'Projects', switchHref: '/zh/projects/' },
-  { path: '/blog/', lang: 'en', marker: 'Writing will live here.', switchHref: '/zh/blog/' },
+  {
+    path: '/projects/',
+    lang: 'en',
+    marker: 'Projects',
+    switchHref: '/zh/projects/',
+    requiredMarkers: ['single research narrative'],
+    forbiddenMarkers: ['only when it is ready for public release'],
+  },
+  {
+    path: '/blog/',
+    lang: 'en',
+    marker: 'Writing will live here.',
+    switchHref: '/zh/blog/',
+    requiredMarkers: ['A home for research notes, engineering notebooks, and reading notes.'],
+    forbiddenMarkers: ['after the site structure is approved'],
+  },
   {
     path: '/games/',
     lang: 'en',
@@ -72,6 +100,19 @@ const coreRoutes = [
     marker: '当前博士研究',
     switchHref: '/research/',
     advisorHref: paschalisProfileUrl,
+    requiredMarkers: [
+      '学术背景与代表性荣誉',
+      '博士阶段科研奖学金',
+      '每年津贴 24 万迪拉姆',
+      '金融学专业经济学学士',
+    ],
+    forbiddenMarkers: [
+      '培养项目登记时采用的暂定题目',
+      '公开说明仅概述研究问题',
+      '正在审稿，本页仅概述其研究方向',
+      '>研究与工程经历</h3>',
+      '金融学专业文学学士',
+    ],
   },
   {
     path: '/zh/research/openraas-thesis/',
@@ -85,8 +126,22 @@ const coreRoutes = [
     marker: '论文',
     switchHref: '/publications/',
   },
-  { path: '/zh/projects/', lang: 'zh-CN', marker: '项目', switchHref: '/projects/' },
-  { path: '/zh/blog/', lang: 'zh-CN', marker: '文章将在这里陆续发布', switchHref: '/blog/' },
+  {
+    path: '/zh/projects/',
+    lang: 'zh-CN',
+    marker: '项目',
+    switchHref: '/projects/',
+    requiredMarkers: ['串联为一条完整的研究脉络'],
+    forbiddenMarkers: ['博士阶段代码达到公开条件后再纳入'],
+  },
+  {
+    path: '/zh/blog/',
+    lang: 'zh-CN',
+    marker: '文章将在这里陆续发布',
+    switchHref: '/blog/',
+    requiredMarkers: ['整理研究笔记、工程记录与阅读笔记'],
+    forbiddenMarkers: ['待网站结构稳定后'],
+  },
   {
     path: '/zh/games/',
     lang: 'zh-CN',
@@ -107,6 +162,7 @@ const coreRoutes = [
     marker: '解锁家庭服务目录',
     switchHref: '/owner/',
     owner: true,
+    ownerHeaderClass: 'owner-header--zh',
   },
 ];
 
@@ -138,6 +194,26 @@ for (const route of coreRoutes) {
   }
   if (!html.includes(`href="${routeHref(route.switchHref)}"`)) {
     failures.push(`${route.path}: missing corresponding language switch`);
+  }
+  for (const marker of route.requiredMarkers ?? []) {
+    if (!html.includes(marker)) {
+      failures.push(`${route.path}: missing required public marker: ${marker}`);
+    }
+  }
+  for (const marker of route.forbiddenMarkers ?? []) {
+    if (html.includes(marker)) {
+      failures.push(`${route.path}: contains retired internal-facing copy: ${marker}`);
+    }
+  }
+  if (
+    route.ownerHeaderClass &&
+    !new RegExp(`<header[^>]*class=["'][^"']*\\b${route.ownerHeaderClass}\\b[^"']*["']`, 'i').test(
+      html,
+    )
+  ) {
+    failures.push(
+      `${route.path}: missing ${route.ownerHeaderClass} on the rendered header element`,
+    );
   }
   if (route.advisorHref && !html.includes(`href="${route.advisorHref}"`)) {
     failures.push(`${route.path}: missing Paschalis Sofotasios KU profile link`);

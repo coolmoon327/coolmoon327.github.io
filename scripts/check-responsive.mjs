@@ -61,6 +61,8 @@ const viewportScenarios = [
   { name: 'phone-portrait-360', width: 360, height: 800, mode: 'viewport' },
   { name: 'phone-portrait-390', width: 390, height: 844, mode: 'viewport' },
   { name: 'phone-portrait-430', width: 430, height: 932, mode: 'viewport' },
+  { name: 'profile-card-boundary-520', width: 520, height: 900, mode: 'viewport' },
+  { name: 'profile-card-boundary-521', width: 521, height: 900, mode: 'viewport' },
   { name: 'phone-landscape-short', width: 320, height: 280, mode: 'viewport' },
   { name: 'phone-landscape-568', width: 568, height: 320, mode: 'viewport' },
   { name: 'phone-landscape-667', width: 667, height: 375, mode: 'viewport' },
@@ -68,6 +70,8 @@ const viewportScenarios = [
   { name: 'phone-landscape-932', width: 932, height: 430, mode: 'viewport' },
   { name: 'mobile-boundary-720', width: 720, height: 900, mode: 'viewport' },
   { name: 'tablet-boundary-721', width: 721, height: 900, mode: 'viewport' },
+  { name: 'profile-grid-boundary-760', width: 760, height: 900, mode: 'viewport' },
+  { name: 'profile-grid-boundary-761', width: 761, height: 900, mode: 'viewport' },
   { name: 'tablet-portrait-768', width: 768, height: 1024, mode: 'viewport' },
   { name: 'tablet-portrait-820', width: 820, height: 1180, mode: 'viewport' },
   { name: 'tablet-boundary-900', width: 900, height: 700, mode: 'viewport' },
@@ -255,6 +259,31 @@ async function measurePage(page) {
         }))
       : [];
     const heroIntroRect = heroIntro?.getBoundingClientRect();
+    const profileHeading = document.querySelector('#profile-heading');
+    const profileHeadingRange = profileHeading ? document.createRange() : null;
+    profileHeadingRange?.selectNodeContents(profileHeading);
+    const profileHeadingLines = profileHeadingRange
+      ? [...profileHeadingRange.getClientRects()].map((rect) => ({
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+        }))
+      : [];
+    const profileGrid = document.querySelector('.profile-grid');
+    const profileCards = profileGrid
+      ? [...profileGrid.querySelectorAll(':scope > .profile-card')]
+      : [];
+    const recognitionCard = profileGrid?.querySelector('.profile-card--recognition');
+    const recognitionGrid = recognitionCard?.querySelector('ul');
+    const recognitionItems = recognitionGrid ? [...recognitionGrid.querySelectorAll('li')] : [];
+    const featuredRecognition = recognitionCard?.querySelector('.profile-item--featured');
+    const finalRecognition = recognitionItems.at(-1);
+    const gridTrackCount = (element) =>
+      element
+        ? getComputedStyle(element)
+            .gridTemplateColumns.split(' ')
+            .filter((track) => track.length > 0).length
+        : 0;
 
     return {
       clientWidth: viewportWidth,
@@ -273,6 +302,21 @@ async function measurePage(page) {
           }
         : null,
       headingTop: headingRect ? Math.round(headingRect.top) : null,
+      profileHeadingLines,
+      profile: profileGrid
+        ? {
+            cardCount: profileCards.length,
+            columnCount: gridTrackCount(profileGrid),
+            recognitionColumnCount: gridTrackCount(recognitionGrid),
+            recognitionItemCount: recognitionItems.length,
+            featuredColumnEnd: featuredRecognition
+              ? getComputedStyle(featuredRecognition).gridColumnEnd
+              : null,
+            finalColumnEnd: finalRecognition
+              ? getComputedStyle(finalRecognition).gridColumnEnd
+              : null,
+          }
+        : null,
       hero:
         heroHeading && heroIntro && heroIntroRect
           ? {
@@ -535,29 +579,23 @@ async function auditSiteMatrix(browser) {
         }
       }
       if (route === '/zh/owner/' && scenario.width >= 721 && metrics.hero) {
-        const lineWidths = metrics.hero.headingLines.map((line) => line.width);
-        const widthDifference = Math.abs((lineWidths[0] ?? 0) - (lineWidths[1] ?? 0));
-        const maximumLineWidth = Math.max(...lineWidths);
         const headingRight = Math.max(...metrics.hero.headingLines.map((line) => line.right));
         const horizontalGap = metrics.hero.intro.left - headingRight;
-        const introLineWidths = metrics.hero.introLines.map((line) => line.width);
-        const introBalance = Math.min(...introLineWidths) / Math.max(...introLineWidths);
         if (
-          metrics.hero.headingLines.length !== 2 ||
-          metrics.hero.headingLineCharacterCounts.join(',') !== '2,2' ||
-          widthDifference > Math.max(4, maximumLineWidth * 0.05) ||
+          metrics.hero.headingLines.length !== 1 ||
+          metrics.hero.headingLineCharacterCounts.join(',') !== '4' ||
           horizontalGap < 20 ||
-          horizontalGap > 34 ||
-          metrics.hero.introLines.length !== 2 ||
-          introBalance < 0.65 ||
+          horizontalGap > 72 ||
+          metrics.hero.introLines.length > 2 ||
+          metrics.hero.introLines.length < 1 ||
           !metrics.hero.introTextWrap?.includes('balance')
         ) {
           addFailure(
             'site-hero',
             route,
             scenario.name,
-            'Chinese private-access hero is not balanced into two non-overlapping title lines',
-            { ...metrics.hero, horizontalGap, introBalance, widthDifference },
+            'Chinese private-access hero is not a compact single-line title with a right-side introduction',
+            { ...metrics.hero, horizontalGap },
           );
         }
       }
@@ -573,6 +611,40 @@ async function auditSiteMatrix(browser) {
           'Chinese private-access title must return to one natural line at the mobile boundary',
           metrics.hero,
         );
+      }
+      if (
+        route === '/zh/research/' &&
+        scenario.width >= 901 &&
+        metrics.profileHeadingLines.length !== 1
+      ) {
+        addFailure(
+          'site-heading',
+          route,
+          scenario.name,
+          'Chinese academic background and recognition heading must remain on one line at desktop widths',
+          { profileHeadingLines: metrics.profileHeadingLines },
+        );
+      }
+      if ((route === '/research/' || route === '/zh/research/') && metrics.profile) {
+        const expectedProfileColumns = scenario.width <= 760 ? 1 : 2;
+        const expectedRecognitionColumns = scenario.width <= 520 ? 1 : 2;
+        const expectedSpanningEnd = scenario.width <= 520 ? 'auto' : '-1';
+        if (
+          metrics.profile.cardCount !== 2 ||
+          metrics.profile.recognitionItemCount !== 6 ||
+          metrics.profile.columnCount !== expectedProfileColumns ||
+          metrics.profile.recognitionColumnCount !== expectedRecognitionColumns ||
+          metrics.profile.featuredColumnEnd !== expectedSpanningEnd ||
+          metrics.profile.finalColumnEnd !== expectedSpanningEnd
+        ) {
+          addFailure(
+            'site-profile',
+            route,
+            scenario.name,
+            'Academic background and recognition cards do not match the intended responsive grid',
+            { ...metrics.profile, expectedProfileColumns, expectedRecognitionColumns },
+          );
+        }
       }
       for (const message of runtimeErrors) {
         addFailure('site-runtime', route, scenario.name, message);

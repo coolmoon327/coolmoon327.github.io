@@ -665,7 +665,7 @@ export const site = {
       currentLabel: 'Current doctoral research',
       currentTitle: 'Physical-layer security for zero-energy 6G IoT and IoE systems',
       currentBody:
-        'My doctoral research studies secure and resilient transmission for future wireless systems, with particular interest in learning-enabled decision making under practical constraints. The dissertation title below is the official working title recorded by the program; public descriptions intentionally remain at the research-problem level.',
+        'My doctoral research studies secure and resilient transmission for future wireless systems, with particular interest in learning-enabled decision making under practical constraints.',
       programLabel: 'Program',
       program: 'PhD in Engineering — Electrical & Computer Engineering',
       dissertationLabel: 'Dissertation',
@@ -692,7 +692,7 @@ export const site = {
       ],
       publicStatusLabel: 'Public record',
       publicStatus:
-        'The public record includes an IEEE JSAC Early Access article and two papers accepted at IEEE ICMLCN 2026. Several additional physical-layer-security collaborations are under review and are summarized only at the theme level.',
+        'The public record includes an IEEE JSAC Early Access article and two papers accepted at IEEE ICMLCN 2026.',
       trajectoryLabel: 'Research trajectory',
       trajectoryIntro:
         'The progression from systems and resource cooperation to secure wireless optimization is part of one continuous research story.',
@@ -732,35 +732,46 @@ export const site = {
           links: [{ label: 'Projects', href: '/projects/' }],
         },
       ],
-      profileLabel: 'Background & recognition',
+      profileLabel: 'Academic background & selected recognition',
       profileIntro:
-        'Education, research experience, and selected recognition supporting the trajectory above.',
+        'Education and selected recognition spanning doctoral, graduate, and undergraduate study.',
       profileGroups: [
         {
+          kind: 'education',
           title: 'Education',
           items: [
             'PhD in Engineering — Electrical & Computer Engineering, Khalifa University (current)',
             'M.Eng. in Network Engineering, UESTC (2024)',
-            'B.Eng. in Internet of Things Engineering and B.A. in Finance, UESTC (2021)',
+            'B.Eng. in Internet of Things Engineering and B.Econ. in Finance, UESTC (2021)',
             'Graduate exchange in Computer Science, Khalifa University (Spring 2024)',
           ],
         },
         {
-          title: 'Experience',
-          items: [
-            'Teaching assistant for Reinforcement Learning at UESTC (2022)',
-            'Network-optimization placement with China Telecom, contributing to adaptive 5G antenna-control research',
-            'Research and engineering collaborations spanning wireless systems, edge computing, signal analysis, and embedded AI',
-          ],
-        },
-        {
+          kind: 'recognition',
           title: 'Selected recognition',
           items: [
-            'First-Class University Scholarship in every academic year at UESTC',
-            'National Scholarship, awarded three times: twice during undergraduate study and once during master’s study',
-            'IEEE iWRF&AT 2024 Best Paper Award',
-            'National First Prize, National Embedded Chip and System Design Competition (2022)',
-            'Sichuan Province Outstanding Graduate',
+            {
+              title: 'PhD Research-Path Scholarship',
+              detail: 'Annual stipend: AED 240,000',
+            },
+            {
+              title: 'National Scholarship',
+              detail:
+                'Awarded three times: twice during undergraduate study and once during master’s study.',
+            },
+            {
+              title: 'First-Class University Scholarship',
+              detail: 'Awarded in every academic year at UESTC.',
+            },
+            { title: 'Best Paper Award', detail: 'IEEE iWRF&AT 2024' },
+            {
+              title: 'National First Prize',
+              detail: 'National Embedded Chip and System Design Competition · 2022',
+            },
+            {
+              title: 'Sichuan Province Outstanding Graduate',
+              detail: 'Awarded upon undergraduate graduation',
+            },
           ],
         },
       ],
@@ -773,7 +784,7 @@ export const site = {
       currentLabel: '当前博士研究',
       currentTitle: '面向零能耗 6G 物联网与万物互联的物理层安全',
       currentBody:
-        '博士阶段聚焦未来无线系统中的安全传输与抗干扰能力，尤其关注实际约束下的智能决策。下方英文题目是培养项目登记时采用的暂定题目；公开说明仅概述研究问题，不涉及尚未公开的工作。',
+        '博士阶段聚焦未来无线系统中的安全传输与抗干扰能力，尤其关注实际约束下的智能决策。',
       programLabel: '学位项目',
       program: '工学博士（电气与计算机工程）',
       dissertationLabel: '博士论文',
@@ -800,7 +811,7 @@ export const site = {
       ],
       publicStatusLabel: '公开成果',
       publicStatus:
-        '目前公开成果包括一篇 IEEE JSAC Early Access 论文和两篇 IEEE ICMLCN 2026 录用论文。另有数项物理层安全合作工作正在审稿，本页仅概述其研究方向。',
+        '目前公开成果包括一篇 IEEE JSAC Early Access 论文和两篇 IEEE ICMLCN 2026 录用论文。',
       trajectoryLabel: '研究主线',
       trajectoryIntro: '从异构资源协同到安全无线优化，这些工作沿着同一条研究主线逐步展开。',
       stages: [
@@ -839,34 +850,41 @@ export const site = {
           links: [{ label: '项目页面', href: '/zh/projects/' }],
         },
       ],
-      profileLabel: '教育背景与荣誉',
-      profileIntro: '以下简要列出与上述研究工作相关的教育背景、经历和代表性荣誉。',
+      profileLabel: '学术背景与代表性荣誉',
+      profileIntro: '以下简要列出主要教育背景及求学期间获得的代表性荣誉。',
       profileGroups: [
         {
+          kind: 'education',
           title: '教育经历',
           items: [
             '哈利法大学电气与计算机工程博士研究生（在读）',
             '电子科技大学网络工程专业工学硕士（2024）',
-            '电子科技大学物联网工程专业工学学士、金融学专业文学学士（2021）',
+            '电子科技大学物联网工程专业工学学士、金融学专业经济学学士（2021）',
             '哈利法大学计算机科学专业研究生交换学习（2024 年春季）',
           ],
         },
         {
-          title: '研究与工程经历',
-          items: [
-            '电子科技大学强化学习课程助教（2022）',
-            '曾在中国电信参与网络优化实习，并参与 5G 基站天线自适应控制研究',
-            '参与无线系统、边缘计算、信号分析和嵌入式智能等方向的研究与工程合作',
-          ],
-        },
-        {
+          kind: 'recognition',
           title: '代表性荣誉',
           items: [
-            '在电子科技大学就读期间，每个学年均获一等奖学金',
-            '三次国家奖学金：本科阶段两次，硕士阶段一次',
-            'IEEE iWRF&AT 2024 最佳论文奖',
-            '全国大学生嵌入式芯片与系统设计竞赛全国一等奖（2022）',
-            '四川省优秀毕业生',
+            {
+              title: '博士阶段科研奖学金',
+              detail: 'PhD Research-Path Scholarship · 每年津贴 24 万迪拉姆（AED 240,000）',
+            },
+            {
+              title: '国家奖学金',
+              detail: '共获三次：本科阶段两次，硕士阶段一次',
+            },
+            {
+              title: '校级一等奖学金',
+              detail: '在电子科技大学就读期间，每学年均获一等奖学金',
+            },
+            { title: '最佳论文奖', detail: 'IEEE iWRF&AT 2024' },
+            {
+              title: '全国一等奖',
+              detail: '全国大学生嵌入式芯片与系统设计竞赛 · 2022',
+            },
+            { title: '四川省优秀毕业生', detail: '本科毕业时获评' },
           ],
         },
       ],
@@ -1528,13 +1546,12 @@ export const site = {
           status: 'Curated by research value',
           statusTitle: 'A project is more than a repository card.',
           statusBody:
-            'The entries below connect research questions, papers, systems, and public artifacts. Ongoing doctoral code is included only when it is ready for public release.',
+            'The entries below connect research questions, papers, systems, and public artifacts in a single research narrative.',
         },
         blog: {
           eyebrow: 'Notes & writing',
           title: 'Blog',
-          intro:
-            'The blog now has a permanent place inside the personal site. Articles will be added after the site structure is approved.',
+          intro: 'A home for research notes, engineering notebooks, and reading notes.',
           status: 'In preparation',
           statusTitle: 'Writing will live here.',
           statusBody:
@@ -1593,13 +1610,12 @@ export const site = {
           intro: '这里按照研究主线梳理研究方向、系统和代表性工程成果，而不是简单罗列代码仓库。',
           status: '按研究主线整理',
           statusTitle: '这里展示的不只是代码仓库。',
-          statusBody:
-            '下方条目把研究问题、论文、系统和公开材料串联起来；博士阶段代码达到公开条件后再纳入。',
+          statusBody: '下方条目把研究问题、论文、系统和公开材料串联为一条完整的研究脉络。',
         },
         blog: {
           eyebrow: '笔记与写作',
           title: '博客',
-          intro: '博客栏目已经纳入个人主页；待网站结构稳定后，文章会在这里陆续发布。',
+          intro: '博客用于整理研究笔记、工程记录与阅读笔记，文章会在这里陆续发布。',
           status: '准备中',
           statusTitle: '文章将在这里陆续发布。',
           statusBody: '文章会以 GitHub Pages 静态页面的形式发布，不会跳转到家庭设备。',
