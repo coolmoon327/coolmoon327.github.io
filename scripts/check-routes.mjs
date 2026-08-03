@@ -35,6 +35,7 @@ const coreRoutes = [
       'PhD Research-Path Scholarship',
       'Annual stipend: AED 240,000',
       'B.Econ. in Finance',
+      'M.Eng. in Information and Communication Engineering',
     ],
     forbiddenMarkers: [
       'official working title recorded by the program',
@@ -42,6 +43,7 @@ const coreRoutes = [
       'under review and are summarized only at the theme level',
       '>Experience</h3>',
       'B.A. in Finance',
+      'M.Eng. in Network Engineering',
     ],
   },
   {
@@ -49,6 +51,8 @@ const coreRoutes = [
     lang: 'en',
     marker: 'Public implementation trail',
     switchHref: '/zh/research/openraas-thesis/',
+    requiredMarkers: ['M.Eng. in Information and Communication Engineering'],
+    forbiddenMarkers: ['M.Eng. in Network Engineering'],
   },
   {
     path: '/publications/',
@@ -105,6 +109,7 @@ const coreRoutes = [
       '博士阶段科研奖学金',
       '每年津贴 24 万迪拉姆',
       '金融学专业经济学学士',
+      '信息与通信工程专业工学硕士',
     ],
     forbiddenMarkers: [
       '培养项目登记时采用的暂定题目',
@@ -112,6 +117,7 @@ const coreRoutes = [
       '正在审稿，本页仅概述其研究方向',
       '>研究与工程经历</h3>',
       '金融学专业文学学士',
+      '网络工程专业工学硕士',
     ],
   },
   {
@@ -119,6 +125,8 @@ const coreRoutes = [
     lang: 'zh-CN',
     marker: '相关开源实现',
     switchHref: '/research/openraas-thesis/',
+    requiredMarkers: ['工学硕士（信息与通信工程）'],
+    forbiddenMarkers: ['工学硕士（网络工程）'],
   },
   {
     path: '/zh/publications/',

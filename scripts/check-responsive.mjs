@@ -212,6 +212,7 @@ async function measurePage(page) {
     const firstHeading = document.querySelector('main h1, main h2, main [role="heading"]');
     const headingRect = firstHeading?.getBoundingClientRect();
     const interiorHeader = document.querySelector('.interior > header');
+    const interiorHeaderRect = interiorHeader?.getBoundingClientRect();
     const heroHeading = interiorHeader?.querySelector('h1');
     const heroIntro = interiorHeader?.querySelector('.intro');
     const heroHeaderStyle = interiorHeader ? getComputedStyle(interiorHeader) : null;
@@ -322,6 +323,13 @@ async function measurePage(page) {
           ? {
               headingLineCharacterCounts,
               headingLines,
+              header: interiorHeaderRect
+                ? {
+                    left: interiorHeaderRect.left,
+                    right: interiorHeaderRect.right,
+                    width: interiorHeaderRect.width,
+                  }
+                : null,
               intro: {
                 bottom: heroIntroRect.bottom,
                 left: heroIntroRect.left,
@@ -579,13 +587,20 @@ async function auditSiteMatrix(browser) {
         }
       }
       if (route === '/zh/owner/' && scenario.width >= 721 && metrics.hero) {
+        const [firstTrack, secondTrack] = metrics.hero.headerGridColumns;
+        const trackRatio = firstTrack / secondTrack;
         const headingRight = Math.max(...metrics.hero.headingLines.map((line) => line.right));
         const horizontalGap = metrics.hero.intro.left - headingRight;
+        const rightEdgeDelta = Math.abs(metrics.hero.header.right - metrics.hero.intro.right);
         if (
           metrics.hero.headingLines.length !== 1 ||
           metrics.hero.headingLineCharacterCounts.join(',') !== '4' ||
-          horizontalGap < 20 ||
-          horizontalGap > 72 ||
+          metrics.hero.headerGridColumns.length !== 2 ||
+          Math.abs(metrics.hero.headerColumnGap - 48) > 1 ||
+          trackRatio < 0.58 ||
+          trackRatio > 0.62 ||
+          horizontalGap < 32 ||
+          rightEdgeDelta > 1 ||
           metrics.hero.introLines.length > 2 ||
           metrics.hero.introLines.length < 1 ||
           !metrics.hero.introTextWrap?.includes('balance')
@@ -594,8 +609,8 @@ async function auditSiteMatrix(browser) {
             'site-hero',
             route,
             scenario.name,
-            'Chinese private-access hero is not a compact single-line title with a right-side introduction',
-            { ...metrics.hero, horizontalGap },
+            'Chinese private-access hero does not use the shared two-column layout with a right-aligned introduction',
+            { ...metrics.hero, horizontalGap, rightEdgeDelta, trackRatio },
           );
         }
       }

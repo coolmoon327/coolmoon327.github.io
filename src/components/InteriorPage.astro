@@ -191,11 +191,6 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
   }
 
   @media (min-width: 721px) {
-    header.owner-header--zh {
-      grid-template-columns: max-content minmax(0, 1fr);
-      column-gap: clamp(1.5rem, 2.5vw, 2rem);
-    }
-
     header.owner-header--zh h1 {
       font-size: clamp(3rem, 7vw, 5.25rem);
       line-height: 0.92;
@@ -204,6 +199,7 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
     }
 
     header.owner-header--zh .intro {
+      inline-size: 100%;
       max-inline-size: 38rem;
       justify-self: end;
     }
