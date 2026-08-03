@@ -223,11 +223,11 @@ const items = locale.navbar.items;
       >
         <span
           class="icon-bar top-bar"
-          style="display: block; width: 22px; height: 2px; background-color: var(--global-text-color); border-radius: 1px; margin-bottom: 4px;"
+          style="display: block; width: 22px; height: 2px; background-color: var(--global-text-color); border-radius: 1px;"
         ></span>
         <span
           class="icon-bar middle-bar"
-          style="display: block; width: 22px; height: 2px; background-color: var(--global-text-color); border-radius: 1px; margin-bottom: 4px;"
+          style="display: block; width: 22px; height: 2px; background-color: var(--global-text-color); border-radius: 1px;"
         ></span>
         <span
           class="icon-bar bottom-bar"
@@ -332,8 +332,15 @@ const items = locale.navbar.items;
 
   .mobile-controls .language-switch {
     display: inline-flex;
+    min-width: 44px;
     min-height: 44px;
     align-items: center;
+    justify-content: center;
+    padding: 0 0.5rem;
+    border-color: transparent;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1;
   }
 
   .mobile-icon-button {
@@ -347,23 +354,30 @@ const items = locale.navbar.items;
   }
 
   /* ── Hamburger animation ────────────────────────────────────────────── */
+  .navbar-toggler {
+    flex-direction: column;
+    gap: 4px;
+  }
+
   .icon-bar {
-    transition: all 0.2s;
+    flex-shrink: 0;
+    transform-origin: center;
+    transition:
+      transform 0.2s ease,
+      opacity 0.2s ease;
   }
   .navbar-toggler:not(.collapsed) .top-bar {
-    transform: rotate(45deg);
-    transform-origin: 10% 10%;
+    transform: translateY(6px) rotate(45deg);
   }
   .navbar-toggler:not(.collapsed) .middle-bar {
     opacity: 0;
   }
   .navbar-toggler:not(.collapsed) .bottom-bar {
-    transform: rotate(-45deg);
-    transform-origin: 10% 90%;
+    transform: translateY(-6px) rotate(-45deg);
   }
   .navbar-toggler.collapsed .top-bar,
   .navbar-toggler.collapsed .bottom-bar {
-    transform: rotate(0);
+    transform: translateY(0) rotate(0);
   }
   .navbar-toggler.collapsed .middle-bar {
     opacity: 1;

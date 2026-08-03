@@ -410,6 +410,111 @@ async function auditMobileMenu(page, route, scenario) {
   await toggler.click();
 }
 
+async function auditMobileNavbarGeometry(page, route, scenario) {
+  const toggler = page.locator('#navbar-toggler');
+  if (!(await toggler.isVisible())) return;
+
+  const closedState = await page.evaluate(() => {
+    const button = document.querySelector('#navbar-toggler');
+    const controls = [
+      ...document.querySelectorAll('.mobile-controls > a, .mobile-controls > button'),
+    ];
+    const bars = [...document.querySelectorAll('#navbar-toggler .icon-bar')];
+    const buttonStyle = button ? getComputedStyle(button) : null;
+    const barRects = bars.map((bar) => {
+      const rect = bar.getBoundingClientRect();
+      return {
+        centerX: rect.left + rect.width / 2,
+        centerY: rect.top + rect.height / 2,
+        height: rect.height,
+        width: rect.width,
+      };
+    });
+    const controlRects = controls.map((control) => {
+      const rect = control.getBoundingClientRect();
+      return {
+        centerY: rect.top + rect.height / 2,
+        height: rect.height,
+        width: rect.width,
+      };
+    });
+
+    return {
+      flexDirection: buttonStyle?.flexDirection,
+      barRects,
+      controlRects,
+    };
+  });
+
+  const barCenterXs = closedState.barRects.map((bar) => bar.centerX);
+  const barCenterYs = closedState.barRects.map((bar) => bar.centerY);
+  const controlCenterYs = closedState.controlRects.map((control) => control.centerY);
+  const barsAreVertical =
+    closedState.flexDirection === 'column' &&
+    closedState.barRects.length === 3 &&
+    closedState.barRects.every(
+      (bar) => Math.abs(bar.width - 22) <= 0.5 && Math.abs(bar.height - 2) <= 0.5,
+    ) &&
+    Math.max(...barCenterXs) - Math.min(...barCenterXs) <= 0.5 &&
+    barCenterYs[1] - barCenterYs[0] >= 5.5 &&
+    barCenterYs[2] - barCenterYs[1] >= 5.5;
+  const controlsAreAligned =
+    closedState.controlRects.length >= 3 &&
+    closedState.controlRects.every((control) => control.height >= 43.5 && control.width >= 43.5) &&
+    Math.max(...controlCenterYs) - Math.min(...controlCenterYs) <= 0.5;
+
+  results.stateCases += 1;
+  if (!barsAreVertical || !controlsAreAligned) {
+    addFailure(
+      'responsive-state',
+      route,
+      scenario,
+      'Mobile navigation controls are not vertically stacked and optically aligned',
+      closedState,
+    );
+  }
+
+  await toggler.click();
+  await page.waitForTimeout(230);
+  const openState = await page.evaluate(() => {
+    const bars = [...document.querySelectorAll('#navbar-toggler .icon-bar')];
+    return {
+      expanded: document.querySelector('#navbar-toggler')?.getAttribute('aria-expanded'),
+      bars: bars.map((bar) => {
+        const rect = bar.getBoundingClientRect();
+        const transform = getComputedStyle(bar).transform;
+        const matrix = transform === 'none' ? null : new DOMMatrixReadOnly(transform);
+        return {
+          angle: matrix ? (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI : 0,
+          centerX: rect.left + rect.width / 2,
+          centerY: rect.top + rect.height / 2,
+          transform,
+        };
+      }),
+      middleOpacity: bars[1] ? getComputedStyle(bars[1]).opacity : null,
+    };
+  });
+  results.stateCases += 1;
+  const [topBar, , bottomBar] = openState.bars;
+  const closeBarsMeet =
+    topBar &&
+    bottomBar &&
+    Math.abs(topBar.centerX - bottomBar.centerX) <= 0.75 &&
+    Math.abs(topBar.centerY - bottomBar.centerY) <= 0.75 &&
+    Math.abs(topBar.angle - 45) <= 1 &&
+    Math.abs(bottomBar.angle + 45) <= 1;
+  if (openState.expanded !== 'true' || openState.middleOpacity !== '0' || !closeBarsMeet) {
+    addFailure(
+      'responsive-state',
+      route,
+      scenario + '-expanded',
+      'Mobile hamburger does not animate into a clear close control',
+      openState,
+    );
+  }
+  await toggler.click();
+}
+
 async function waitForEmbeddedGames(page) {
   await page.waitForFunction(() => customElements.get('pocket-game'));
   const elements = page.locator('pocket-game');
@@ -821,6 +926,16 @@ async function auditDirectGames(browser) {
 async function auditResponsiveStates(browser) {
   const page = await browser.newPage({ viewport: { width: 320, height: 280 } });
 
+  for (const width of [280, 320, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const route of ['/', '/zh/']) {
+      await page.goto(baseUrl + route, { waitUntil: 'domcontentloaded' });
+      await waitForStableLayout(page);
+      await auditMobileNavbarGeometry(page, route, width + 'x844');
+    }
+  }
+
+  await page.setViewportSize({ width: 320, height: 280 });
   await page.goto(baseUrl + '/', { waitUntil: 'domcontentloaded' });
   await waitForStableLayout(page);
   await page.locator('#navbar-toggler').click();
