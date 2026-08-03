@@ -64,7 +64,7 @@ const balanceGameColumns = (games: PlaygroundGame[]) => {
                     const standaloneHref = `${assetBase}games/${game.id}/?lang=${encodeURIComponent(language)}`;
 
                     return (
-                      <article class="game-card">
+                      <article class="game-card" style={`--game-order: ${gameIndex}`}>
                         <div class="game-copy">
                           <span class="game-index">{String(gameIndex).padStart(2, '0')}</span>
                           <div>
@@ -255,6 +255,10 @@ const balanceGameColumns = (games: PlaygroundGame[]) => {
     gap: 0.9rem;
   }
 
+  .game-copy > div {
+    min-width: 0;
+  }
+
   .game-index {
     display: grid;
     width: 40px;
@@ -278,6 +282,7 @@ const balanceGameColumns = (games: PlaygroundGame[]) => {
 
   .game-copy h3 {
     margin: 0 0 0.72rem;
+    overflow-wrap: anywhere;
     font-size: clamp(1.55rem, 3vw, 2.15rem);
     letter-spacing: -0.035em;
   }
@@ -374,6 +379,14 @@ const balanceGameColumns = (games: PlaygroundGame[]) => {
   @media (max-width: 760px) {
     .game-columns {
       grid-template-columns: minmax(0, 1fr);
+    }
+
+    .game-column {
+      display: contents;
+    }
+
+    .game-card {
+      order: var(--game-order);
     }
   }
 

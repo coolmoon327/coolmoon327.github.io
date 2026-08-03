@@ -8,6 +8,7 @@ const baseUrl = (process.argv[2] ?? 'http://127.0.0.1:4321').replace(/\/$/, '');
 const outputDir = path.resolve(process.argv[3] ?? 'test-results/playground');
 const standaloneUrl = process.argv[4]?.replace(/\/$/, '');
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
+const browserErrors = [];
 const gameIds = [
   'runner',
   'bandit',
@@ -27,18 +28,18 @@ const gameIds = [
 const chineseTitles = {
   runner: '奖励跑酷',
   bandit: '探索与利用',
-  qpath: 'Q 学习寻路',
+  qpath: '路由学徒',
   return: '折扣回报',
   movable: '可移动天线实验',
   pinching: '夹持天线实验',
   secrecy: '保密波束实验',
-  hopper: '频跳突围',
-  orbit: '月轨对准',
-  signature: '星图签名',
-  echo: '记忆回响',
-  match: '花园配对',
-  merge: '合成花园',
-  resource: '资源连线',
+  hopper: '跳频学徒',
+  orbit: '链路捕获',
+  signature: '灵感星图',
+  echo: '信号回放',
+  match: '图样记忆',
+  merge: '论文花园',
+  resource: 'OpenRaaS 组网',
 };
 const chinesePlaygroundPath = new URL(`${baseUrl}/zh/playground/`).pathname;
 
@@ -68,6 +69,7 @@ async function auditCollectionPacking(page, label) {
     sections.map((section) =>
       [...section.querySelectorAll('.game-column')].map((column) => ({
         left: Math.round(column.getBoundingClientRect().left),
+        rowGap: Number.parseFloat(getComputedStyle(column).rowGap),
         cards: [...column.querySelectorAll('.game-card')].map((card) => {
           const cardRect = card.getBoundingClientRect();
           const copyRect = card.querySelector('.game-copy').getBoundingClientRect();
@@ -97,12 +99,19 @@ async function auditCollectionPacking(page, label) {
     );
 
     for (const column of columns) {
+      assert.equal(column.rowGap, 16, 'Desktop game columns must use a 16px row gap');
       for (const card of column.cards) {
-        assert.ok(card.stageTop >= card.copyBottom, 'Each game stage must sit below its copy block');
+        assert.ok(
+          card.stageTop >= card.copyBottom,
+          'Each game stage must sit below its copy block',
+        );
       }
       for (let index = 1; index < column.cards.length; index += 1) {
         const gap = column.cards[index].top - column.cards[index - 1].bottom;
-        assert.ok(gap >= 0 && gap <= 24, `Unexpected vertical hole of ${gap}px in a game column`);
+        assert.ok(
+          Math.abs(gap - column.rowGap) <= 0.5,
+          `Game column gap ${gap}px does not match its ${column.rowGap}px CSS row gap`,
+        );
       }
     }
 
@@ -118,6 +127,40 @@ async function auditCollectionPacking(page, label) {
   }
 }
 
+async function auditMobileReadingOrder(page, label) {
+  const collections = await page.locator('.collection').evaluateAll((sections) =>
+    sections.map((section) => {
+      const grid = section.querySelector('.game-columns');
+      const cards = [...section.querySelectorAll('.game-card')]
+        .map((card) => ({
+          bottom: card.getBoundingClientRect().bottom,
+          index: Number(card.querySelector('.game-index')?.textContent),
+          top: card.getBoundingClientRect().top,
+        }))
+        .sort((first, second) => first.top - second.top);
+
+      return {
+        gaps: cards.slice(1).map((card, index) => card.top - cards[index].bottom),
+        indices: cards.map((card) => card.index),
+        rowGap: Number.parseFloat(getComputedStyle(grid).rowGap),
+      };
+    }),
+  );
+
+  for (const { gaps, indices, rowGap } of collections) {
+    assert.deepEqual(
+      indices,
+      [...indices].sort((first, second) => first - second),
+      `${label} cards must keep their numbered reading order`,
+    );
+    assert.equal(rowGap, 16, `${label} must use a 16px row gap`);
+    assert.ok(
+      gaps.every((gap) => Math.abs(gap - rowGap) <= 0.5),
+      `${label} card gaps ${gaps.join(', ')}px must match the ${rowGap}px CSS row gap`,
+    );
+  }
+}
+
 await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch({
@@ -125,8 +168,32 @@ const browser = await chromium.launch({
   ...(executablePath ? { executablePath } : {}),
 });
 
+function watchPage(page, label) {
+  page.on('pageerror', (error) => browserErrors.push(`${label}: ${error.message}`));
+  page.on('console', (message) => {
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) {
+      browserErrors.push(
+        `${label} console: ${message.text()}${message.location().url ? ` (${message.location().url})` : ''}`,
+      );
+    }
+  });
+  page.on('response', (response) => {
+    if (new URL(response.url()).origin === new URL(baseUrl).origin && response.status() >= 400) {
+      browserErrors.push(`${label} response: ${response.status()} ${response.url()}`);
+    }
+  });
+  page.on('requestfailed', (request) => {
+    if (new URL(request.url()).origin === new URL(baseUrl).origin) {
+      browserErrors.push(
+        `${label} request: ${request.url()} (${request.failure()?.errorText || 'failed'})`,
+      );
+    }
+  });
+}
+
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  watchPage(page, 'playground');
   await page.goto(`${baseUrl}/playground/`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => customElements.get('pocket-game'));
 
@@ -180,6 +247,15 @@ try {
     assert.equal(game.language, 'zh-CN', `${game.game} iframe must switch to Chinese`);
     assert.equal(game.title, chineseTitles[game.game], `${game.game} title must be Chinese`);
   }
+  const localizedCards = await page.locator('.game-card').evaluateAll((cards) =>
+    cards.map((card) => ({
+      game: card.querySelector('pocket-game')?.getAttribute('game'),
+      title: card.querySelector('h3')?.textContent?.trim(),
+    })),
+  );
+  for (const card of localizedCards) {
+    assert.equal(card.title, chineseTitles[card.game], `${card.game} card title must be Chinese`);
+  }
   await auditCollectionPacking(page, 'Chinese Playground');
 
   const runnerSource = await page
@@ -189,16 +265,18 @@ try {
   await page.screenshot({ path: path.join(outputDir, 'playground-zh.png'), fullPage: true });
 
   await page.setViewportSize({ width: 761, height: 900 });
-  const boundaryColumnCounts = await page.locator('.collection').evaluateAll((sections) =>
-    sections.map(
-      (section) =>
-        new Set(
-          [...section.querySelectorAll('.game-card')].map((card) =>
-            Math.round(card.getBoundingClientRect().left),
-          ),
-        ).size,
-    ),
-  );
+  const boundaryColumnCounts = await page
+    .locator('.collection')
+    .evaluateAll((sections) =>
+      sections.map(
+        (section) =>
+          new Set(
+            [...section.querySelectorAll('.game-card')].map((card) =>
+              Math.round(card.getBoundingClientRect().left),
+            ),
+          ).size,
+      ),
+    );
   assert.ok(
     boundaryColumnCounts.every((count) => count === 2),
     '761px Playground must retain two card columns',
@@ -226,9 +304,11 @@ try {
       responsiveLayout.scrollWidth <= responsiveLayout.clientWidth + 1,
       `${width}px Playground must not overflow horizontally`,
     );
+    await auditMobileReadingOrder(page, `${width}px Playground`);
   }
 
   const signaturePage = await browser.newPage({ viewport: { width: 720, height: 520 } });
+  watchPage(signaturePage, 'signature');
   await signaturePage.goto(`${baseUrl}/pocket-play/games/signature/?embed=1&lang=en`, {
     waitUntil: 'networkidle',
   });
@@ -273,6 +353,7 @@ try {
 
   if (standaloneUrl) {
     const standalonePage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    watchPage(standalonePage, 'standalone playground');
     await standalonePage.goto(standaloneUrl, { waitUntil: 'networkidle' });
     await standalonePage.waitForFunction(() => customElements.get('pocket-game'));
     const standaloneGames = await standalonePage
@@ -301,6 +382,7 @@ try {
     });
   }
 
+  assert.deepEqual(browserErrors, [], 'Playground pages must not emit browser errors');
   console.log(
     `Playground browser QA passed: ${gameIds.length} games, bilingual switch, two-column packing, and signature alignment${standaloneUrl ? ', including the standalone lab' : ''}.`,
   );

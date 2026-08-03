@@ -16,15 +16,18 @@ body {
 body {
   display: grid;
   place-items: center;
-  background: var(--game-surface);
   color: var(--game-text);
+  background: var(--game-surface);
   font-family: var(--game-font);
 }
 
-button {
-  border: 0;
+button,
+output {
   color: inherit;
   font: inherit;
+}
+
+button {
   touch-action: manipulation;
 }
 
@@ -35,14 +38,14 @@ button:focus-visible {
 
 .game {
   --channel-count: 3;
-  --total-slots: 20;
-  --slot-ms: 1800ms;
-  display: grid;
+  --total-slots: 12;
   width: min(100%, 430px);
   min-height: 100svh;
-  padding: 14px;
-  gap: 9px;
+  display: grid;
   align-content: center;
+  gap: 8px;
+  padding: 12px;
+  overflow: hidden;
   background: var(--game-bg);
 }
 
@@ -63,56 +66,54 @@ html:not([data-embed='true']) .game {
 h1,
 h2,
 .jammer-panel p,
-.prompt {
+.prompt,
+.decision-panel p {
   margin: 0;
 }
 
 .kicker {
   color: var(--game-accent-strong);
-  font-size: 0.69rem;
+  font-family: var(--game-mono);
+  font-size: 0.61rem;
   font-weight: 750;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.07em;
 }
 
 h1 {
-  margin-top: 1px;
-  font-size: clamp(1.28rem, 6vw, 1.55rem);
-  line-height: 1.1;
+  margin-top: 2px;
+  font-size: clamp(1.28rem, 6vw, 1.58rem);
+  line-height: 1.06;
+  letter-spacing: -0.03em;
 }
 
 h2 {
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   line-height: 1.2;
 }
 
 .reset-button {
   min-width: 58px;
   min-height: 44px;
-  padding: 0 12px;
+  padding: 0 10px;
   border: 1px solid var(--game-divider);
   border-radius: var(--game-radius);
   background: var(--game-surface);
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
-}
-
-.reset-button:hover {
-  background: var(--game-surface-strong);
 }
 
 .metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
   border: 1px solid var(--game-divider);
   border-radius: var(--game-radius);
-  overflow: hidden;
 }
 
 .metric {
   min-width: 0;
-  padding: 7px 4px;
+  padding: 6px 3px;
   text-align: center;
 }
 
@@ -128,7 +129,7 @@ h2 {
 .metric span {
   overflow: hidden;
   color: var(--game-muted);
-  font-size: 0.61rem;
+  font-size: 0.56rem;
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -137,13 +138,13 @@ h2 {
 .metric output {
   margin-top: 2px;
   font-family: var(--game-mono);
-  font-size: 0.86rem;
-  font-weight: 750;
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .jammer-panel {
-  min-height: 54px;
-  padding: 8px 10px;
+  min-height: 52px;
+  padding: 7px 9px;
   border-left: 4px solid var(--game-warning);
   border-radius: var(--game-radius);
   background: var(--game-surface);
@@ -152,20 +153,21 @@ h2 {
 .jammer-panel p {
   margin-top: 3px;
   color: var(--game-muted);
-  font-size: 0.7rem;
-  line-height: 1.25;
+  font-size: 0.66rem;
+  line-height: 1.22;
 }
 
 .mode {
   flex: 0 0 auto;
-  padding: 4px 7px;
+  max-width: 38%;
+  padding: 4px 6px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--game-warning) 14%, transparent);
   color: var(--game-warning);
+  background: color-mix(in srgb, var(--game-warning) 14%, transparent);
   font-family: var(--game-mono);
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   font-weight: 750;
-  text-transform: uppercase;
+  text-align: center;
 }
 
 .channel-group {
@@ -176,10 +178,10 @@ h2 {
 
 .channel {
   position: relative;
-  display: grid;
   min-width: 0;
   min-height: 54px;
-  padding: 6px 4px;
+  display: grid;
+  padding: 5px 3px;
   place-content: center;
   border: 1px solid var(--game-divider);
   border-radius: var(--game-radius);
@@ -190,14 +192,14 @@ h2 {
 
 .channel span {
   font-family: var(--game-mono);
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 800;
 }
 
 .channel small {
   margin-top: 3px;
   color: var(--game-muted);
-  font-size: 0.58rem;
+  font-size: 0.56rem;
 }
 
 .channel.is-selected {
@@ -206,54 +208,31 @@ h2 {
   box-shadow: inset 0 0 0 1px var(--game-accent);
 }
 
-.channel.is-jammed::after {
+.channel.is-last-jammed::after {
   position: absolute;
-  top: 4px;
+  top: 3px;
   right: 5px;
   color: var(--game-danger);
   content: '×';
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 900;
+  opacity: 0.72;
 }
 
-.channel.is-selected.is-jammed {
-  border-color: var(--game-danger);
-  background: color-mix(in srgb, var(--game-danger) 12%, var(--game-bg));
-  box-shadow: inset 0 0 0 1px var(--game-danger);
+.channel:disabled {
+  cursor: default;
+  opacity: 0.72;
 }
 
-.slot-progress {
-  height: 4px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--game-surface-strong);
-}
-
-.slot-progress::after {
-  display: block;
-  width: 0;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--game-accent);
-  content: '';
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .slot-progress.is-running::after {
-    width: 100%;
-    animation: slot-close var(--slot-ms) linear forwards;
-  }
-}
-
-@keyframes slot-close {
-  to {
-    width: 0;
-  }
+.game[data-phase='agent'] .channel.is-selected {
+  border-color: var(--game-warning);
+  background: color-mix(in srgb, var(--game-warning) 14%, var(--game-bg));
+  box-shadow: inset 0 0 0 1px var(--game-warning);
 }
 
 .trail-section {
   min-width: 0;
-  padding: 8px;
+  padding: 7px;
   border: 1px solid var(--game-divider);
   border-radius: var(--game-radius);
 }
@@ -264,9 +243,9 @@ h2 {
 
 .legend {
   display: flex;
-  gap: 7px;
+  gap: 6px;
   color: var(--game-muted);
-  font-size: 0.59rem;
+  font-size: 0.56rem;
 }
 
 .legend span {
@@ -280,9 +259,9 @@ h2 {
 }
 
 .key {
+  width: 7px;
+  height: 7px;
   display: block;
-  width: 8px;
-  height: 8px;
   border-radius: 2px;
 }
 
@@ -307,7 +286,7 @@ h2 {
 .trail-grid {
   display: grid;
   grid-template-rows: repeat(var(--channel-count), 15px);
-  gap: 3px 2px;
+  gap: 3px 3px;
 }
 
 .trail-labels span {
@@ -315,7 +294,7 @@ h2 {
   place-items: center start;
   color: var(--game-muted);
   font-family: var(--game-mono);
-  font-size: 0.54rem;
+  font-size: 0.52rem;
 }
 
 .trail-grid {
@@ -332,11 +311,6 @@ h2 {
 
 .trail-cell.is-jammed {
   background: color-mix(in srgb, var(--game-danger) 58%, var(--game-bg));
-}
-
-.trail-cell.is-current {
-  outline: 2px solid var(--game-warning);
-  outline-offset: -1px;
 }
 
 .trail-cell.is-success::after,
@@ -359,12 +333,12 @@ h2 {
 }
 
 .prompt {
+  min-height: 2.5em;
   display: grid;
-  min-height: 2.55em;
   place-items: center;
   color: var(--game-muted);
-  font-size: 0.73rem;
-  line-height: 1.28;
+  font-size: 0.7rem;
+  line-height: 1.25;
   text-align: center;
 }
 
@@ -373,18 +347,57 @@ h2 {
   font-weight: 700;
 }
 
-.action-button {
-  min-height: 46px;
-  padding: 0 16px;
+.decision-panel {
+  padding: 8px;
+  border: 1px solid var(--game-divider);
+  border-left: 4px solid var(--game-accent);
   border-radius: var(--game-radius);
-  background: var(--game-accent);
-  color: var(--game-on-accent);
-  cursor: pointer;
-  font-weight: 800;
+  background: var(--game-surface);
 }
 
-.action-button:hover {
-  background: var(--game-accent-strong);
+.decision-panel[hidden] {
+  display: none;
+}
+
+.decision-panel p {
+  color: var(--game-muted);
+  font-size: 0.64rem;
+  line-height: 1.25;
+}
+
+.decision-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.decision-actions button {
+  min-height: 44px;
+  padding: 5px 7px;
+  border: 1px solid var(--game-divider);
+  border-radius: var(--game-radius);
+  background: var(--game-bg);
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.decision-actions .primary {
+  border-color: var(--game-accent);
+  color: var(--game-on-accent);
+  background: var(--game-accent);
+}
+
+.decision-actions .quiet {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  color: var(--game-muted);
+}
+
+.decision-actions button:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .sr-only {
@@ -399,27 +412,19 @@ h2 {
   border: 0;
 }
 
-@media (max-width: 320px), (max-height: 520px) {
+@media (max-width: 320px), (max-height: 540px) {
   .game {
-    padding: 10px;
     gap: 6px;
+    padding: 9px;
   }
 
   .jammer-panel {
     min-height: 48px;
-    padding-block: 6px;
-  }
-
-  .channel {
-    min-height: 48px;
+    padding-block: 5px;
   }
 
   .trail-section {
-    padding: 6px;
-  }
-
-  .trail-heading {
-    margin-bottom: 4px;
+    padding: 5px;
   }
 
   .trail-labels,
@@ -428,19 +433,15 @@ h2 {
     gap-block: 2px;
   }
 
-  .prompt {
-    min-height: 2.35em;
-    font-size: 0.68rem;
-  }
-
-  .action-button {
-    min-height: 44px;
+  .decision-panel {
+    padding: 6px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .slot-progress.is-running::after {
-    width: 100%;
-    opacity: 0.45;
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
   }
 }

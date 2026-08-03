@@ -9,12 +9,12 @@ const browserErrors = [];
 const games = {
   runner: 360,
   bandit: 430,
-  qpath: 500,
+  qpath: 620,
   return: 430,
   movable: 720,
   pinching: 680,
   secrecy: 520,
-  hopper: 520,
+  hopper: 600,
   orbit: 360,
   signature: 260,
   echo: 430,
@@ -48,6 +48,25 @@ async function openGame(browser, id, options = {}) {
     }, options.randomValues);
   }
   page.on('pageerror', (error) => browserErrors.push(`${id}: ${error.message}`));
+  page.on('console', (message) => {
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) {
+      browserErrors.push(
+        `${id} console: ${message.text()}${message.location().url ? ` (${message.location().url})` : ''}`,
+      );
+    }
+  });
+  page.on('response', (response) => {
+    if (new URL(response.url()).origin === gameBase.origin && response.status() >= 400) {
+      browserErrors.push(`${id} response: ${response.status()} ${response.url()}`);
+    }
+  });
+  page.on('requestfailed', (request) => {
+    if (new URL(request.url()).origin === gameBase.origin) {
+      browserErrors.push(
+        `${id} request: ${request.url()} (${request.failure()?.errorText || 'failed'})`,
+      );
+    }
+  });
   await page.goto(gameUrl(id, options.language), { waitUntil: 'networkidle' });
   return page;
 }
@@ -61,7 +80,7 @@ async function assertNoOverflow(page, id) {
   }));
   assert.ok(
     dimensions.scrollWidth <= dimensions.clientWidth + 1,
-    `${id} overflows horizontally at 280px: ${JSON.stringify(dimensions)}`,
+    `${id} overflows horizontally: ${JSON.stringify(dimensions)}`,
   );
   assert.ok(
     dimensions.scrollHeight <= dimensions.clientHeight + 1,
@@ -289,17 +308,6 @@ async function checkQPath(browser) {
     previousTopology = nextTopology;
   }
 
-  for (const id of ['A', 'B', 'C']) {
-    const target = page.locator(`[data-goal="${id}"]`);
-    await target.click();
-    assert.match(
-      await page.locator('#status').textContent(),
-      new RegExp(`Target ${id}(?:\\s|·)`),
-      `Visible target ${id} must select the same training goal`,
-    );
-    assert.equal(await target.getAttribute('aria-pressed'), 'true');
-  }
-
   const targetSizes = await page.locator('[data-goal]').evaluateAll((targets) =>
     targets.map((target) => {
       const bounds = target.getBoundingClientRect();
@@ -311,18 +319,146 @@ async function checkQPath(browser) {
     `Q-path targets must be at least 44px: ${JSON.stringify(targetSizes)}`,
   );
 
-  for (const id of ['A', 'B', 'C']) {
-    await page.locator(`[data-goal="${id}"]`).click();
-    await page.locator('#train').click();
-    assert.ok(
-      await page
-        .locator('.cell:not(.wall) .policy')
-        .evaluateAll((policies) => policies.some((policy) => policy.textContent !== '')),
-      `A trained Q-path map toward ${id} must render at least one policy arrow`,
-    );
-    assert.notEqual(await page.locator('#success-rate').textContent(), '—');
-    assert.match(await page.locator('#route-summary').textContent(), new RegExp(`${id} ·`));
-  }
+  const target = page.locator('[data-goal]').first();
+  await target.click();
+  assert.equal(await target.getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('#game').getAttribute('data-phase'), 'decision');
+  await page.locator('#player-next').click();
+  assert.equal(await page.locator('#game').getAttribute('data-phase'), 'player');
+  assert.equal(await page.locator('#game').getAttribute('data-controller'), 'player');
+  const firstDemonstrationStart = Number(
+    await page.locator('#board').getAttribute('data-start-state'),
+  );
+  await assertNoOverflow(page, 'qpath player episode');
+
+  const demonstrateShortestRoute = async () => {
+    const route = await page.locator('#board').evaluate((board) => {
+      const config = JSON.parse(board.dataset.config);
+      const start = Number(board.dataset.startState);
+      const goalId = board.dataset.selectedGoal;
+      const goal = config.goals.find((candidate) => candidate.id === goalId).state;
+      const walls = new Set(config.walls);
+      const actions = [
+        [-1, 0],
+        [0, 1],
+        [1, 0],
+        [0, -1],
+      ];
+      const queue = [start];
+      const previous = new Map([[start, null]]);
+      const previousAction = new Map();
+      for (let index = 0; index < queue.length; index += 1) {
+        const state = queue[index];
+        if (state === goal) break;
+        const row = Math.floor(state / 5);
+        const column = state % 5;
+        actions.forEach(([rowStep, columnStep], action) => {
+          const nextRow = row + rowStep;
+          const nextColumn = column + columnStep;
+          const nextState = nextRow * 5 + nextColumn;
+          if (
+            nextRow < 0 ||
+            nextRow >= 5 ||
+            nextColumn < 0 ||
+            nextColumn >= 5 ||
+            walls.has(nextState) ||
+            previous.has(nextState)
+          ) {
+            return;
+          }
+          previous.set(nextState, state);
+          previousAction.set(nextState, action);
+          queue.push(nextState);
+        });
+      }
+      const path = [];
+      for (let state = goal; state !== start; state = previous.get(state)) {
+        path.push(previousAction.get(state));
+      }
+      return path.reverse();
+    });
+    assert.ok(route.length > 0 && route.length <= 32);
+    for (const action of route) await page.locator(`[data-action="${action}"]`).click();
+    return route;
+  };
+
+  const demonstration = await demonstrateShortestRoute();
+
+  const game = page.locator('#game');
+  assert.equal(await game.getAttribute('data-state-count'), '25');
+  assert.equal(await game.getAttribute('data-decision-state-count'), '19');
+  assert.equal(await game.getAttribute('data-start-pool-size'), '19');
+  assert.equal(await game.getAttribute('data-action-count'), '4');
+  assert.equal(await game.getAttribute('data-phase'), 'decision');
+  assert.equal(await game.getAttribute('data-demo-episodes'), '1');
+  assert.equal(await game.getAttribute('data-last-episode-result'), 'success');
+  assert.equal(await game.getAttribute('data-last-episode-controller'), 'player');
+  const experienceAfterDemo = Number(await game.getAttribute('data-experience-count'));
+  const coverageAfterDemo = Number(await game.getAttribute('data-state-coverage'));
+  const readinessAfterDemo = Number(await game.getAttribute('data-readiness'));
+  assert.ok(experienceAfterDemo >= demonstration.length);
+  assert.ok(coverageAfterDemo > 0 && coverageAfterDemo <= 25);
+  assert.ok(readinessAfterDemo > 0);
+  assert.ok(Number(await game.getAttribute('data-policy-version')) > 0);
+  assert.equal(await page.locator('#decision-panel').isVisible(), true);
+  const qpathDecisionSizes = await page
+    .locator('#decision-panel button')
+    .evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height));
+  assert.ok(qpathDecisionSizes.every((height) => height >= 44));
+  assert.ok(
+    await page
+      .locator('.cell:not(.wall) .policy')
+      .evaluateAll((policies) => policies.some((policy) => policy.textContent !== '')),
+    'A human route must produce visible policy arrows',
+  );
+  await assertNoOverflow(page, 'qpath decision');
+
+  await page.locator('#player-next').click();
+  assert.equal(await game.getAttribute('data-phase'), 'player');
+  const secondDemonstrationStart = Number(
+    await page.locator('#board').getAttribute('data-start-state'),
+  );
+  assert.notEqual(secondDemonstrationStart, firstDemonstrationStart);
+  const secondDemonstration = await demonstrateShortestRoute();
+  assert.equal(await game.getAttribute('data-demo-episodes'), '2');
+  assert.equal(await game.getAttribute('data-last-episode-result'), 'success');
+  assert.equal(await game.getAttribute('data-last-episode-controller'), 'player');
+  const experienceAfterSecondDemo = Number(await game.getAttribute('data-experience-count'));
+  const coverageAfterSecondDemo = Number(await game.getAttribute('data-state-coverage'));
+  const readinessAfterSecondDemo = Number(await game.getAttribute('data-readiness'));
+  assert.ok(experienceAfterSecondDemo >= experienceAfterDemo + secondDemonstration.length);
+  assert.ok(coverageAfterSecondDemo > coverageAfterDemo);
+  assert.ok(readinessAfterSecondDemo > readinessAfterDemo);
+  await assertNoOverflow(page, 'qpath second demonstration');
+
+  await page.locator('#agent-next').click();
+  await page.waitForFunction(() => document.querySelector('#game').dataset.phase === 'agent');
+  assert.equal(
+    Number(await page.locator('#board').getAttribute('data-start-state')),
+    secondDemonstrationStart,
+  );
+  await assertNoOverflow(page, 'qpath agent episode');
+  await page.waitForFunction(
+    () =>
+      document.querySelector('#game').dataset.phase === 'decision' &&
+      document.querySelector('#game').dataset.agentEpisodes === '1',
+    undefined,
+    { timeout: 12_000 },
+  );
+  assert.equal(await game.getAttribute('data-last-episode-result'), 'success');
+  assert.equal(await game.getAttribute('data-last-episode-controller'), 'agent');
+  assert.ok(Number(await game.getAttribute('data-experience-count')) > experienceAfterSecondDemo);
+  assert.equal(await game.getAttribute('data-controller'), 'agent');
+  await assertNoOverflow(page, 'qpath agent decision');
+
+  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
+  assert.equal(await page.locator('h1').textContent(), '路由学徒');
+  assert.equal(await game.getAttribute('data-demo-episodes'), '2');
+  await assertNoOverflow(page, 'qpath Chinese decision');
+  await page.locator('#reset-learning').click();
+  assert.equal(await game.getAttribute('data-demo-episodes'), '0');
+  assert.equal(await game.getAttribute('data-agent-episodes'), '0');
+  assert.equal(await game.getAttribute('data-experience-count'), '0');
   await page.close();
 }
 
@@ -556,39 +692,86 @@ async function checkSecrecy(browser) {
 }
 
 async function checkHopper(browser) {
-  const page = await openGame(browser, 'hopper');
+  const page = await openGame(browser, 'hopper', { width: 280, randomValues: [0.5] });
   const game = page.locator('#game');
 
   assert.equal(await page.locator('.channel[data-channel]').count(), 3);
-  assert.equal(await game.getAttribute('data-total-slots'), '20');
+  assert.equal(await game.getAttribute('data-state-count'), '18');
+  assert.equal(await game.getAttribute('data-action-count'), '3');
+  assert.equal(await game.getAttribute('data-total-slots'), '12');
   assert.equal(await game.getAttribute('data-safe-channel-count'), '2');
-  assert.equal(await page.locator('.trail-cell').count(), 60);
+  assert.equal(await page.locator('.trail-cell').count(), 36);
+  assert.equal(await game.getAttribute('data-phase'), 'decision');
 
-  await page.locator('.channel[data-channel="2"]').click();
-  await page.locator('#action-button').click();
-  assert.equal(await game.getAttribute('data-phase'), 'running');
-  assert.equal(await game.getAttribute('data-timer-active'), 'true');
-  assert.equal(
-    await game.getAttribute('data-selected-channel'),
-    '2',
-    'Hopper must preserve the channel selected before the round starts',
+  await page.locator('#player-next').click();
+  assert.equal(await game.getAttribute('data-phase'), 'player');
+  await assertNoOverflow(page, 'hopper player episode');
+  for (let slot = 0; slot < 12; slot += 1) {
+    const state = await game.evaluate((element) => ({
+      mode: element.dataset.jammerMode,
+      previousChannel: Number(element.dataset.previousChannel),
+      previousJammer: Number(element.dataset.previousJammer),
+    }));
+    const hiddenJammer =
+      state.mode === 'reactive' ? state.previousChannel : (state.previousJammer + 1) % 3;
+    const safeChannel = (hiddenJammer + 1) % 3;
+    await page.locator(`.channel[data-channel="${safeChannel}"]`).click();
+  }
+
+  assert.equal(await game.getAttribute('data-phase'), 'decision');
+  assert.equal(await game.getAttribute('data-demo-episodes'), '1');
+  assert.equal(await game.getAttribute('data-experience-count'), '12');
+  assert.equal(await game.getAttribute('data-collisions'), '0');
+  assert.equal(await game.getAttribute('data-throughput'), '100');
+  assert.ok(Number(await game.getAttribute('data-state-coverage')) > 0);
+  const readinessAfterFirstDemo = Number(await game.getAttribute('data-readiness'));
+  assert.ok(readinessAfterFirstDemo > 0);
+  assert.equal(await page.locator('#decision-panel').isVisible(), true);
+  const hopperDecisionSizes = await page
+    .locator('#decision-panel button')
+    .evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height));
+  assert.ok(hopperDecisionSizes.every((height) => height >= 44));
+  await assertNoOverflow(page, 'hopper decision');
+
+  await page.locator('#player-next').click();
+  for (let slot = 0; slot < 12; slot += 1) {
+    const state = await game.evaluate((element) => ({
+      mode: element.dataset.jammerMode,
+      previousChannel: Number(element.dataset.previousChannel),
+      previousJammer: Number(element.dataset.previousJammer),
+    }));
+    const hiddenJammer =
+      state.mode === 'reactive' ? state.previousChannel : (state.previousJammer + 1) % 3;
+    await page.locator(`.channel[data-channel="${(hiddenJammer + 1) % 3}"]`).click();
+  }
+  assert.equal(await game.getAttribute('data-demo-episodes'), '2');
+  assert.equal(await game.getAttribute('data-experience-count'), '24');
+  assert.ok(Number(await game.getAttribute('data-readiness')) > readinessAfterFirstDemo);
+  await assertNoOverflow(page, 'hopper second demonstration');
+
+  await page.locator('#agent-next').click();
+  await page.waitForFunction(() => document.querySelector('#game').dataset.phase === 'agent');
+  await assertNoOverflow(page, 'hopper agent episode');
+  await page.waitForFunction(
+    () =>
+      document.querySelector('#game').dataset.phase === 'decision' &&
+      document.querySelector('#game').dataset.agentEpisodes === '1',
+    undefined,
+    { timeout: 8_000 },
   );
-  await page.locator('.channel[data-channel="0"]').click();
-  await page.waitForFunction(() => document.querySelector('#game').dataset.slot === '1', undefined, {
-    timeout: 3_000,
-  });
-  assert.equal(await game.getAttribute('data-collisions'), '1');
-  assert.equal(await game.getAttribute('data-last-result'), 'collision');
+  assert.equal(await game.getAttribute('data-controller'), 'agent');
+  assert.equal(await game.getAttribute('data-experience-count'), '36');
+  assert.equal(await game.getAttribute('data-collisions'), '0');
+  assert.equal(await game.getAttribute('data-throughput'), '100');
+  await assertNoOverflow(page, 'hopper agent decision');
 
-  await page.locator('#action-button').click();
-  assert.equal(await game.getAttribute('data-phase'), 'paused');
-  assert.equal(await game.getAttribute('data-timer-active'), 'false');
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
-  assert.equal(await page.locator('h1').textContent(), '频跳突围');
-  assert.equal(await game.getAttribute('data-collisions'), '1');
-  await page.locator('#reset-button').click();
-  assert.equal(await game.getAttribute('data-phase'), 'idle');
-  assert.equal(await game.getAttribute('data-slot'), '0');
+  assert.equal(await page.locator('h1').textContent(), '跳频学徒');
+  await assertNoOverflow(page, 'hopper Chinese decision');
+  await page.locator('#reset-learning').click();
+  assert.equal(await game.getAttribute('data-demo-episodes'), '0');
+  assert.equal(await game.getAttribute('data-agent-episodes'), '0');
+  assert.equal(await game.getAttribute('data-experience-count'), '0');
   await page.close();
 }
 
@@ -677,8 +860,8 @@ async function checkOrbit(browser, reducedMotion = 'no-preference') {
   await page.locator('#assist').click();
   assert.equal(await page.locator('#assist').getAttribute('aria-pressed'), 'true');
   assert.equal(await page.locator('#hint').getAttribute('data-assist-state'), 'toggle-on');
-  assert.match(await page.locator('#hint').textContent(), /Assist is on/);
-  assert.equal(await page.locator('#assist-status').textContent(), 'Assist cues are on.');
+  assert.match(await page.locator('#hint').textContent(), /Range cues are on/);
+  assert.equal(await page.locator('#assist-status').textContent(), 'Range cues are on.');
   const toggleLayout = await page.locator('#hint').evaluate((hint) => ({
     height: hint.getBoundingClientRect().height,
     scrollHeight: document.documentElement.scrollHeight,
@@ -697,7 +880,7 @@ async function checkOrbit(browser, reducedMotion = 'no-preference') {
     first.cueAtStop.announcedText,
     'Visible and screen-reader assist cues must stay synchronized',
   );
-  assert.match(first.cueAtStop.visibleText, /Stop now/);
+  assert.match(first.cueAtStop.visibleText, /Lock now/);
   assert.equal(
     first.cueAtStop.targetAnimation,
     reducedMotion === 'reduce' ? 'none' : 'assist-target-pulse',
@@ -723,7 +906,7 @@ async function checkOrbit(browser, reducedMotion = 'no-preference') {
     'close',
     'Visible assist must warn when the target is close',
   );
-  assert.match(second.cueAtStop.visibleText, /near the window/);
+  assert.match(second.cueAtStop.visibleText, /approaching the acquisition window/);
   assert.ok(
     Math.abs(second.cueAtStop.hintHeight - toggleLayout.height) <= 1,
     'Close assist cue must not shift the game layout',
@@ -754,10 +937,10 @@ async function checkOrbit(browser, reducedMotion = 'no-preference') {
   await page.locator('#assist').click();
   assert.equal(
     await page.locator('#hint').textContent(),
-    '辅助提示已关闭，请看准窗口位置，手动让月球停下。',
+    '距离提示已关闭，请看准窗口位置，手动捕获卫星。',
   );
   await page.locator('#assist').click();
-  assert.match(await page.locator('#hint').textContent(), /辅助提示已开启/);
+  assert.match(await page.locator('#hint').textContent(), /距离提示已开启/);
   await page.close();
 }
 
@@ -787,7 +970,7 @@ async function checkEcho(browser) {
   await page.waitForFunction(() => document.querySelector('#round').textContent === '2');
   const roundBeforeLanguageChange = await page.locator('#round').textContent();
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh' }));
-  assert.equal(await page.locator('h1').textContent(), '记忆回响');
+  assert.equal(await page.locator('h1').textContent(), '信号回放');
   assert.equal(await page.locator('#round').textContent(), roundBeforeLanguageChange);
   await page.close();
 }
@@ -836,7 +1019,7 @@ async function checkMerge(browser) {
   const beforeLanguageChange = await boardSignature();
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
   assert.equal(await boardSignature(), beforeLanguageChange);
-  assert.equal(await page.locator('h1').textContent(), '合成花园');
+  assert.equal(await page.locator('h1').textContent(), '论文花园');
   await page.locator('#restart-game').click();
   assert.equal(await page.locator('#score').textContent(), '0');
   assert.equal(await page.locator('.tile').count(), 2);
@@ -864,7 +1047,7 @@ async function checkResource(browser) {
   assert.equal(
     await page.evaluate(() => document.activeElement?.getAttribute('data-index')),
     '1',
-    'Resource Net arrow keys must move focus between tiles',
+    'OpenRaaS Mesh arrow keys must move focus between tiles',
   );
 
   const rotations = (await board.getAttribute('data-rotations')).split('-').map(Number);
@@ -881,7 +1064,7 @@ async function checkResource(browser) {
 
   const solvedMoves = await page.locator('#moves').textContent();
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
-  assert.equal(await page.locator('h1').textContent(), '资源连线');
+  assert.equal(await page.locator('h1').textContent(), 'OpenRaaS 组网');
   assert.equal(await page.locator('#moves').textContent(), solvedMoves);
 
   const oldSeed = await board.getAttribute('data-seed');

@@ -67,25 +67,22 @@ function renderAngle(angle) {
 
 function resultHint() {
   if (lastHit && lastPoints >= 90) {
-    return text('Beautiful — almost perfectly aligned.', '太准了，几乎完美重合！');
+    return text('Excellent lock — almost centered.', '捕获质量极佳，几乎落在窗口正中。');
   }
   if (lastHit) {
-    return text('Aligned — the moon is inside the window.', '对准成功，月球已停在窗口内。');
+    return text(
+      'Link acquired — the satellite is inside the window.',
+      '链路捕获成功，卫星已进入窗口。',
+    );
   }
-  return text('The moon stopped outside the window. Try again.', '月球停在窗口之外，再试一次。');
+  return text('Acquisition missed — try another pass.', '本次捕获失败，再试一次过站。');
 }
 
 function assistMessage(bucket) {
   const messages = {
-    target: text('Inside the window. Stop now!', '已进入窗口，现在停下！'),
-    close: text(
-      'The moon is near the window.',
-      '月球就在窗口附近。',
-    ),
-    far: text(
-      'The moon is still far from the window.',
-      '月球距离窗口还远。',
-    ),
+    target: text('Inside the acquisition window. Lock now!', '已进入捕获窗口，现在锁定！'),
+    close: text('The satellite is approaching the acquisition window.', '卫星正在接近捕获窗口。'),
+    far: text('The satellite is still far from the acquisition window.', '卫星距离捕获窗口还远。'),
   };
   return messages[bucket];
 }
@@ -105,17 +102,17 @@ function renderAssistStatus() {
 
   if (assistNotice.kind === 'toggle') {
     const announcement = assistNotice.enabled
-      ? text('Assist cues are on.', '辅助提示已开启。')
-      : text('Assist cues are off.', '辅助提示已关闭。');
+      ? text('Range cues are on.', '距离提示已开启。')
+      : text('Range cues are off.', '距离提示已关闭。');
     if (assistStatus.textContent !== announcement) assistStatus.textContent = announcement;
     hint.textContent = assistNotice.enabled
       ? text(
-          'Assist is on — start a round to see distance cues.',
-          '辅助提示已开启；开始后会显示距离提示。',
+          'Range cues are on — start a pass to see the satellite distance.',
+          '距离提示已开启；开始过站后会显示卫星距离。',
         )
       : text(
-          'Assist is off — stop the moon by watching the window.',
-          '辅助提示已关闭，请看准窗口位置，手动让月球停下。',
+          'Range cues are off — lock the satellite by watching the window.',
+          '距离提示已关闭，请看准窗口位置，手动捕获卫星。',
         );
     hint.dataset.assistState = assistNotice.enabled ? 'toggle-on' : 'toggle-off';
     return;
@@ -134,44 +131,41 @@ function renderUI() {
   let hintLabel;
 
   if (viewState === 'running') {
-    actionLabel = text('Stop now', '现在停下');
-    scoreLabel = text('Aligning', '对准中');
+    actionLabel = text('Lock signal', '捕获信号');
+    scoreLabel = text('Acquiring', '捕获中');
     hintLabel = text(
-      'Watch the bright window, then click the button or press Space.',
-      '看准发光窗口，点击按钮或按空格。',
+      'Watch the acquisition window, then click the button or press Space.',
+      '看准捕获窗口，点击按钮或按空格。',
     );
   } else if (viewState === 'result') {
-    actionLabel = text('Try again', '再来一轮');
+    actionLabel = text('Try another pass', '再次过站');
     scoreLabel = text(`${lastPoints} points`, `${lastPoints} 分`);
     hintLabel = resultHint();
   } else if (viewState === 'paused') {
-    actionLabel = text('Restart', '重新开始');
-    scoreLabel = text('Paused', '已暂停');
-    hintLabel = text('This round paused when the page was hidden.', '离开页面时已暂停这一轮。');
+    actionLabel = text('Restart pass', '重新过站');
+    scoreLabel = text('Pass paused', '过站已暂停');
+    hintLabel = text('This pass paused when the page was hidden.', '离开页面时已暂停本次过站。');
   } else {
-    actionLabel = text('Start alignment', '开始对准');
-    scoreLabel = text('Ready', '等待开始');
+    actionLabel = text('Start pass', '开始过站');
+    scoreLabel = text('Link idle', '链路待机');
     hintLabel = text(
-      'Click again when the moon enters the bright window.',
-      '月球进入发光窗口时再点一下，让它停住。',
+      'Click again when the satellite enters the acquisition window.',
+      '卫星进入捕获窗口时再点一下，将它锁定。',
     );
   }
 
   action.textContent = actionLabel;
   action.setAttribute('aria-label', actionLabel);
   score.textContent = scoreLabel;
-  score.setAttribute(
-    'aria-label',
-    text(`Alignment status: ${scoreLabel}`, `对准状态：${scoreLabel}`),
-  );
+  score.setAttribute('aria-label', text(`Link status: ${scoreLabel}`, `链路状态：${scoreLabel}`));
   hint.textContent = hintLabel;
-  assistButton.textContent = text('Assist', '辅助提示');
+  assistButton.textContent = text('Range cues', '距离提示');
   assistButton.setAttribute('aria-pressed', String(assistEnabled));
   assistButton.setAttribute(
     'aria-label',
     assistEnabled
-      ? text('Turn assist cues off', '关闭辅助提示')
-      : text('Turn assist cues on', '开启辅助提示'),
+      ? text('Turn range cues off', '关闭距离提示')
+      : text('Turn range cues on', '开启距离提示'),
   );
   renderAssistStatus();
 }

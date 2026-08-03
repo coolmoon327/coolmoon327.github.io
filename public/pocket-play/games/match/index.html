@@ -4,26 +4,26 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#eef1e7" />
-    <title data-en="Memory Garden" data-zh="花园配对">Memory Garden</title>
+    <title data-en="Pattern Recall" data-zh="图样记忆">Pattern Recall</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main class="game" aria-labelledby="game-title">
       <header>
         <div>
-          <p class="kicker" data-en="MEMORY GARDEN" data-zh="记忆花园">MEMORY GARDEN</p>
-          <h1 id="game-title" data-en="Memory Garden" data-zh="花园配对">Memory Garden</h1>
+          <p class="kicker" data-en="PATTERN RECALL" data-zh="图样记忆">PATTERN RECALL</p>
+          <h1 id="game-title" data-en="Pattern Recall" data-zh="图样记忆">Pattern Recall</h1>
         </div>
-        <button class="reset" id="reset" type="button" data-en="New board" data-zh="新一局">
-          New board
+        <button class="reset" id="reset" type="button" data-en="New trial" data-zh="新一轮">
+          New trial
         </button>
       </header>
 
       <div
         class="stats"
-        aria-label="Game status"
-        data-aria-en="Game status"
-        data-aria-zh="本局状态"
+        aria-label="Trial status"
+        data-aria-en="Trial status"
+        data-aria-zh="本轮状态"
       >
         <span><span data-en="Moves" data-zh="步数">Moves</span> <strong id="moves">0</strong></span>
         <span
@@ -32,8 +32,8 @@
         <span><span data-en="Best" data-zh="最佳">Best</span> <strong id="best">—</strong></span>
       </div>
 
-      <section class="board" id="board" aria-label="Four by four matching board"></section>
-      <p class="status" id="status" aria-live="polite">Find the eight hidden pairs.</p>
+      <section class="board" id="board" aria-label="Four by four Pattern Recall board"></section>
+      <p class="status" id="status" aria-live="polite">Recover the eight hidden pairs.</p>
     </main>
     <script src="../shared/runtime.js"></script>
     <script src="./game.js"></script>

@@ -16,15 +16,21 @@ const keyboardPoints = [
   { x: 84, y: 57 },
 ];
 const fortunes = [
-  { en: 'May you move slowly and still arrive.', zh: '愿你慢慢走，也终会抵达。' },
-  { en: 'Tonight’s small light has been kept for you.', zh: '今晚的微光，刚好替你留着。' },
-  { en: 'No rush; your star will shine in its own time.', zh: '别急，属于你的星会自己亮起来。' },
-  { en: 'May this little path lead to a lighter mood.', zh: '愿这条小路，通向一点好心情。' },
+  { en: 'Small steps still move an idea forward.', zh: '慢一点也没关系，想法仍在向前生长。' },
+  { en: 'One clear question is enough to begin.', zh: '一个清楚的问题，就足以成为开始。' },
   {
-    en: 'Even a light placed casually can become a direction.',
-    zh: '你随手落下的光，也算一种方向。',
+    en: 'The useful connection may be the one you almost missed.',
+    zh: '最有用的联系，也许藏在刚才差点忽略的地方。',
   },
-  { en: 'You have done enough today. Rest for a while.', zh: '今天已经够努力了，歇一会儿吧。' },
+  { en: 'A detour can still become part of the method.', zh: '绕一点路，也可能长成方法的一部分。' },
+  {
+    en: 'Scattered observations can still form a direction.',
+    zh: '零散的观察连起来，也会显出方向。',
+  },
+  {
+    en: 'Save the thought and rest; tomorrow is another iteration.',
+    zh: '把想法记下，先休息，明天再迭代。',
+  },
 ];
 
 let mode = 'sleeping';
@@ -51,52 +57,61 @@ function renderUI() {
   let skyLabel;
 
   if (viewState === 'awakened') {
-    promptText = text('Your next click leaves the first star', '下一次点击会留下第一颗星');
+    promptText = text('Next click places the first idea', '下一次点击会留下第一个想法');
     messageText = text(
-      'The night is awake. Draw your stars slowly.',
-      '夜色醒了，慢慢画下你的星点吧。',
+      'Blank map ready. Connect ideas at your own pace.',
+      '空白星图已经准备好，按自己的节奏连接想法吧。',
     );
     skyLabel = text(
-      'Stardust canvas awake. Click or press Enter to place the first star.',
-      '星图签名画布已唤醒。点击或按 Enter 键放置第一颗星。',
+      'Idea constellation canvas open. Click or press Enter to place the first idea node.',
+      '灵感星图画布已打开。点击或按 Enter 键放置第一个灵感节点。',
     );
   } else if (viewState === 'cleared') {
-    promptText = text('Fresh sky · place the first star', '换一片新夜空 · 落下第一颗星');
-    messageText = text('The sky is fresh. Place the first star.', '夜空已经换新，落下第一颗星吧。');
+    promptText = text('Fresh map · place the first idea', '新星图 · 留下第一个想法');
+    messageText = text(
+      'The map is clear. Place the first idea node.',
+      '星图已经清空，留下第一个灵感节点吧。',
+    );
     skyLabel = text(
-      'Fresh stardust canvas. Click or press Enter to place the first star.',
-      '全新的星图签名画布。点击或按 Enter 键放置第一颗星。',
+      'Fresh idea constellation canvas. Click or press Enter to place the first idea node.',
+      '全新的灵感星图画布。点击或按 Enter 键放置第一个灵感节点。',
     );
   } else if (viewState === 'drawing') {
     promptText = text(
-      `Keep drawing · ${points.length} / ${maxPoints}`,
-      `继续写下星点 · ${points.length} / ${maxPoints}`,
+      `Keep connecting · ${points.length} / ${maxPoints}`,
+      `继续连接 · ${points.length} / ${maxPoints}`,
     );
-    messageText = text(`Star ${points.length} is in place.`, `第 ${points.length} 颗星已经落下。`);
+    messageText = text(
+      `Idea node ${points.length} recorded.`,
+      `已记下第 ${points.length} 个灵感节点。`,
+    );
     skyLabel = text(
-      `Stardust canvas with ${points.length} stars. Click or press Enter to add the next star.`,
-      `星图签名画布，已放置 ${points.length} 颗星。点击或按 Enter 键添加下一颗。`,
+      `Idea constellation with ${points.length} nodes. Click or press Enter to add the next idea node.`,
+      `灵感星图已有 ${points.length} 个节点。点击或按 Enter 键添加下一个灵感节点。`,
     );
   } else if (viewState === 'complete') {
     const fortune = selectedFortune();
-    promptText = text('Signature complete · activate again to rewrite', '签名完成 · 再点一次重新绘制');
+    promptText = text('Map complete · activate again to redraw', '星图完成 · 再点一次重新绘制');
     messageText = fortune;
     skyLabel = text(
-      `Stardust signature complete. Note: ${fortune} Activate the canvas again to clear and rewrite it.`,
-      `星图签名已完成。签语：${fortune} 再点一下画布即可清空重画。`,
+      `Idea constellation complete. Note: ${fortune} Activate the canvas again to clear and redraw it.`,
+      `灵感星图已完成。札记：${fortune} 再点一下画布即可清空重画。`,
     );
   } else {
-    promptText = text('Click / Enter to wake the sky', '点击或按 Enter，唤醒夜色');
-    messageText = text('Tap softly and wake the night.', '先轻轻点一下，让夜色醒来。');
-    skyLabel = text('Wake the stardust signature canvas', '唤醒星图签名画布');
+    promptText = text('Click / Enter to open a blank map', '点击或按 Enter，打开空白星图');
+    messageText = text(
+      'Open a blank map, then place seven idea nodes.',
+      '先打开空白星图，再点下七个灵感节点。',
+    );
+    skyLabel = text('Open the idea constellation canvas', '打开灵感星图画布');
   }
 
   count.textContent = `${points.length} / ${maxPoints}`;
   count.setAttribute(
     'aria-label',
     text(
-      `Star count: ${points.length} of ${maxPoints}`,
-      `星点数量：${points.length} / ${maxPoints}`,
+      `Idea node count: ${points.length} of ${maxPoints}`,
+      `灵感节点数：${points.length} / ${maxPoints}`,
     ),
   );
   prompt.textContent = promptText;

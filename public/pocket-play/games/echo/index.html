@@ -6,17 +6,17 @@
     <meta name="theme-color" content="#17182a" />
     <meta
       name="description"
-      content="Remember the four-pad sequence, then replay it with pointer, touch, or keys 1–4."
+      content="Remember the four-channel signal sequence, then replay it with pointer, touch, or keys 1–4."
     />
-    <title data-en="Memory Echo" data-zh="记忆回响">Memory Echo</title>
+    <title data-en="Signal Replay" data-zh="信号回放">Signal Replay</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main class="echo-card" aria-labelledby="game-title">
       <header class="card-header">
         <div>
-          <p class="eyebrow" data-en="MEMORY ECHO" data-zh="记忆回响">MEMORY ECHO</p>
-          <h1 id="game-title" data-en="Memory Echo" data-zh="记忆回响">Memory Echo</h1>
+          <p class="eyebrow" data-en="SIGNAL REPLAY" data-zh="信号回放">SIGNAL REPLAY</p>
+          <h1 id="game-title" data-en="Signal Replay" data-zh="信号回放">Signal Replay</h1>
         </div>
         <p
           class="round-meter"
@@ -30,72 +30,72 @@
 
       <p
         class="intro"
-        data-en="Watch the four pads light up, then replay the growing sequence."
-        data-zh="先观察四个色块依次亮起，再复现逐轮加长的序列。"
+        data-en="Watch four channels pulse, then replay the signal sequence as it grows."
+        data-zh="先观察四个信道依次点亮，再回放逐轮加长的信号序列。"
       >
-        Watch the four pads light up, then replay the growing sequence.
+        Watch four channels pulse, then replay the signal sequence as it grows.
       </p>
 
       <section
         class="echo-grid"
         id="echo-grid"
         role="group"
-        aria-label="Four echo pads"
-        data-aria-en="Four echo pads"
-        data-aria-zh="四个色块按钮"
+        aria-label="Four signal channels"
+        data-aria-en="Four signal channels"
+        data-aria-zh="四个信道按钮"
         aria-describedby="instructions"
       >
         <button
           class="echo-pad pad-coral"
           type="button"
           data-pad="0"
-          aria-label="Coral echo, key 1"
-          data-aria-en="Coral echo, key 1"
-          data-aria-zh="珊瑚回声，按键 1"
+          aria-label="Channel A, key 1"
+          data-aria-en="Channel A, key 1"
+          data-aria-zh="信道 A，按键 1"
           aria-keyshortcuts="1"
           disabled
         >
           <span class="pad-number" aria-hidden="true">1</span>
-          <span aria-hidden="true" data-en="Coral" data-zh="珊瑚">Coral</span>
+          <span aria-hidden="true" data-en="Channel A" data-zh="信道 A">Channel A</span>
         </button>
         <button
           class="echo-pad pad-gold"
           type="button"
           data-pad="1"
-          aria-label="Gold echo, key 2"
-          data-aria-en="Gold echo, key 2"
-          data-aria-zh="金色回声，按键 2"
+          aria-label="Channel B, key 2"
+          data-aria-en="Channel B, key 2"
+          data-aria-zh="信道 B，按键 2"
           aria-keyshortcuts="2"
           disabled
         >
           <span class="pad-number" aria-hidden="true">2</span>
-          <span aria-hidden="true" data-en="Gold" data-zh="金色">Gold</span>
+          <span aria-hidden="true" data-en="Channel B" data-zh="信道 B">Channel B</span>
         </button>
         <button
           class="echo-pad pad-mint"
           type="button"
           data-pad="2"
-          aria-label="Mint echo, key 3"
-          data-aria-en="Mint echo, key 3"
-          data-aria-zh="薄荷回声，按键 3"
+          aria-label="Channel C, key 3"
+          data-aria-en="Channel C, key 3"
+          data-aria-zh="信道 C，按键 3"
           aria-keyshortcuts="3"
           disabled
         >
           <span class="pad-number" aria-hidden="true">3</span>
-          <span aria-hidden="true" data-en="Mint" data-zh="薄荷">Mint</span>
+          <span aria-hidden="true" data-en="Channel C" data-zh="信道 C">Channel C</span>
         </button>
         <button
           class="echo-pad pad-blue"
           type="button"
           data-pad="3"
-          aria-label="Blue echo, key 4"
-          data-aria-en="Blue echo, key 4"
-          data-aria-zh="蓝色回声，按键 4"
+          aria-label="Channel D, key 4"
+          data-aria-en="Channel D, key 4"
+          data-aria-zh="信道 D，按键 4"
           aria-keyshortcuts="4"
           disabled
         >
           <span class="pad-number" aria-hidden="true">4</span>
-          <span aria-hidden="true" data-en="Blue" data-zh="蓝色">Blue</span>
+          <span aria-hidden="true" data-en="Channel D" data-zh="信道 D">Channel D</span>
         </button>
       </section>
 
@@ -109,30 +109,30 @@
       </div>
 
       <div class="controls">
-        <button class="action" id="action" type="button" data-en="Start game" data-zh="开始游戏">
-          Start game
+        <button class="action" id="action" type="button" data-en="Start replay" data-zh="开始回放">
+          Start replay
         </button>
         <button
           class="assist"
           id="assist"
           type="button"
           aria-pressed="false"
-          aria-label="Assist cues off"
-          data-aria-en="Assist cues off"
-          data-aria-zh="辅助提示关闭"
-          data-en="Assist cues"
-          data-zh="辅助提示"
+          aria-label="Slow cues off"
+          data-aria-en="Slow cues off"
+          data-aria-zh="慢速提示关闭"
+          data-en="Slow cues"
+          data-zh="慢速提示"
         >
-          Assist cues
+          Slow cues
         </button>
       </div>
       <p
         class="instructions"
         id="instructions"
-        data-en="Click a pad or use keys 1–4. You can restart at any time."
-        data-zh="点击色块，或使用键盘数字 1–4。游戏进行中可随时重新开始。"
+        data-en="Select a channel or use keys 1–4. You can restart at any time."
+        data-zh="点击信道，或使用键盘数字 1–4。回放进行中可随时重新开始。"
       >
-        Click a pad or use keys 1–4. You can restart at any time.
+        Select a channel or use keys 1–4. You can restart at any time.
       </p>
     </main>
 

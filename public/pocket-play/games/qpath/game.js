@@ -1,72 +1,72 @@
 const runtime = window.PocketRuntime;
+const TabularAgent = window.PocketTabularAgent;
 const SIZE = 5;
 const STATE_COUNT = SIZE * SIZE;
 const START_STATE = 20;
-const EPISODES = 200;
-const MAX_STEPS = 48;
-const EVALUATION_EPISODES = 80;
-const ALPHA = 0.3;
-const GAMMA = 0.94;
-const SLIP_CHANCE = 0.08;
-const TOPOLOGY_KEY = 'pocket-play.qpath.topology.v1';
+const MAX_STEPS = 32;
+const TOPOLOGY_KEY = 'pocket-play.qpath.topology.v2';
 const WALL_COUNT = 5;
 const RISK_COUNT = 2;
+const DECISION_STATE_COUNT = STATE_COUNT - WALL_COUNT - 1;
 const ACTIONS = [
-  { row: -1, column: 0, arrow: '↑' },
-  { row: 0, column: 1, arrow: '→' },
-  { row: 1, column: 0, arrow: '↓' },
-  { row: 0, column: -1, arrow: '←' },
+  { row: -1, column: 0, arrow: '↑', en: 'up', zh: '上' },
+  { row: 0, column: 1, arrow: '→', en: 'right', zh: '右' },
+  { row: 1, column: 0, arrow: '↓', en: 'down', zh: '下' },
+  { row: 0, column: -1, arrow: '←', en: 'left', zh: '左' },
 ];
 const GOAL_SPECS = [
-  { id: 'A', en: 'Summit', zh: '峰顶' },
-  { id: 'B', en: 'Harbor', zh: '港湾' },
-  { id: 'C', en: 'Grove', zh: '林缘' },
+  { id: 'A', en: 'Gateway', zh: '网关' },
+  { id: 'B', en: 'Edge', zh: '边缘节点' },
+  { id: 'C', en: 'Cloud', zh: '云端' },
 ];
 const topology = createTopology();
 const WALLS = topology.walls;
 const RISKS = topology.risks;
 const GOALS = topology.goals;
 
+const game = document.querySelector('#game');
 const board = document.querySelector('#board');
-const metrics = document.querySelector('.metrics');
-const trainButton = document.querySelector('#train');
 const status = document.querySelector('#status');
-const routeSummaryOutput = document.querySelector('#route-summary');
-const successOutput = document.querySelector('#success-rate');
-const returnOutput = document.querySelector('#average-return');
-const stepsOutput = document.querySelector('#path-steps');
+const routeSummary = document.querySelector('#route-summary');
+const decisionPanel = document.querySelector('#decision-panel');
+const decisionCopy = document.querySelector('#decision-copy');
+const playerNextButton = document.querySelector('#player-next');
+const agentNextButton = document.querySelector('#agent-next');
+const resetLearningButton = document.querySelector('#reset-learning');
+const moveButtons = [...document.querySelectorAll('[data-action]')];
+const demoOutput = document.querySelector('#demo-episodes');
+const experienceOutput = document.querySelector('#experience-count');
+const coverageOutput = document.querySelector('#state-coverage');
+const readinessOutput = document.querySelector('#readiness');
 
-board.dataset.topology = topology.signature;
-board.dataset.topologySource = topology.source;
-board.dataset.reachableCount = String(topology.reachableCount);
-board.dataset.config = JSON.stringify({
-  start: START_STATE,
-  walls: [...WALLS].sort((first, second) => first - second),
-  risks: [...RISKS].sort((first, second) => first - second),
-  goals: GOALS.map(({ id, state }) => ({ id, state })),
-});
-
+const learner = new TabularAgent(STATE_COUNT, ACTIONS.length, { alpha: 0.62, gamma: 0.91 });
 const cells = [];
 const goalButtons = new Map();
-const agent = document.createElement('span');
-agent.className = 'agent';
-agent.setAttribute('aria-hidden', 'true');
+const agentMarker = document.createElement('span');
+const startMarker = document.createElement('span');
+agentMarker.className = 'agent';
+agentMarker.setAttribute('aria-hidden', 'true');
+startMarker.className = 'start-marker';
+startMarker.setAttribute('aria-hidden', 'true');
 
 let selectedGoal = null;
-let actionMode = 'choose';
+let startPool = [START_STATE];
+let currentState = START_STATE;
+let lastPlayerStart = START_STATE;
+let phase = 'choose';
+let controller = 'player';
+let stepCount = 0;
+let demoEpisodes = 0;
+let agentEpisodes = 0;
+let episodeExperience = [];
+let protectedPolicyRows = new Map();
+let agentTimer = 0;
+let readiness = 0;
 let statusState = { key: 'choose', data: {} };
-let lastMetrics = null;
-let routeSummaryState = null;
-let demo = null;
-let demoTimer = 0;
-let startMarker = null;
+let summaryState = null;
 
 function t(english, chinese) {
   return runtime.text(english, chinese);
-}
-
-function goalName(goal) {
-  return `${goal.id} · ${t(goal.en, goal.zh)}`;
 }
 
 function shuffled(values) {
@@ -78,7 +78,7 @@ function shuffled(values) {
   return result;
 }
 
-function neighbors(state, walls) {
+function neighborStates(state, walls) {
   const row = Math.floor(state / SIZE);
   const column = state % SIZE;
   return ACTIONS.map((action) => ({ row: row + action.row, column: column + action.column }))
@@ -91,7 +91,7 @@ function reachableFrom(start, walls) {
   const queue = [start];
   const reached = new Set(queue);
   for (let index = 0; index < queue.length; index += 1) {
-    neighbors(queue[index], walls).forEach((nextState) => {
+    neighborStates(queue[index], walls).forEach((nextState) => {
       if (reached.has(nextState)) return;
       reached.add(nextState);
       queue.push(nextState);
@@ -104,7 +104,7 @@ function distancesFrom(start, walls) {
   const queue = [start];
   const distances = new Map([[start, 0]]);
   for (let index = 0; index < queue.length; index += 1) {
-    neighbors(queue[index], walls).forEach((nextState) => {
+    neighborStates(queue[index], walls).forEach((nextState) => {
       if (distances.has(nextState)) return;
       distances.set(nextState, distances.get(queue[index]) + 1);
       queue.push(nextState);
@@ -119,13 +119,12 @@ function shortestPath(goalState, walls) {
   for (let index = 0; index < queue.length; index += 1) {
     const state = queue[index];
     if (state === goalState) break;
-    neighbors(state, walls).forEach((nextState) => {
+    neighborStates(state, walls).forEach((nextState) => {
       if (previous.has(nextState)) return;
       previous.set(nextState, state);
       queue.push(nextState);
     });
   }
-
   const path = [];
   for (let state = goalState; state !== null; state = previous.get(state)) path.push(state);
   return path.reverse();
@@ -145,7 +144,7 @@ function topologySignature(goals, walls, risks) {
   return `${goalPart}|${wallPart}|${riskPart}`;
 }
 
-function readPreviousTopology() {
+function previousTopology() {
   try {
     return window.sessionStorage.getItem(TOPOLOGY_KEY) || '';
   } catch {
@@ -157,32 +156,28 @@ function rememberTopology(signature) {
   try {
     window.sessionStorage.setItem(TOPOLOGY_KEY, signature);
   } catch {
-    // A sandboxed iframe may intentionally deny storage.
+    // Sandboxed embeds may deny storage without affecting play.
   }
 }
 
 function createTopology() {
-  const previousSignature = readPreviousTopology();
+  const previousSignature = previousTopology();
   const allStates = Array.from({ length: STATE_COUNT }, (_, state) => state);
 
-  for (let attempt = 0; attempt < 200; attempt += 1) {
+  for (let attempt = 0; attempt < 240; attempt += 1) {
     const walls = new Set(
       shuffled(allStates.filter((state) => state !== START_STATE)).slice(0, WALL_COUNT),
     );
-    if (neighbors(START_STATE, walls).length < 2) continue;
-
+    if (neighborStates(START_STATE, walls).length < 2) continue;
     const reachable = reachableFrom(START_STATE, walls);
     if (reachable.size !== STATE_COUNT - WALL_COUNT) continue;
-
     const distances = distancesFrom(START_STATE, walls);
     const goalStates = [];
-    const goalCandidates = shuffled(
+    const candidates = shuffled(
       [...reachable].filter((state) => state !== START_STATE && (distances.get(state) ?? 0) >= 3),
     );
-    for (const state of goalCandidates) {
-      if (goalStates.every((other) => manhattanDistance(state, other) >= 2)) {
-        goalStates.push(state);
-      }
+    for (const state of candidates) {
+      if (goalStates.every((other) => manhattanDistance(state, other) >= 2)) goalStates.push(state);
       if (goalStates.length === GOAL_SPECS.length) break;
     }
     if (goalStates.length !== GOAL_SPECS.length) continue;
@@ -194,19 +189,16 @@ function createTopology() {
     );
     const firstRisk = shuffled([...routeCells].filter((state) => !reserved.has(state)))[0];
     if (firstRisk === undefined) continue;
-
     const secondRisk = shuffled(
       [...reachable].filter(
         (state) => !reserved.has(state) && state !== firstRisk && !walls.has(state),
       ),
     )[0];
     if (secondRisk === undefined) continue;
-
     const risks = new Set([firstRisk, secondRisk]);
     if (risks.size !== RISK_COUNT) continue;
     const signature = topologySignature(goals, walls, risks);
     if (signature === previousSignature) continue;
-
     rememberTopology(signature);
     return { goals, walls, risks, signature, source: 'random', reachableCount: reachable.size };
   }
@@ -227,492 +219,473 @@ function createTopology() {
   };
 }
 
-function renderRouteSummary() {
-  if (!routeSummaryState) {
-    routeSummaryOutput.textContent = '';
-    return;
-  }
-
-  const directionNames = {
-    [-SIZE]: t('up', '上'),
-    1: t('right', '右'),
-    [SIZE]: t('down', '下'),
-    [-1]: t('left', '左'),
-    0: t('stay', '原地'),
-  };
-  const directions = routeSummaryState.path
-    .slice(1)
-    .map((state, index) => directionNames[state - routeSummaryState.path[index]]);
-  const route = directions.join(runtime.lang === 'zh' ? '、' : ', ');
-  const destination = goalName(routeSummaryState.goal);
-
-  routeSummaryOutput.textContent = routeSummaryState.reached
-    ? t(
-        `Learned greedy route to ${destination}: ${route}.`,
-        `贪心策略生成的路径通往 ${destination}：${route}。`,
-      )
-    : t(
-        `Current greedy attempt toward ${destination} did not arrive: ${route}.`,
-        `当前贪心策略尚未到达 ${destination}：${route}。`,
-      );
-}
-
 function createBoard() {
   const goalsByState = new Map(GOALS.map((goal) => [goal.state, goal]));
-
   for (let state = 0; state < STATE_COUNT; state += 1) {
     const goal = goalsByState.get(state);
     const cell = document.createElement(goal ? 'button' : 'div');
     cell.className = 'cell';
     cell.dataset.state = String(state);
-
     if (goal) {
       cell.type = 'button';
       cell.classList.add('target');
       cell.dataset.goal = goal.id;
       cell.setAttribute('aria-pressed', 'false');
-
       const label = document.createElement('span');
-      label.className = 'target-label';
       label.textContent = goal.id;
       cell.append(label);
       goalButtons.set(goal.id, cell);
     } else {
       cell.setAttribute('aria-hidden', 'true');
     }
-
     if (WALLS.has(state)) cell.classList.add('wall');
     if (RISKS.has(state)) cell.classList.add('risk');
-
     const policy = document.createElement('span');
     policy.className = 'policy';
     policy.setAttribute('aria-hidden', 'true');
     cell.append(policy);
-
-    if (state === START_STATE) {
-      startMarker = document.createElement('span');
-      startMarker.className = 'start-marker';
-      startMarker.setAttribute('aria-hidden', 'true');
-      cell.append(startMarker);
-    }
-
     cells.push(cell);
     board.append(cell);
   }
-
-  cells[START_STATE].append(agent);
-}
-
-function clearDemoTimer() {
-  window.clearTimeout(demoTimer);
-  demoTimer = 0;
-}
-
-function clearRoute() {
-  cells.forEach((cell) => {
-    cell.classList.remove('is-path');
-    const policy = cell.querySelector('.policy');
-    if (policy) policy.textContent = '';
+  board.dataset.topology = topology.signature;
+  board.dataset.topologySource = topology.source;
+  board.dataset.reachableCount = String(topology.reachableCount);
+  board.dataset.config = JSON.stringify({
+    start: START_STATE,
+    walls: [...WALLS].sort((first, second) => first - second),
+    risks: [...RISKS].sort((first, second) => first - second),
+    goals: GOALS.map(({ id, state }) => ({ id, state })),
   });
-  cells[START_STATE].append(agent);
 }
 
-function cancelDemo() {
-  clearDemoTimer();
-  demo = null;
+function goalName(goal) {
+  return `${goal.id} · ${t(goal.en, goal.zh)}`;
 }
 
-function resetMetrics() {
-  lastMetrics = null;
-  successOutput.textContent = '—';
-  returnOutput.textContent = '—';
-  stepsOutput.textContent = '—';
-}
-
-function renderMetrics() {
-  if (!lastMetrics) return;
-  const locale = runtime.lang === 'zh' ? 'zh-CN' : 'en';
-  const formatter = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
-  successOutput.textContent = `${lastMetrics.successRate}%`;
-  returnOutput.textContent = formatter.format(lastMetrics.averageReturn);
-  stepsOutput.textContent = lastMetrics.pathSteps ?? '—';
-}
-
-function statusMessage(key, data) {
-  const goal = data.goal ? goalName(data.goal) : '';
-  const rate = Number.isFinite(data.rate) ? `${data.rate}%` : '';
-  const messages = {
-    choose: ['Choose target A, B, or C, then train the route.', '选择目标 A、B 或 C，再训练策略。'],
-    selected: [`Target ${goal} selected. Train when ready.`, `已选择目标 ${goal}，可以开始训练。`],
-    training: [
-      `Training 200 episodes toward target ${goal}…`,
-      `正在以目标 ${goal} 为终点训练 200 个回合…`,
-    ],
-    demoStable: [
-      `Evaluation success is ${rate}. The agent is following its greedy route.`,
-      `评估成功率为 ${rate}，智能体正沿贪心策略生成的路径前进。`,
-    ],
-    demoUnstable: [
-      `Not yet stable at ${rate}. Showing the current greedy attempt honestly.`,
-      `当前成功率为 ${rate}，策略尚未稳定；下方仍会展示本次贪心策略得到的实际路径。`,
-    ],
-    complete: [
-      `Route complete. The greedy policy reached target ${goal}.`,
-      `路径完成，贪心策略已到达目标 ${goal}。`,
-    ],
-    completeUnstable: [
-      `This route reached ${goal}, but evaluation remains unstable at ${rate}.`,
-      `本次路径到达了目标 ${goal}，但评估成功率为 ${rate}，策略仍未稳定。`,
-    ],
-    stalled: [
-      `The learned policy stopped before ${goal}. Train again for a new sample.`,
-      `学到的策略未能到达目标 ${goal}；可重新训练一次，观察新的路径。`,
-    ],
-    paused: ['Tab hidden. Route demonstration paused.', '页面已隐藏，路径演示已暂停。'],
-    reducedStable: [
-      `Reduced motion is on. The full route to ${goal} is shown.`,
-      `已启用“减少动态效果”，通往 ${goal} 的完整路径已直接显示。`,
-    ],
-    reducedUnstable: [
-      `Reduced motion is on. The current unstable attempt (${rate}) is shown at once.`,
-      `已启用“减少动态效果”；成功率为 ${rate} 的当前路径已直接显示。`,
-    ],
-  };
-  const pair = messages[key] || messages.choose;
-  return t(pair[0], pair[1]);
-}
-
-function setStatus(key, data = {}) {
-  statusState = { key, data };
-  status.textContent = statusMessage(key, data);
-}
-
-function renderStatus() {
-  status.textContent = statusMessage(statusState.key, statusState.data);
-}
-
-function renderAction() {
-  const labels = {
-    choose: ['Choose a target', '请先选择目标'],
-    ready: ['Train & depart', '训练并出发'],
-    trained: ['Train again', '重新训练'],
-    training: ['Training…', '训练中…'],
-  };
-  const pair = labels[actionMode];
-  trainButton.textContent = t(pair[0], pair[1]);
-  trainButton.disabled = actionMode === 'choose' || actionMode === 'training';
-  trainButton.setAttribute('aria-busy', String(actionMode === 'training'));
-}
-
-function syncAccessibility() {
-  const boardLabel = t(
-    'Five-by-five Q-learning world. The agent starts at the lower-left S. Striped cells are blocked and amber dots mark costly cells. Choose one of three target buttons.',
-    '5×5 Q 学习环境。智能体从左下角的“起”出发；斜纹格不可通行，琥珀色圆点标记高代价网格。请从三个目标按钮中选择一个。',
-  );
-  board.setAttribute('aria-label', boardLabel);
-  metrics.setAttribute('aria-label', t('Evaluation metrics', '评估指标'));
-  startMarker.textContent = t('S', '起');
-
-  GOALS.forEach((goal) => {
-    const row = Math.floor(goal.state / SIZE) + 1;
-    const column = (goal.state % SIZE) + 1;
-    const selected = selectedGoal?.id === goal.id;
-    const label = t(
-      `Target ${goal.id}, ${goal.en}, row ${row}, column ${column}${selected ? ', selected' : ''}`,
-      `目标 ${goal.id}，${goal.zh}，第 ${row} 行第 ${column} 列${selected ? '，已选择' : ''}`,
+function buildStartPool() {
+  if (!selectedGoal) return [START_STATE];
+  const distances = distancesFrom(selectedGoal.state, WALLS);
+  const candidates = [...distances.keys()]
+    .filter((state) => state !== selectedGoal.state)
+    .sort(
+      (first, second) =>
+        (distances.get(second) ?? 0) - (distances.get(first) ?? 0) || first - second,
     );
-    const button = goalButtons.get(goal.id);
-    button.setAttribute('aria-label', label);
-    button.title = goalName(goal);
-  });
+  return [START_STATE, ...candidates.filter((state) => state !== START_STATE)];
 }
 
-function syncTargets() {
-  GOALS.forEach((goal) => {
-    goalButtons.get(goal.id).setAttribute('aria-pressed', String(selectedGoal?.id === goal.id));
-  });
-  syncAccessibility();
-}
-
-function selectGoal(goal) {
-  selectedGoal = goal;
-  actionMode = 'ready';
-  cancelDemo();
-  clearRoute();
-  routeSummaryState = null;
-  renderRouteSummary();
-  resetMetrics();
-  syncTargets();
-  renderAction();
-  setStatus('selected', { goal });
-}
-
-function greedyAction(values, randomizeTies = false) {
-  let best = -Infinity;
-  const candidates = [];
-
-  values.forEach((value, action) => {
-    if (value > best + Number.EPSILON) {
-      best = value;
-      candidates.length = 0;
-      candidates.push(action);
-    } else if (Math.abs(value - best) <= Number.EPSILON) {
-      candidates.push(action);
-    }
-  });
-
-  return randomizeTies ? candidates[Math.floor(Math.random() * candidates.length)] : candidates[0];
-}
-
-function transition(state, requestedAction, stochastic) {
-  let action = requestedAction;
-  if (stochastic && Math.random() < SLIP_CHANCE) {
-    action = (action + (Math.random() < 0.5 ? 1 : 3)) % ACTIONS.length;
-  }
-
+function transition(state, action) {
   const row = Math.floor(state / SIZE);
   const column = state % SIZE;
   const nextRow = row + ACTIONS[action].row;
   const nextColumn = column + ACTIONS[action].column;
-
   if (nextRow < 0 || nextRow >= SIZE || nextColumn < 0 || nextColumn >= SIZE) {
-    return { state, reward: -0.14, done: false };
+    return { nextState: state, reward: -0.24, done: false };
   }
-
   const nextState = nextRow * SIZE + nextColumn;
-  if (WALLS.has(nextState)) return { state, reward: -0.14, done: false };
-  if (nextState === selectedGoal.state) return { state: nextState, reward: 1, done: true };
-  return { state: nextState, reward: RISKS.has(nextState) ? -0.26 : -0.03, done: false };
+  if (WALLS.has(nextState)) return { nextState: state, reward: -0.24, done: false };
+  if (nextState === selectedGoal.state) return { nextState, reward: 1, done: true };
+  const progress =
+    manhattanDistance(state, selectedGoal.state) - manhattanDistance(nextState, selectedGoal.state);
+  const reward = (progress > 0 ? 0.12 : -0.07) - (RISKS.has(nextState) ? 0.22 : 0.02);
+  return { nextState, reward, done: false };
 }
 
-function trainQTable() {
-  const table = Array.from({ length: STATE_COUNT }, () => new Float64Array(ACTIONS.length));
-
-  for (let episode = 0; episode < EPISODES; episode += 1) {
-    let state = START_STATE;
-    const progress = episode / (EPISODES - 1);
-    const epsilon = 0.05 + 0.85 * (1 - progress) ** 2;
-
-    for (let step = 0; step < MAX_STEPS; step += 1) {
-      const action =
-        Math.random() < epsilon
-          ? Math.floor(Math.random() * ACTIONS.length)
-          : greedyAction(table[state], true);
-      const result = transition(state, action, true);
-      const nextBest = result.done ? 0 : Math.max(...table[result.state]);
-      const target = result.reward + GAMMA * nextBest;
-      table[state][action] += ALPHA * (target - table[state][action]);
-      state = result.state;
-      if (result.done) break;
-    }
-  }
-
-  return table;
-}
-
-function evaluate(table) {
-  let successes = 0;
-  let totalReturn = 0;
-
-  for (let episode = 0; episode < EVALUATION_EPISODES; episode += 1) {
-    let state = START_STATE;
-    let episodeReturn = 0;
-
-    for (let step = 0; step < MAX_STEPS; step += 1) {
-      const action = greedyAction(table[state]);
-      const result = transition(state, action, true);
-      episodeReturn += result.reward;
-      state = result.state;
-      if (result.done) {
-        successes += 1;
-        break;
-      }
-    }
-    totalReturn += episodeReturn;
-  }
-
-  return {
-    successRate: Math.round((successes / EVALUATION_EPISODES) * 100),
-    averageReturn: totalReturn / EVALUATION_EPISODES,
-  };
-}
-
-function greedyPath(table) {
-  const path = [START_STATE];
-  const visited = new Set(path);
-  let state = START_STATE;
-
+function policyTrace(start) {
+  if (!selectedGoal || learner.experienceCount === 0) return { states: [], success: false };
+  let state = start;
+  const seen = new Set();
+  const states = [];
   for (let step = 0; step < MAX_STEPS; step += 1) {
-    const action = greedyAction(table[state]);
-    const result = transition(state, action, false);
-    path.push(result.state);
-
-    if (result.done) return { path, reached: true };
-    if (result.state === state || visited.has(result.state)) return { path, reached: false };
-
-    state = result.state;
-    visited.add(state);
+    if (!learner.hasLearnedState(state) || seen.has(state)) return { states, success: false };
+    seen.add(state);
+    states.push(state);
+    const action = learner.greedyAction(state, [0, 1, 2, 3]);
+    const result = transition(state, action);
+    state = result.nextState;
+    if (result.done) return { states, success: true };
   }
-
-  return { path, reached: false };
+  return { states, success: false };
 }
 
-function renderPolicy(table) {
+function policyReachesGoal(start) {
+  return policyTrace(start).success;
+}
+
+function snapshotSuccessfulPolicyRows() {
+  const snapshot = new Map();
+  startPool.forEach((start) => {
+    const trace = policyTrace(start);
+    if (!trace.success) return;
+    trace.states.forEach((state) => {
+      if (snapshot.has(state)) return;
+      snapshot.set(state, {
+        q: [...learner.q[state]],
+        visits: [...learner.visits[state]],
+      });
+    });
+  });
+  return snapshot;
+}
+
+function restoreProtectedPolicyRows() {
+  protectedPolicyRows.forEach((row, state) => {
+    learner.q[state] = [...row.q];
+    learner.visits[state] = [...row.visits];
+  });
+}
+
+function evaluatePolicy() {
+  if (!selectedGoal || learner.experienceCount === 0) return 0;
+  const successes = startPool.filter((start) => policyReachesGoal(start)).length;
+  return Math.round((successes / startPool.length) * 100);
+}
+
+function nextPlayerStart() {
+  const offset = demoEpisodes % startPool.length;
+  const orderedStarts = Array.from(
+    { length: startPool.length },
+    (_, index) => startPool[(offset + index) % startPool.length],
+  );
+  return (
+    orderedStarts.find((start) => !learner.hasLearnedState(start) && !policyReachesGoal(start)) ??
+    orderedStarts.find((start) => !policyReachesGoal(start)) ??
+    orderedStarts[0]
+  );
+}
+
+function renderPolicy() {
   cells.forEach((cell, state) => {
     const policy = cell.querySelector('.policy');
-    if (WALLS.has(state) || state === selectedGoal.state) {
-      policy.textContent = '';
-      return;
-    }
-    policy.textContent = ACTIONS[greedyAction(table[state])].arrow;
+    if (!policy) return;
+    policy.textContent =
+      selectedGoal &&
+      !WALLS.has(state) &&
+      state !== selectedGoal.state &&
+      learner.hasLearnedState(state)
+        ? ACTIONS[learner.greedyAction(state, [0, 1, 2, 3])].arrow
+        : '';
   });
 }
 
 function placeAgent(state) {
-  cells[state].append(agent);
-  cells[state].classList.add('is-path');
+  currentState = state;
+  cells[state].append(agentMarker);
+  board.dataset.currentState = String(currentState);
 }
 
-function demoNarration() {
-  if (demo.stable) {
-    setStatus('demoStable', { goal: selectedGoal, rate: demo.rate });
-  } else {
-    setStatus('demoUnstable', { goal: selectedGoal, rate: demo.rate });
-  }
+function updateAccessibility() {
+  board.setAttribute(
+    'aria-label',
+    t(
+      'Five-by-five routing world. Striped cells are blocked and amber dots mark costly links.',
+      '5×5 路由环境。斜纹格不可通行，琥珀色圆点表示高代价链路。',
+    ),
+  );
+  startMarker.textContent = t('S', '起');
+  GOALS.forEach((goal) => {
+    const button = goalButtons.get(goal.id);
+    const selected = selectedGoal?.id === goal.id;
+    button.setAttribute('aria-pressed', String(selected));
+    button.setAttribute(
+      'aria-label',
+      t(
+        `Target ${goal.id}, ${goal.en}${selected ? ', selected' : ''}`,
+        `目标 ${goal.id}，${goal.zh}${selected ? '，已选择' : ''}`,
+      ),
+    );
+    button.disabled = phase === 'player' || phase === 'agent';
+  });
+  moveButtons.forEach((button) => {
+    const action = ACTIONS[Number(button.dataset.action)];
+    button.setAttribute('aria-label', t(`Move ${action.en}`, `向${action.zh}移动`));
+  });
 }
 
-function finishDemo() {
-  demo.running = false;
-  if (!demo.reached) {
-    setStatus('stalled', { goal: selectedGoal, rate: demo.rate });
-  } else if (!demo.stable) {
-    setStatus('completeUnstable', { goal: selectedGoal, rate: demo.rate });
-  } else {
-    setStatus('complete', { goal: selectedGoal, rate: demo.rate });
-  }
-}
-
-function scheduleDemoStep() {
-  clearDemoTimer();
-  if (!demo?.running || document.hidden) return;
-  demoTimer = window.setTimeout(() => {
-    demo.index += 1;
-    placeAgent(demo.path[demo.index]);
-    if (demo.index >= demo.path.length - 1) {
-      finishDemo();
-    } else {
-      scheduleDemoStep();
-    }
-  }, 230);
-}
-
-function startDemo(pathResult, stable, rate) {
-  cells.forEach((cell) => cell.classList.remove('is-path'));
-  placeAgent(pathResult.path[0]);
-  demo = {
-    path: pathResult.path,
-    index: 0,
-    reached: pathResult.reached,
-    stable,
-    rate,
-    running: false,
-    paused: false,
+function statusText() {
+  const data = statusState.data;
+  const activeGoal = selectedGoal ? goalName(selectedGoal) : '';
+  const messages = {
+    choose: [
+      'Choose target A, B, or C. Your route will become the Agent’s first experience.',
+      '选择目标 A、B 或 C；你走出的路线会成为 Agent 的第一批经验。',
+    ],
+    selected: [
+      `Target ${activeGoal} selected. Demonstrate one route, then decide who plays next.`,
+      `已选择目标 ${activeGoal}。先示范一条路线，再决定下一局由谁操作。`,
+    ],
+    player: [
+      `Your episode: move the packet toward ${activeGoal}. Step ${data.step ?? 0}/${MAX_STEPS}.`,
+      `你的回合：把数据包送往 ${activeGoal}。第 ${data.step ?? 0}/${MAX_STEPS} 步。`,
+    ],
+    agent: [
+      `Agent episode in progress. It is acting from ${learner.experienceCount} recorded transitions.`,
+      `Agent 正在操作；当前策略来自 ${learner.experienceCount} 条已记录经验。`,
+    ],
+    successPlayer: [
+      `Route delivered. The Agent replayed your demonstration; policy reach is now ${data.readiness}%.`,
+      `路由成功。Agent 已用你的示范更新策略，策略可达率升至 ${data.readiness}%。`,
+    ],
+    failPlayer: [
+      `Episode ended before delivery. Failed moves still teach the Agent what to avoid.`,
+      '本局未能送达，但失败动作也会告诉 Agent 应该避开什么。',
+    ],
+    successAgent: [
+      `Agent delivered the packet. Its own episode has also joined the replay buffer.`,
+      'Agent 已成功送达数据包；它本轮产生的经验也已加入经验池。',
+    ],
+    failAgent: [
+      `Agent did not arrive this time. Add another demonstration or let it explore again.`,
+      'Agent 这次尚未到达；你可以再示范一局，也可以让它继续探索。',
+    ],
+    reset: [
+      'Learning reset. The topology stays fixed so you can teach the same routing problem again.',
+      '学习记录已清空；拓扑保持不变，可以重新教授同一个路由问题。',
+    ],
   };
-
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    pathResult.path.forEach((state) => cells[state].classList.add('is-path'));
-    placeAgent(pathResult.path.at(-1));
-    setStatus(stable ? 'reducedStable' : 'reducedUnstable', {
-      goal: selectedGoal,
-      rate,
-    });
-    return;
-  }
-
-  if (pathResult.path.length <= 1) {
-    finishDemo();
-    return;
-  }
-
-  demo.running = true;
-  demoNarration();
-  scheduleDemoStep();
+  const pair = messages[statusState.key] || messages.choose;
+  return t(pair[0], pair[1]);
 }
 
-function trainAndDepart() {
-  if (!selectedGoal) {
-    setStatus('choose');
-    goalButtons.get(GOALS[0].id).focus();
+function renderRouteSummary() {
+  if (!summaryState || !selectedGoal) {
+    routeSummary.textContent = '';
     return;
   }
+  const directions = summaryState.actions.map((action) =>
+    t(ACTIONS[action].en, ACTIONS[action].zh),
+  );
+  routeSummary.textContent = summaryState.success
+    ? t(
+        `${summaryState.source === 'player' ? 'Player' : 'Agent'} route reached ${goalName(selectedGoal)}: ${directions.join(', ')}.`,
+        `${summaryState.source === 'player' ? '玩家' : 'Agent'} 已到达 ${goalName(selectedGoal)}：${directions.join('、')}。`,
+      )
+    : t(
+        `${summaryState.source === 'player' ? 'Player' : 'Agent'} episode ended after ${summaryState.actions.length} steps.`,
+        `${summaryState.source === 'player' ? '玩家' : 'Agent'} 的回合在 ${summaryState.actions.length} 步后结束。`,
+      );
+}
 
-  cancelDemo();
-  clearRoute();
-  actionMode = 'training';
-  renderAction();
-  setStatus('training', { goal: selectedGoal });
+function render() {
+  readiness = evaluatePolicy();
+  game.dataset.phase = phase;
+  game.dataset.controller = controller;
+  game.dataset.stateCount = String(STATE_COUNT);
+  game.dataset.decisionStateCount = String(DECISION_STATE_COUNT);
+  game.dataset.actionCount = String(ACTIONS.length);
+  game.dataset.startPoolSize = String(startPool.length);
+  game.dataset.demoEpisodes = String(demoEpisodes);
+  game.dataset.agentEpisodes = String(agentEpisodes);
+  game.dataset.experienceCount = String(learner.experienceCount);
+  game.dataset.stateCoverage = String(learner.stateCoverage);
+  game.dataset.policyVersion = String(learner.policyVersion);
+  game.dataset.readiness = String(readiness);
+  board.dataset.selectedGoal = selectedGoal?.id || '';
 
-  const table = trainQTable();
-  const evaluation = evaluate(table);
-  const pathResult = greedyPath(table);
-  const stable = pathResult.reached && evaluation.successRate >= 85;
-
-  renderPolicy(table);
-  routeSummaryState = {
-    goal: selectedGoal,
-    path: pathResult.path,
-    reached: pathResult.reached,
-  };
+  demoOutput.textContent = String(demoEpisodes);
+  experienceOutput.textContent = String(learner.experienceCount);
+  coverageOutput.textContent = `${learner.stateCoverage}/${DECISION_STATE_COUNT}`;
+  readinessOutput.textContent = `${readiness}%`;
+  status.textContent = statusText();
   renderRouteSummary();
-  lastMetrics = {
-    ...evaluation,
-    pathSteps: pathResult.reached ? pathResult.path.length - 1 : null,
+  agentMarker.dataset.controller = controller;
+
+  const isPlayer = phase === 'player';
+  moveButtons.forEach((button) => {
+    button.disabled = !isPlayer;
+  });
+  decisionPanel.hidden = phase !== 'decision';
+  agentNextButton.disabled = phase !== 'decision' || learner.experienceCount === 0;
+  playerNextButton.disabled = phase !== 'decision' || !selectedGoal;
+  playerNextButton.textContent = t(
+    demoEpisodes === 0 ? 'I will demonstrate' : 'I will play next',
+    demoEpisodes === 0 ? '我先示范一局' : '我继续操作',
+  );
+  agentNextButton.textContent = t('Let Agent try', '让 Agent 试一局');
+  resetLearningButton.textContent = t('Reset learning', '重置学习');
+  decisionCopy.textContent =
+    readiness === 100
+      ? t(
+          'Choose next · 19/19 starts reachable; routes may not be optimal',
+          '选择下一局 · 19/19 个起点均可达，但路线未必最优',
+        )
+      : t(
+          `Choose next · Greedy policy reaches ${readiness}% of 19 starts`,
+          `选择下一局 · 19 个测试起点中，当前策略可达 ${readiness}%`,
+        );
+  updateAccessibility();
+  renderPolicy();
+}
+
+function selectGoal(goal) {
+  window.clearTimeout(agentTimer);
+  selectedGoal = goal;
+  learner.reset();
+  demoEpisodes = 0;
+  agentEpisodes = 0;
+  protectedPolicyRows = new Map();
+  controller = 'player';
+  phase = 'decision';
+  startPool = buildStartPool();
+  currentState = START_STATE;
+  lastPlayerStart = START_STATE;
+  cells.forEach((cell) => cell.classList.remove('is-path'));
+  cells[START_STATE].append(startMarker, agentMarker);
+  board.dataset.startState = String(START_STATE);
+  statusState = { key: 'selected', data: { goal: goalName(goal) } };
+  summaryState = null;
+  game.dataset.lastEpisodeResult = '';
+  game.dataset.lastEpisodeController = '';
+  render();
+}
+
+function startEpisode(nextController) {
+  if (!selectedGoal || phase !== 'decision') return;
+  window.clearTimeout(agentTimer);
+  controller = nextController;
+  phase = nextController;
+  stepCount = 0;
+  episodeExperience = [];
+  protectedPolicyRows = nextController === 'player' ? snapshotSuccessfulPolicyRows() : new Map();
+  cells.forEach((cell) => cell.classList.remove('is-path'));
+  const start = nextController === 'player' ? nextPlayerStart() : lastPlayerStart;
+  if (nextController === 'player') lastPlayerStart = start;
+  cells[start].append(startMarker);
+  board.dataset.startState = String(start);
+  placeAgent(start);
+  statusState = {
+    key: nextController,
+    data: { goal: goalName(selectedGoal), step: 0 },
   };
-  renderMetrics();
-  actionMode = 'trained';
-  renderAction();
-  startDemo(pathResult, stable, evaluation.successRate);
+  render();
+  if (nextController === 'agent') scheduleAgentStep();
+}
+
+function performAction(action) {
+  if (phase !== 'player' && phase !== 'agent') return;
+  const source = controller;
+  const state = currentState;
+  const result = transition(state, action);
+  stepCount += 1;
+  const timedOut = !result.done && stepCount >= MAX_STEPS;
+  const experience = {
+    state,
+    action,
+    reward: timedOut ? result.reward - 0.55 : result.reward,
+    nextState: result.nextState,
+    nextAllowed: [0, 1, 2, 3],
+    done: result.done || timedOut,
+    source,
+  };
+  episodeExperience.push(experience);
+  learner.observe(experience);
+  cells[result.nextState].classList.add('is-path');
+  placeAgent(result.nextState);
+
+  if (result.done || timedOut) {
+    finishEpisode(result.done);
+    return;
+  }
+
+  statusState = {
+    key: source,
+    data: { goal: goalName(selectedGoal), step: stepCount },
+  };
+  render();
+  if (source === 'agent') scheduleAgentStep();
+}
+
+function finishEpisode(success) {
+  window.clearTimeout(agentTimer);
+  const source = controller;
+  let replayExperience = episodeExperience;
+  if (source === 'player' && success) {
+    // Preserve every previously successful greedy route while learning the new demonstration.
+    // This makes short-session progress visible without claiming a globally optimal policy.
+    restoreProtectedPolicyRows();
+    replayExperience = episodeExperience.filter(
+      (experience) => !protectedPolicyRows.has(experience.state),
+    );
+    replayExperience.forEach((experience) => {
+      experience.reward = Math.max(experience.reward, 0.05);
+    });
+  }
+  learner.replay(replayExperience, source === 'player' ? (success ? 14 : 8) : 6);
+  protectedPolicyRows = new Map();
+  if (source === 'player') demoEpisodes += 1;
+  else agentEpisodes += 1;
+  phase = 'decision';
+  readiness = evaluatePolicy();
+  statusState = {
+    key: `${success ? 'success' : 'fail'}${source === 'player' ? 'Player' : 'Agent'}`,
+    data: { readiness },
+  };
+  summaryState = {
+    success,
+    source,
+    actions: episodeExperience.map((item) => item.action),
+  };
+  game.dataset.lastEpisodeResult = success ? 'success' : 'failure';
+  game.dataset.lastEpisodeController = source;
+  render();
+}
+
+function scheduleAgentStep() {
+  window.clearTimeout(agentTimer);
+  const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 70 : 240;
+  agentTimer = window.setTimeout(() => {
+    if (phase !== 'agent' || document.hidden) return;
+    const epsilon = learner.hasLearnedState(currentState) ? 0 : 0.38;
+    const action = learner.selectAction(currentState, [0, 1, 2, 3], epsilon);
+    performAction(action);
+  }, delay);
+}
+
+function resetLearning() {
+  window.clearTimeout(agentTimer);
+  learner.reset();
+  demoEpisodes = 0;
+  agentEpisodes = 0;
+  controller = 'player';
+  phase = selectedGoal ? 'decision' : 'choose';
+  episodeExperience = [];
+  protectedPolicyRows = new Map();
+  lastPlayerStart = START_STATE;
+  cells.forEach((cell) => cell.classList.remove('is-path'));
+  cells[START_STATE].append(startMarker, agentMarker);
+  board.dataset.startState = String(START_STATE);
+  statusState = { key: selectedGoal ? 'reset' : 'choose', data: {} };
+  summaryState = null;
+  game.dataset.lastEpisodeResult = '';
+  game.dataset.lastEpisodeController = '';
+  render();
 }
 
 createBoard();
-
 GOALS.forEach((goal) => {
-  const button = goalButtons.get(goal.id);
-  button.addEventListener('click', () => selectGoal(goal));
+  goalButtons.get(goal.id).addEventListener('click', () => selectGoal(goal));
 });
+moveButtons.forEach((button) => {
+  button.addEventListener('click', () => performAction(Number(button.dataset.action)));
+});
+playerNextButton.addEventListener('click', () => startEpisode('player'));
+agentNextButton.addEventListener('click', () => startEpisode('agent'));
+resetLearningButton.addEventListener('click', resetLearning);
 
-trainButton.addEventListener('click', trainAndDepart);
+document.addEventListener('keydown', (event) => {
+  if (phase !== 'player' || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+  const action = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 }[event.key];
+  if (action === undefined) return;
+  event.preventDefault();
+  performAction(action);
+});
 
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && demo?.running) {
-    clearDemoTimer();
-    demo.running = false;
-    demo.paused = true;
-    setStatus('paused', { goal: selectedGoal, rate: demo.rate });
-    return;
-  }
-
-  if (!document.hidden && demo?.paused) {
-    demo.paused = false;
-    demo.running = true;
-    demoNarration();
-    scheduleDemoStep();
-  }
+  if (!document.hidden && phase === 'agent') scheduleAgentStep();
 });
 
-runtime.onChange(() => {
-  syncAccessibility();
-  renderAction();
-  renderStatus();
-  renderMetrics();
-  renderRouteSummary();
-});
-
-syncTargets();
-renderAction();
-renderStatus();
-renderRouteSummary();
+runtime.onChange(render);
+cells[START_STATE].append(startMarker, agentMarker);
+board.dataset.startState = String(START_STATE);
+board.dataset.currentState = String(START_STATE);
+render();

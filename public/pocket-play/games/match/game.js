@@ -103,18 +103,18 @@ function statusText() {
     return text(`Pair found: ${name}.`, `找到一对${name}。`);
   }
   if (statusState.kind === 'mismatch') {
-    return text('The symbols differ. Remember their positions.', '图案不同，记住它们的位置。');
+    return text('The patterns differ. Remember their positions.', '图样不同，记住它们的位置。');
   }
   if (statusState.kind === 'finished-best') {
     return text(
-      `The garden is in bloom! Finished in ${moves} moves — a new best.`,
-      `花园盛开了！${moves} 步完成，也是新的最佳成绩。`,
+      `Trial complete in ${moves} moves — a new personal best.`,
+      `本轮用 ${moves} 步完成，刷新个人最佳记录。`,
     );
   }
   if (statusState.kind === 'finished') {
     return text(
-      `The garden is in bloom! You found every pair in ${moves} moves.`,
-      `花园盛开了！你用 ${moves} 步找齐了全部图案。`,
+      `Trial complete — all pairs recovered in ${moves} moves.`,
+      `本轮完成：用 ${moves} 步找齐全部图样。`,
     );
   }
   if (statusState.kind === 'hidden-close') {
@@ -123,20 +123,23 @@ function statusText() {
       '页面切到后台时，未配对的牌已自动翻回背面。',
     );
   }
-  return text('Find the eight hidden pairs.', '找出八对藏在叶片下的图案。');
+  return text('Recover the eight hidden pairs.', '找齐 8 对隐藏图样。');
 }
 
 function renderUI() {
   updateStats();
   statusOutput.textContent = statusText();
-  resetButton.textContent = text('New board', '新一局');
-  resetButton.setAttribute('aria-label', text('Start a new matching board', '开始新一局翻牌'));
-  stats.setAttribute('aria-label', text('Game status', '本局状态'));
+  resetButton.textContent = text('New trial', '新一轮');
+  resetButton.setAttribute(
+    'aria-label',
+    text('Start a new visual-memory trial', '开始新一轮视觉记忆测试'),
+  );
+  stats.setAttribute('aria-label', text('Trial status', '本轮状态'));
   board.setAttribute(
     'aria-label',
     text(
-      `Four by four matching board, ${pairs} of 8 pairs found`,
-      `四乘四翻牌棋盘，已找到 ${pairs} / 8 对`,
+      `Four by four Pattern Recall board, ${pairs} of 8 pairs found`,
+      `4×4 图样记忆方阵，已找到 ${pairs} / 8 对`,
     ),
   );
   board.querySelectorAll('.card').forEach((button) => describeCard(button));

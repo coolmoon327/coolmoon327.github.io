@@ -94,12 +94,15 @@ function directionName(direction) {
 function statusText() {
   if (statusState.kind === 'started') {
     return text(
-      'Growing started: push identical samples together.',
-      '培育开始：把同阶方块推到一起。',
+      'Growing started: push identical research samples together.',
+      '培育开始：把相同阶段的研究样本推到一起。',
     );
   }
   if (statusState.kind === 'running') {
-    return text('Growing: push identical samples together.', '培育进行中：把同阶方块推到一起。');
+    return text(
+      'Growing: push identical research samples together.',
+      '培育进行中：把相同阶段的研究样本推到一起。',
+    );
   }
   if (statusState.kind === 'paused') {
     return text('Growing is paused.', '培育已暂停。');
@@ -129,7 +132,7 @@ function statusText() {
     );
   }
   if (statusState.kind === 'rearranged') {
-    return text('Samples rearranged.', '方块已重新排列。');
+    return text('Research samples rearranged.', '研究样本已重新排列。');
   }
   return text(
     'Select “Start growing”, then move every sample.',
@@ -177,10 +180,10 @@ function announcementText() {
     return text('Game paused.', '游戏已暂停。');
   }
   if (announcementState.kind === 'new-round') {
-    return text('A new Merge Garden round began.', '已开始新一局合成花园。');
+    return text('A new Paper Garden round began.', '已开始新一局论文花园。');
   }
   if (announcementState.kind === 'started') {
-    return text('Merge Garden started.', '合成花园已开始。');
+    return text('Paper Garden started.', '论文花园已开始。');
   }
   if (announcementState.kind === 'reset') {
     return text('Board reset. Select Start growing.', '棋盘已重置，点击开始培育。');
@@ -412,8 +415,8 @@ function renderBoard() {
   boardElement.setAttribute(
     'aria-label',
     text(
-      `Four by four Merge Garden, ${occupiedCount} samples, highest level ${largestValue || 0}`,
-      `4×4 合成花园，已有 ${occupiedCount} 个方块，最高阶方块 ${largestValue || 0}`,
+      `Four by four Paper Garden, ${occupiedCount} samples, highest level ${largestValue || 0}`,
+      `4×4 论文花园，已有 ${occupiedCount} 个方块，最高阶方块 ${largestValue || 0}`,
     ),
   );
   scoreElement.textContent = String(score);

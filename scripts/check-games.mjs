@@ -22,6 +22,7 @@ const expectedGames = [
 ];
 const sourceExtensions = new Set(['.html', '.css', '.js']);
 const errors = [];
+const tabularAgentPath = join(siteRoot, 'games', 'shared', 'tabular-agent.js');
 const gameDirectories = readdirSync(join(siteRoot, 'games'), { withFileTypes: true })
   .filter((entry) => entry.isDirectory() && entry.name !== 'shared')
   .map((entry) => entry.name)
@@ -29,6 +30,10 @@ const gameDirectories = readdirSync(join(siteRoot, 'games'), { withFileTypes: tr
 
 if (JSON.stringify(gameDirectories) !== JSON.stringify([...expectedGames].sort())) {
   errors.push(`games/: expected only ${expectedGames.join(', ')}`);
+}
+
+if (!existsSync(tabularAgentPath)) {
+  errors.push('games/shared/tabular-agent.js: missing shared small-state learner');
 }
 
 function walk(directory) {
@@ -61,6 +66,9 @@ for (const game of expectedGames) {
     if (!markup.includes('../shared/runtime.js')) {
       errors.push(`games/${game}/index.html: shared runtime is not loaded`);
     }
+    if (['qpath', 'hopper'].includes(game) && !markup.includes('../shared/tabular-agent.js')) {
+      errors.push(`games/${game}/index.html: shared tabular agent is not loaded`);
+    }
     if (!markup.includes('../shared/theme.css') && !styles.includes('../shared/theme.css')) {
       errors.push(`games/${game}: shared theme is not loaded`);
     }
@@ -90,7 +98,11 @@ for (const game of gameMetadata) {
   if (!game.title || !game.title_en || !game.session || !game.session_en) {
     errors.push(`games.json: ${game.id || 'unknown'} is missing bilingual metadata`);
   }
-  if (!Number.isInteger(game.preferred_height) || game.preferred_height < 240 || game.preferred_height > 720) {
+  if (
+    !Number.isInteger(game.preferred_height) ||
+    game.preferred_height < 240 ||
+    game.preferred_height > 720
+  ) {
     errors.push(`games.json: ${game.id || 'unknown'} has an invalid preferred_height`);
   }
   if (!Number.isInteger(game.min_width) || game.min_width < 240 || game.min_width > 420) {

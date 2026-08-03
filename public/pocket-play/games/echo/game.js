@@ -15,10 +15,10 @@ const action = document.querySelector('#action');
 const assist = document.querySelector('#assist');
 const instructions = document.querySelector('#instructions');
 const padNames = [
-  { en: 'Coral', zh: '珊瑚' },
-  { en: 'Gold', zh: '金色' },
-  { en: 'Mint', zh: '薄荷' },
-  { en: 'Blue', zh: '蓝色' },
+  { en: 'Channel A', zh: '信道 A' },
+  { en: 'Channel B', zh: '信道 B' },
+  { en: 'Channel C', zh: '信道 C' },
+  { en: 'Channel D', zh: '信道 D' },
 ];
 
 const timers = new Set();
@@ -75,8 +75,8 @@ function pulsePad(index) {
 function statusText() {
   if (statusState.kind === 'input') {
     return text(
-      `Your turn · repeat ${sequence.length} steps`,
-      `轮到你 · 复现 ${sequence.length} 步`,
+      `Your turn · replay ${sequence.length} signals`,
+      `轮到你 · 回放 ${sequence.length} 个信号`,
     );
   }
   if (statusState.kind === 'playback') {
@@ -85,20 +85,20 @@ function statusText() {
   if (statusState.kind === 'assist-step') {
     return text(
       `Cue ${statusState.position + 1} / ${sequence.length}: ${padName(statusState.padIndex)}`,
-      `辅助提示 ${statusState.position + 1} / ${sequence.length}：${padName(statusState.padIndex)}`,
+      `慢速提示 ${statusState.position + 1} / ${sequence.length}：${padName(statusState.padIndex)}`,
     );
   }
   if (statusState.kind === 'won') {
-    return text('All ten rounds repeated · echo complete', '十轮全部复现 · 挑战完成');
+    return text('Ten sequences recovered · replay complete', '十轮序列全部复现 · 信号回放完成');
   }
   if (statusState.kind === 'over') {
-    return text(`Echo lost · reached round ${round}`, `顺序有误 · 坚持到第 ${round} 轮`);
+    return text(`Replay mismatch · reached round ${round}`, `回放顺序有误 · 坚持到第 ${round} 轮`);
   }
   if (statusState.kind === 'round-complete') {
     return text(`Round ${round} complete`, `第 ${round} 轮完成`);
   }
   if (statusState.kind === 'preparing') {
-    return text('Preparing the first echo', '准备第一段序列');
+    return text('Preparing the first signal sequence', '正在生成第一段信号序列');
   }
   if (statusState.kind === 'paused') {
     return text('Page hidden · game paused', '页面已隐藏 · 游戏暂停');
@@ -108,12 +108,12 @@ function statusText() {
   }
   if (statusState.kind === 'assist-on') {
     return text(
-      'Assist cues are on; the sequence will slow down and name each pad on screen.',
-      '辅助提示已开启，序列播放会放慢，并逐项显示色块名称。',
+      'Slow cues are on; the sequence will slow down and name each channel on screen.',
+      '慢速提示已开启，序列播放会放慢，并逐项显示信道名称。',
     );
   }
   if (statusState.kind === 'assist-off') {
-    return text('Assist cues are off.', '辅助提示已关闭。');
+    return text('Slow cues are off.', '慢速提示已关闭。');
   }
   return text('Ready', '等待开始');
 }
@@ -121,43 +121,43 @@ function statusText() {
 function instructionText() {
   if (instructionState.kind === 'input') {
     return text(
-      'Select the pads in order, or use number keys 1–4.',
-      '按顺序点击色块，或使用键盘数字 1–4。',
+      'Select the channels in order, or use number keys 1–4.',
+      '按顺序点击信道，或使用键盘数字 1–4。',
     );
   }
   if (instructionState.kind === 'playback') {
     return text(
-      'Watch the sequence first, then repeat it after playback.',
-      '先观察亮起顺序，播放结束后再复现。',
+      'Watch the signal sequence first, then replay it when playback ends.',
+      '先观察信号序列，播放结束后再按顺序回放。',
     );
   }
   if (instructionState.kind === 'won') {
     return text(
-      'Memory aligned. Select restart to try another sequence.',
-      '记忆挑战完成。想再玩一次，请点击重新开始。',
+      'Signal memory complete. Select restart to try another sequence.',
+      '信号记忆挑战完成。想再玩一次，请点击重新开始。',
     );
   }
   if (instructionState.kind === 'over') {
     return text(
-      'The sequence drifted. Select restart and try again.',
-      '顺序有一点偏差。点击重新开始，再试一次。',
+      'The replay order drifted. Select restart and try again.',
+      '回放顺序有误。点击重新开始，再试一次。',
     );
   }
   if (instructionState.kind === 'round-complete') {
-    return text('The next echo adds one step.', '下一段序列会增加一步。');
+    return text('The next signal sequence adds one step.', '下一段信号序列会增加一步。');
   }
   if (instructionState.kind === 'paused') {
     return text(
-      'Select continue when you return; the current echo will replay from the start.',
-      '回来后点击继续；当前序列会从头播放。',
+      'Select continue when you return; the current signal sequence will replay from the start.',
+      '回来后点击继续；当前信号序列会从头播放。',
     );
   }
   if (instructionState.kind === 'resuming') {
-    return text('The next echo will begin shortly.', '下一段序列即将开始。');
+    return text('The next signal sequence will begin shortly.', '下一段信号序列即将开始。');
   }
   return text(
-    'Click a pad or use keys 1–4. You can restart at any time.',
-    '点击色块，或使用键盘数字 1–4。游戏进行中可随时重新开始。',
+    'Select a channel or use keys 1–4. You can restart at any time.',
+    '点击信道，或使用键盘数字 1–4。回放进行中可随时重新开始。',
   );
 }
 
@@ -169,27 +169,27 @@ function renderMessages() {
 function renderUI() {
   const actionLabel =
     phase === 'idle'
-      ? text('Start game', '开始游戏')
+      ? text('Start replay', '开始回放')
       : phase === 'paused'
         ? text('Continue', '继续')
         : text('Restart', '重新开始');
 
   action.textContent = actionLabel;
   action.setAttribute('aria-label', actionLabel);
-  assist.textContent = text('Assist cues', '辅助提示');
+  assist.textContent = text('Slow cues', '慢速提示');
   assist.setAttribute('aria-pressed', String(assistEnabled));
   assist.setAttribute(
     'aria-label',
     assistEnabled
-      ? text('Turn assist cues off', '关闭辅助提示')
-      : text('Turn assist cues on', '开启辅助提示'),
+      ? text('Turn slow cues off', '关闭慢速提示')
+      : text('Turn slow cues on', '开启慢速提示'),
   );
   roundMeter.setAttribute('aria-label', text('Current round', '当前轮数'));
-  grid.setAttribute('aria-label', text('Four echo pads', '四个色块按钮'));
+  grid.setAttribute('aria-label', text('Four signal channels', '四个信道按钮'));
   pads.forEach((pad, index) => {
     pad.setAttribute(
       'aria-label',
-      text(`${padName(index)} echo, key ${index + 1}`, `${padName(index)}色块，按键 ${index + 1}`),
+      text(`${padName(index)}, key ${index + 1}`, `${padName(index)}，按键 ${index + 1}`),
     );
   });
   renderMessages();

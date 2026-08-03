@@ -4,15 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#142a35" />
-    <title data-en="Orbit Alignment" data-zh="月轨对准">Orbit Alignment</title>
+    <title data-en="Link Acquisition" data-zh="链路捕获">Link Acquisition</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main class="game" aria-labelledby="game-title">
       <div class="topline">
         <div>
-          <p data-en="ORBIT ALIGNMENT" data-zh="月轨对准">ORBIT ALIGNMENT</p>
-          <h1 id="game-title" data-en="Orbit Alignment" data-zh="月轨对准">Orbit Alignment</h1>
+          <p data-en="LINK ACQUISITION" data-zh="链路捕获">LINK ACQUISITION</p>
+          <h1 id="game-title" data-en="Link Acquisition" data-zh="链路捕获">Link Acquisition</h1>
         </div>
         <div class="status-actions">
           <button
@@ -21,12 +21,14 @@
             type="button"
             aria-pressed="false"
             aria-describedby="assist-note"
-            data-en="Assist"
-            data-zh="辅助提示"
+            data-en="Range cues"
+            data-zh="距离提示"
           >
-            Assist
+            Range cues
           </button>
-          <output id="score" aria-live="polite" data-en="Ready" data-zh="等待开始">Ready</output>
+          <output id="score" aria-live="polite" data-en="Link idle" data-zh="链路待机"
+            >Link idle</output
+          >
         </div>
       </div>
 
@@ -39,25 +41,24 @@
         </div>
       </div>
 
-      <button id="action" type="button" data-en="Start alignment" data-zh="开始对准">
-        Start alignment
-      </button>
+      <button id="action" type="button" data-en="Start pass" data-zh="开始过站">Start pass</button>
       <p
         class="hint"
         id="hint"
-        data-en="Click again when the moon enters the bright window."
-        data-zh="月球进入发光窗口时再点一下，让它停住。"
+        data-en="Click again when the satellite enters the acquisition window."
+        data-zh="卫星进入捕获窗口时再点一下，将它锁定。"
       >
-        Click again when the moon enters the bright window.
+        Click again when the satellite enters the acquisition window.
       </p>
       <output class="sr-only" id="assist-status" aria-live="assertive"></output>
       <span
         class="sr-only"
         id="assist-note"
-        data-en="When enabled, announces whether the moon is far from, approaching, or inside the window."
-        data-zh="开启后会提示月球正在远离、接近或已经进入窗口。"
+        data-en="When enabled, announces whether the satellite is far from, approaching, or inside the acquisition window."
+        data-zh="开启后会提示卫星距离捕获窗口较远、正在接近或已经进入窗口。"
       >
-        When enabled, announces whether the moon is far from, approaching, or inside the window.
+        When enabled, announces whether the satellite is far from, approaching, or inside the
+        acquisition window.
       </span>
     </main>
     <script src="../shared/runtime.js"></script>

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#ffffff" />
-    <title data-en="Resource Net" data-zh="资源连线">Resource Net</title>
+    <title data-en="OpenRaaS Mesh" data-zh="OpenRaaS 组网">OpenRaaS Mesh</title>
     <link rel="stylesheet" href="../shared/theme.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -12,10 +12,8 @@
     <main class="game" aria-labelledby="game-title" data-game="resource-net">
       <header class="game-header">
         <div>
-          <p class="eyebrow" data-en="ROTATION NETWORK" data-zh="旋转网络">
-            ROTATION NETWORK
-          </p>
-          <h1 id="game-title" data-en="Resource Net" data-zh="资源连线">Resource Net</h1>
+          <p class="eyebrow" data-en="OPENRAAS MESH" data-zh="OPENRAAS 组网">OPENRAAS MESH</p>
+          <h1 id="game-title" data-en="OpenRaaS Mesh" data-zh="OpenRaaS 组网">OpenRaaS Mesh</h1>
         </div>
         <p class="node-key" aria-hidden="true">
           <span>C</span><span>CPU</span><span>DB</span><span>IMG</span><span>R</span>
@@ -43,8 +41,13 @@
       </dl>
 
       <section class="board-section" aria-labelledby="board-title">
-        <h2 class="sr-only" id="board-title" data-en="Rotating network board" data-zh="旋转网络棋盘">
-          Rotating network board
+        <h2
+          class="sr-only"
+          id="board-title"
+          data-en="OpenRaaS mesh board"
+          data-zh="OpenRaaS 组网棋盘"
+        >
+          OpenRaaS mesh board
         </h2>
         <div
           class="board"
@@ -94,8 +97,12 @@
       </div>
 
       <p class="status" id="status"></p>
-      <p class="hint" data-en="Connect C to CPU, DB, IMG, and R." data-zh="将 C 与 CPU、DB、IMG、R 全部连通。">
-        Connect C to CPU, DB, IMG, and R.
+      <p
+        class="hint"
+        data-en="Connect coordinator C to CPU, DB, IMG, and R."
+        data-zh="将协调器 C 与 CPU、DB、IMG、R 全部连通。"
+      >
+        Connect coordinator C to CPU, DB, IMG, and R.
       </p>
       <p class="sr-only" id="board-summary" aria-live="polite" aria-atomic="true"></p>
     </main>

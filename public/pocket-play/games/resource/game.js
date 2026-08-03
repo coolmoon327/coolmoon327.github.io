@@ -50,20 +50,20 @@
   function normalizeSeed(value) {
     if (value !== null && value.trim() !== '') {
       const numeric = Number(value);
-      if (Number.isFinite(numeric)) return (numeric >>> 0) || 1;
+      if (Number.isFinite(numeric)) return numeric >>> 0 || 1;
 
       let hash = 2166136261;
       for (const character of value) {
         hash ^= character.codePointAt(0);
         hash = Math.imul(hash, 16777619);
       }
-      return (hash >>> 0) || 1;
+      return hash >>> 0 || 1;
     }
 
     if (window.crypto?.getRandomValues) {
       return window.crypto.getRandomValues(new Uint32Array(1))[0] || 1;
     }
-    return (Date.now() >>> 0) || 1;
+    return Date.now() >>> 0 || 1;
   }
 
   function mulberry32(seed) {
@@ -404,8 +404,8 @@
     status.classList.toggle('is-complete', state.solved);
     if (state.message === 'solved') {
       status.textContent = text(
-        `Network complete in ${state.moves} moves. Requests are flowing.`,
-        `网络已在 ${state.moves} 步内连通，数据开始沿网络传输。`,
+        `OpenRaaS mesh complete in ${state.moves} moves. Requests are flowing.`,
+        `OpenRaaS 资源网络已在 ${state.moves} 步内连通，请求开始沿网络传输。`,
       );
       summary.textContent = text(
         `Solved. All four resources and all ${CELL_COUNT} tiles are connected.`,
@@ -425,12 +425,12 @@
 
     if (state.message === 'ready') {
       status.textContent = text(
-        'Rotate tiles to build one clean network.',
-        '旋转方块，组成一张没有悬空接口的连通网络。',
+        'Rotate tiles to assemble one OpenRaaS resource mesh.',
+        '旋转节点，组出一张没有悬空接口的 OpenRaaS 资源网络。',
       );
       summary.textContent = text(
-        `New solvable board. ${inspection.connectedResources} of 4 resources are online.`,
-        `已生成一个保证可解的新棋盘。4 项资源中已有 ${inspection.connectedResources} 项在线。`,
+        `New solvable OpenRaaS topology. ${inspection.connectedResources} of 4 resources are online.`,
+        `已生成一个保证可解的 OpenRaaS 拓扑。4 项资源中已有 ${inspection.connectedResources} 项在线。`,
       );
       return;
     }
@@ -457,7 +457,10 @@
         tile.className = 'tile';
         tile.dataset.index = String(index);
         tile.dataset.testid = `resource-tile-${index}`;
-        tile.setAttribute('aria-keyshortcuts', 'Enter Space ArrowUp ArrowRight ArrowDown ArrowLeft');
+        tile.setAttribute(
+          'aria-keyshortcuts',
+          'Enter Space ArrowUp ArrowRight ArrowDown ArrowLeft',
+        );
         board.append(tile);
       }
     }
@@ -467,7 +470,8 @@
       const role = state.roles[index];
       tile.replaceChildren();
       tile.classList.toggle('is-connected', inspection.connected.has(index));
-      tile.classList.toggle('has-loose-port',
+      tile.classList.toggle(
+        'has-loose-port',
         DIRECTIONS.some(
           (direction) => mask & direction.bit && !inspection.linkedPorts[index].has(direction.bit),
         ),
@@ -528,8 +532,8 @@
     board.setAttribute(
       'aria-label',
       text(
-        `Four by four Resource Net board, ${inspection.connectedResources} of 4 resources online`,
-        `四乘四资源连线棋盘，4 项资源中 ${inspection.connectedResources} 项在线`,
+        `Four by four OpenRaaS Mesh board, ${inspection.connectedResources} of 4 resources online`,
+        `4×4 OpenRaaS 组网棋盘，4 项资源中 ${inspection.connectedResources} 项在线`,
       ),
     );
 

@@ -4,81 +4,123 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#ffffff" />
-    <title data-en="Q-Path Lab" data-zh="Q 学习寻路">Q-Path Lab</title>
+    <title data-en="Routing Apprentice" data-zh="路由学徒">Routing Apprentice</title>
     <link rel="stylesheet" href="../shared/theme.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <main class="game" aria-labelledby="game-title">
+    <main
+      class="game"
+      id="game"
+      aria-labelledby="game-title"
+      data-phase="choose"
+      data-controller="player"
+      data-demo-episodes="0"
+      data-agent-episodes="0"
+      data-experience-count="0"
+      data-state-coverage="0"
+      data-policy-version="0"
+      data-readiness="0"
+    >
       <header class="game-header">
         <div>
-          <p class="eyebrow" data-en="TABULAR Q-LEARNING" data-zh="表格型 Q 学习">
-            TABULAR Q-LEARNING
+          <p class="eyebrow" data-en="HUMAN-IN-THE-LOOP Q-LEARNING" data-zh="人在回路 Q 学习">
+            HUMAN-IN-THE-LOOP Q-LEARNING
           </p>
-          <h1 id="game-title" data-en="Q-Path Lab" data-zh="Q 学习寻路">Q-Path Lab</h1>
+          <h1 id="game-title" data-en="Routing Apprentice" data-zh="路由学徒">
+            Routing Apprentice
+          </h1>
         </div>
-        <p class="training-spec" id="training-spec">
-          <span data-en="200 episodes" data-zh="200 回合">200 episodes</span>
-          <span data-en="48-step cap" data-zh="每回合最多 48 步">48-step cap</span>
+        <p class="training-spec">
+          <span data-en="19 decision states" data-zh="19 个决策状态">19 decision states</span>
+          <span data-en="4 actions" data-zh="4 个动作">4 actions</span>
         </p>
       </header>
 
       <section class="board-section" aria-labelledby="board-title">
-        <h2 class="sr-only" id="board-title" data-en="Training world" data-zh="训练环境">
-          Training world
+        <h2 class="sr-only" id="board-title" data-en="Routing world" data-zh="路由环境">
+          Routing world
         </h2>
         <div class="board" id="board" role="group" aria-describedby="board-help"></div>
         <p
           class="sr-only"
           id="board-help"
-          data-en="Only the three targets are interactive. Use Tab to reach them."
-          data-zh="棋盘上只有 A、B、C 三个候选目标可选；按 Tab 键可在它们之间切换焦点。"
+          data-en="Choose a target, then move the packet with the four direction buttons or arrow keys."
+          data-zh="先选择目标，再用四个方向按钮或方向键移动数据包。"
         >
-          Only the three targets are interactive. Use Tab to reach them.
+          Choose a target, then move the packet with the four direction buttons or arrow keys.
         </p>
       </section>
 
-      <dl class="metrics" aria-label="Evaluation metrics">
+      <dl
+        class="metrics"
+        aria-label="Learning progress"
+        data-aria-en="Learning progress"
+        data-aria-zh="学习进度"
+      >
         <div>
-          <dt data-en="Success rate" data-zh="成功率">Success rate</dt>
-          <dd><output id="success-rate">—</output></dd>
+          <dt data-en="Your demos" data-zh="你的示范">Your demos</dt>
+          <dd><output id="demo-episodes">0</output></dd>
         </div>
         <div>
-          <dt data-en="Avg return" data-zh="平均回报">Avg return</dt>
-          <dd><output id="average-return">—</output></dd>
+          <dt data-en="Experience" data-zh="经验步数">Experience</dt>
+          <dd><output id="experience-count">0</output></dd>
         </div>
         <div>
-          <dt data-en="Path steps" data-zh="路径步数">Path steps</dt>
-          <dd><output id="path-steps">—</output></dd>
+          <dt data-en="State coverage" data-zh="状态覆盖">State coverage</dt>
+          <dd><output id="state-coverage">0/19</output></dd>
+        </div>
+        <div>
+          <dt data-en="Policy reach" data-zh="策略可达率">Policy reach</dt>
+          <dd><output id="readiness">0%</output></dd>
         </div>
       </dl>
 
-      <button
-        class="train-button"
-        id="train"
-        type="button"
-        disabled
-        data-en="Choose a target"
-        data-zh="请先选择目标"
+      <div
+        class="move-pad"
+        id="move-pad"
+        role="group"
+        aria-label="Packet movement"
+        data-aria-en="Packet movement"
+        data-aria-zh="数据包移动方向"
       >
-        Choose a target
-      </button>
+        <button type="button" data-action="0" aria-keyshortcuts="ArrowUp" aria-label="Move up">
+          ↑
+        </button>
+        <button type="button" data-action="3" aria-keyshortcuts="ArrowLeft" aria-label="Move left">
+          ←
+        </button>
+        <span aria-hidden="true">Q</span>
+        <button
+          type="button"
+          data-action="1"
+          aria-keyshortcuts="ArrowRight"
+          aria-label="Move right"
+        >
+          →
+        </button>
+        <button type="button" data-action="2" aria-keyshortcuts="ArrowDown" aria-label="Move down">
+          ↓
+        </button>
+      </div>
 
-      <p
-        class="status"
-        id="status"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        data-en="Choose target A, B, or C, then train the route."
-        data-zh="选择目标 A、B 或 C，再训练策略。"
-      >
-        Choose target A, B, or C, then train the route.
+      <section class="decision-panel" id="decision-panel" aria-labelledby="decision-copy" hidden>
+        <p id="decision-copy">Choose who runs the next episode.</p>
+        <div class="decision-actions">
+          <button class="primary" id="player-next" type="button">I will demonstrate</button>
+          <button id="agent-next" type="button" disabled>Let Agent try</button>
+          <button class="quiet" id="reset-learning" type="button">Reset learning</button>
+        </div>
+      </section>
+
+      <p class="status" id="status" role="status" aria-live="polite" aria-atomic="true">
+        Choose target A, B, or C. Your route will become the Agent’s first experience.
       </p>
       <p class="sr-only" id="route-summary" aria-live="polite" aria-atomic="true"></p>
     </main>
 
     <script src="../shared/runtime.js"></script>
+    <script src="../shared/tabular-agent.js"></script>
     <script src="./game.js"></script>
   </body>
 </html>

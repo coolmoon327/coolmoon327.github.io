@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <title data-en="Jammer Hop" data-zh="频跳突围">Jammer Hop</title>
+    <title data-en="Hopping Apprentice" data-zh="跳频学徒">Hopping Apprentice</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
@@ -12,27 +12,34 @@
       class="game"
       id="game"
       aria-labelledby="game-title"
-      data-phase="idle"
+      data-phase="decision"
+      data-controller="player"
       data-channel-count="3"
-      data-total-slots="20"
+      data-total-slots="12"
       data-slot="0"
-      data-slot-ms="1800"
-      data-jammer-channel="0"
-      data-selected-channel="1"
+      data-previous-jammer="0"
+      data-previous-channel="1"
       data-jammer-mode="sweep"
       data-successes="0"
       data-collisions="0"
       data-throughput="0"
       data-last-result="none"
-      data-timer-active="false"
       data-safe-channel-count="2"
+      data-demo-episodes="0"
+      data-agent-episodes="0"
+      data-experience-count="0"
+      data-state-coverage="0"
+      data-policy-version="0"
+      data-readiness="0"
     >
       <header class="topline">
         <div>
-          <p class="kicker" data-en="Pocket network game" data-zh="迷你抗干扰游戏">
-            Pocket network game
+          <p class="kicker" data-en="HUMAN-IN-THE-LOOP ANTI-JAMMING" data-zh="人在回路抗干扰学习">
+            HUMAN-IN-THE-LOOP ANTI-JAMMING
           </p>
-          <h1 id="game-title" data-en="Jammer Hop" data-zh="频跳突围">Jammer Hop</h1>
+          <h1 id="game-title" data-en="Hopping Apprentice" data-zh="跳频学徒">
+            Hopping Apprentice
+          </h1>
         </div>
         <button
           class="reset-button"
@@ -40,8 +47,8 @@
           type="button"
           data-en="Reset"
           data-zh="重置"
-          data-aria-en="Reset the round"
-          data-aria-zh="重置本局"
+          data-aria-en="Reset all learning"
+          data-aria-zh="重置全部学习记录"
         >
           Reset
         </button>
@@ -49,36 +56,40 @@
 
       <section
         class="metrics"
-        data-aria-en="Round statistics"
-        data-aria-zh="本局统计"
-        aria-label="Round statistics"
+        aria-label="Learning and round statistics"
+        data-aria-en="Learning and round statistics"
+        data-aria-zh="学习与回合统计"
       >
         <div class="metric">
           <span data-en="Throughput" data-zh="吞吐率">Throughput</span>
           <output id="throughput">0%</output>
         </div>
         <div class="metric">
-          <span data-en="Delivered" data-zh="已送达">Delivered</span>
-          <output id="successes">0</output>
+          <span data-en="Your demos" data-zh="你的示范">Your demos</span>
+          <output id="demo-episodes">0</output>
         </div>
         <div class="metric">
-          <span data-en="Collisions" data-zh="受扰">Collisions</span>
-          <output id="collisions">0</output>
+          <span data-en="Experience" data-zh="经验时隙">Experience</span>
+          <output id="experience-count">0</output>
         </div>
         <div class="metric">
-          <span data-en="Slot" data-zh="时隙">Slot</span>
-          <output id="slot-count">0/20</output>
+          <span data-en="Safe coverage" data-zh="安全策略覆盖率">Safe coverage</span>
+          <output id="readiness">0%</output>
         </div>
       </section>
 
       <section class="jammer-panel" aria-labelledby="jammer-heading">
         <div>
-          <h2 id="jammer-heading" data-en="Jammer occupancy" data-zh="干扰机占用信道">
-            Jammer occupancy
+          <h2
+            id="jammer-heading"
+            data-en="Last interference observation"
+            data-zh="上一时隙干扰观测"
+          >
+            Last interference observation
           </h2>
-          <p id="jammer-status">Channel 1 is occupied. Two safe channels remain.</p>
+          <p id="jammer-status">Channel 1 was jammed. Predict the next slot.</p>
         </div>
-        <span class="mode" id="jammer-mode">Sweep</span>
+        <span class="mode" id="jammer-mode">Sweep next</span>
       </section>
 
       <div
@@ -86,8 +97,8 @@
         id="channel-group"
         role="group"
         aria-label="Frequency channels"
-        data-aria-en="Frequency channels"
-        data-aria-zh="频率信道"
+        data-aria-en="Choose a channel for this packet"
+        data-aria-zh="为本时隙数据包选择信道"
       >
         <button class="channel" type="button" data-channel="0" aria-pressed="false">
           <span>CH 1</span><small>2.4 GHz</small>
@@ -100,35 +111,41 @@
         </button>
       </div>
 
-      <div class="slot-progress" id="slot-progress" aria-hidden="true"></div>
-
       <section class="trail-section" aria-labelledby="trail-title">
         <div class="trail-heading">
-          <h2 id="trail-title" data-en="Time–frequency trail" data-zh="时频轨迹">
-            Time–frequency trail
+          <h2 id="trail-title" data-en="Twelve-slot experience trail" data-zh="12 时隙经验轨迹">
+            Twelve-slot experience trail
           </h2>
           <div class="legend" aria-hidden="true">
             <span><i class="key jammer-key"></i><b data-en="jam" data-zh="干扰">jam</b></span>
-            <span><i class="key packet-key"></i><b data-en="packet" data-zh="数据包">packet</b></span>
+            <span
+              ><i class="key packet-key"></i><b data-en="packet" data-zh="数据包">packet</b></span
+            >
           </div>
         </div>
         <div class="trail" aria-hidden="true">
-          <div class="trail-labels">
-            <span>CH 1</span><span>CH 2</span><span>CH 3</span>
-          </div>
+          <div class="trail-labels"><span>CH 1</span><span>CH 2</span><span>CH 3</span></div>
           <div class="trail-grid" id="trail-grid"></div>
         </div>
       </section>
 
       <p class="prompt" id="prompt">
-        Pick either safe channel, then start. One packet sends when each slot closes.
+        You see only the previous interference result. Demonstrate one episode, then hand over.
       </p>
 
-      <button class="action-button" id="action-button" type="button">Start round</button>
+      <section class="decision-panel" id="decision-panel" aria-labelledby="decision-copy">
+        <p id="decision-copy">Choose who controls the next twelve slots.</p>
+        <div class="decision-actions">
+          <button class="primary" id="player-next" type="button">I will demonstrate</button>
+          <button id="agent-next" type="button" disabled>Let Agent try</button>
+          <button class="quiet" id="reset-learning" type="button">Reset learning</button>
+        </div>
+      </section>
       <output class="sr-only" id="live-status" aria-live="polite" aria-atomic="true"></output>
     </main>
 
     <script src="../shared/runtime.js"></script>
+    <script src="../shared/tabular-agent.js"></script>
     <script src="./game.js"></script>
   </body>
 </html>
