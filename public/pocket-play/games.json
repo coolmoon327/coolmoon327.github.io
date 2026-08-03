@@ -72,7 +72,7 @@
     "kind": "research",
     "session": "30 秒–3 分钟",
     "session_en": "30 sec–3 min",
-    "preferred_height": 520,
+    "preferred_height": 600,
     "min_width": 280,
     "inputs": ["pointer", "keyboard"]
   },

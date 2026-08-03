@@ -13,7 +13,7 @@ const games = {
   return: 430,
   movable: 720,
   pinching: 680,
-  secrecy: 520,
+  secrecy: 600,
   hopper: 600,
   orbit: 360,
   signature: 260,
@@ -642,10 +642,153 @@ async function checkPinching(browser) {
 }
 
 async function checkSecrecy(browser) {
-  const page = await openGame(browser, 'secrecy');
+  const deterministicChannel = [
+    0.7, 0.25, 0.2, 0.8, 0.3, 0.5, 0.5, 0.3, 0.5, 0.25, 0.5, 0.15, 0.2, 0.85, 0.8, 0.8, 0.2, 0.8,
+    0.1, 0.4, 0.2, 0.8, 0.2, 0.8, 0.6, 0.8, 0.6,
+  ];
+  const page = await openGame(browser, 'secrecy', { randomValues: deterministicChannel });
   const field = page.locator('#field');
+  const wallToggle = page.locator('#wall-mode');
   const reflectorCount = await page.locator('.reflector').count();
   assert.ok(reflectorCount >= 1 && reflectorCount <= 2, 'Secrecy lab needs one or two reflectors');
+  assert.equal(await field.getAttribute('data-objective'), 'secrecy-rate');
+  assert.equal(await field.getAttribute('data-walls'), 'false');
+  assert.equal(await wallToggle.isChecked(), false);
+  assert.equal(await page.locator('.wall-link-path').count(), 0);
+
+  const assertSecrecyRateIdentity = async () => {
+    const metrics = await field.evaluate((element) => ({
+      bobSnr: Number(element.dataset.bobSnr),
+      eveSnr: Number(element.dataset.eveSnr),
+      bobRate: Number(element.dataset.bobRate),
+      eveRate: Number(element.dataset.eveRate),
+      secrecyRate: Number(element.dataset.secrecyRate),
+      codewordRate: Number(element.dataset.codewordRate),
+      redundancyRate: Number(element.dataset.redundancyRate),
+      bobCovered: element.dataset.bobCovered === 'true',
+      eveListening: element.dataset.eveListening === 'true',
+      secure: element.dataset.secure === 'true',
+    }));
+    assert.ok(
+      [
+        metrics.bobSnr,
+        metrics.eveSnr,
+        metrics.bobRate,
+        metrics.eveRate,
+        metrics.secrecyRate,
+        metrics.codewordRate,
+        metrics.redundancyRate,
+      ].every(Number.isFinite),
+      'Secrecy rates and thresholds must be finite',
+    );
+    assert.ok(metrics.bobSnr >= 0 && metrics.eveSnr >= 0, 'Link SNRs must be non-negative');
+    assert.ok(
+      Math.abs(metrics.bobRate - Math.log2(1 + metrics.bobSnr)) <= 1e-6,
+      `Bob rate must use log2(1 + SNR): ${JSON.stringify(metrics)}`,
+    );
+    assert.ok(
+      Math.abs(metrics.eveRate - Math.log2(1 + metrics.eveSnr)) <= 1e-6,
+      `Eve rate must use log2(1 + SNR): ${JSON.stringify(metrics)}`,
+    );
+    assert.ok(
+      Math.abs(metrics.secrecyRate - Math.max(metrics.bobRate - metrics.eveRate, 0)) <= 0.011,
+      `Secrecy rate must equal [R_B - R_E]+: ${JSON.stringify(metrics)}`,
+    );
+    assert.equal(metrics.bobCovered, metrics.bobRate >= metrics.codewordRate);
+    assert.equal(metrics.eveListening, metrics.eveRate > metrics.redundancyRate);
+    assert.equal(metrics.secure, metrics.bobCovered && !metrics.eveListening);
+    return metrics;
+  };
+
+  const metricsWithoutWalls = await assertSecrecyRateIdentity();
+  assert.match(await page.locator('#secrecy-rate').textContent(), /^\d+\.\d{2}$/);
+  assert.equal(await page.locator('.score-unit').textContent(), 'bit/s/Hz');
+  assert.match(await page.locator('#bob-link').textContent(), /bit\/s\/Hz/);
+  assert.match(await page.locator('#eve-link').textContent(), /bit\/s\/Hz/);
+
+  const configBeforeWalls = await field.getAttribute('data-config');
+  await page.locator('.wall-toggle').click();
+  assert.equal(await wallToggle.isChecked(), true);
+  assert.equal(await field.getAttribute('data-walls'), 'true');
+  assert.equal(await field.getAttribute('data-wall-reflection-count'), '8');
+  assert.equal(await page.locator('.wall-link-path').count(), 8);
+  const wallPaths = JSON.parse(await field.getAttribute('data-wall-reflections'));
+  const channelConfig = JSON.parse(configBeforeWalls);
+  const targets = {
+    bob: { x: channelConfig.bob[0], y: channelConfig.bob[1] },
+    eve: { x: channelConfig.eve[0], y: channelConfig.eve[1] },
+  };
+  assert.equal(wallPaths.length, 8);
+  for (const receiver of ['bob', 'eve']) {
+    const reflections = wallPaths.filter((path) => path.receiver === receiver);
+    assert.deepEqual(
+      reflections.map((path) => path.wall).sort(),
+      ['bottom', 'left', 'right', 'top'],
+      `${receiver} must receive one first-order path from every wall`,
+    );
+    for (const reflection of reflections) {
+      const [x, y] = reflection.bounce;
+      assert.ok(Number.isFinite(x) && Number.isFinite(y) && reflection.power >= 0);
+      assert.ok(x >= 4 - 0.001 && x <= 356 + 0.001 && y >= 4 - 0.001 && y <= 206 + 0.001);
+      if (reflection.wall === 'left') assert.ok(Math.abs(x - 4) <= 0.001);
+      if (reflection.wall === 'right') assert.ok(Math.abs(x - 356) <= 0.001);
+      if (reflection.wall === 'top') assert.ok(Math.abs(y - 4) <= 0.001);
+      if (reflection.wall === 'bottom') assert.ok(Math.abs(y - 206) <= 0.001);
+
+      const target = targets[receiver];
+      const mirrored = {
+        x:
+          reflection.wall === 'left'
+            ? 8 - target.x
+            : reflection.wall === 'right'
+              ? 712 - target.x
+              : target.x,
+        y:
+          reflection.wall === 'top'
+            ? 8 - target.y
+            : reflection.wall === 'bottom'
+              ? 412 - target.y
+              : target.y,
+      };
+      const incident = { x: x - 50, y: y - 105 };
+      const imageRay = { x: mirrored.x - 50, y: mirrored.y - 105 };
+      const normalizedCross =
+        Math.abs(incident.x * imageRay.y - incident.y * imageRay.x) /
+        (Math.hypot(incident.x, incident.y) * Math.hypot(imageRay.x, imageRay.y));
+      assert.ok(
+        normalizedCross <= 0.002,
+        `Wall bounce must satisfy image-method specular geometry: ${JSON.stringify(reflection)}`,
+      );
+    }
+  }
+  for (const wall of ['bottom', 'left', 'right', 'top']) {
+    const bobBounce = wallPaths.find(
+      (path) => path.receiver === 'bob' && path.wall === wall,
+    ).bounce;
+    const eveBounce = wallPaths.find(
+      (path) => path.receiver === 'eve' && path.wall === wall,
+    ).bounce;
+    assert.ok(
+      Math.hypot(bobBounce[0] - eveBounce[0], bobBounce[1] - eveBounce[1]) > 0.01,
+      `${wall} wall must use receiver-specific Bob and Eve bounce points`,
+    );
+  }
+  const wallTarget = await page.locator('.wall-toggle').boundingBox();
+  assert.ok(
+    wallTarget && wallTarget.width >= 44 && wallTarget.height >= 44,
+    `Wall toggle must expose a 44px touch target: ${JSON.stringify(wallTarget)}`,
+  );
+  assert.equal(
+    await field.getAttribute('data-config'),
+    configBeforeWalls,
+    'Wall mode must preserve Alice, Bob, Eve, and panel geometry',
+  );
+  const metricsWithWalls = await assertSecrecyRateIdentity();
+  assert.ok(
+    Math.abs(metricsWithWalls.bobRate - metricsWithoutWalls.bobRate) > 1e-6 ||
+      Math.abs(metricsWithWalls.eveRate - metricsWithoutWalls.eveRate) > 1e-6,
+    'Four-wall mode must alter at least one link rate',
+  );
 
   const initialAngle = await field.getAttribute('data-angle');
   await field.press('ArrowRight');
@@ -670,11 +813,36 @@ async function checkSecrecy(browser) {
 
   const initialConfig = await field.getAttribute('data-config');
   await page.locator('#randomize').click();
-  assert.notEqual(
-    await field.getAttribute('data-config'),
-    initialConfig,
-    'Random scene must move targets and panels',
+  const initialGeometry = JSON.parse(initialConfig);
+  const nextGeometry = JSON.parse(await field.getAttribute('data-config'));
+  assert.notDeepEqual(
+    {
+      bob: nextGeometry.bob,
+      eve: nextGeometry.eve,
+      reflectors: nextGeometry.reflectors,
+    },
+    {
+      bob: initialGeometry.bob,
+      eve: initialGeometry.eve,
+      reflectors: initialGeometry.reflectors,
+    },
+    'Random scene must change target or reflector geometry',
   );
+  assert.equal(
+    await field.getAttribute('data-walls'),
+    'true',
+    'New scenes must preserve wall mode',
+  );
+  const rateBeforeOptimization = (await assertSecrecyRateIdentity()).secrecyRate;
+
+  await page.locator('#optimize').click();
+  assert.equal(await field.getAttribute('data-optimizing'), 'true');
+  await field.press('ArrowRight');
+  const canceledAngle = await field.getAttribute('data-angle');
+  await page.waitForTimeout(1_000);
+  assert.equal(await field.getAttribute('data-optimizing'), 'false');
+  assert.equal(await field.getAttribute('data-angle'), canceledAngle);
+  assert.equal(await field.getAttribute('data-best-angle'), null);
 
   await page.locator('#optimize').click();
   await waitForOptimization(page, 'secrecy', 4_000);
@@ -683,12 +851,42 @@ async function checkSecrecy(browser) {
     await field.getAttribute('data-best-angle'),
     'Animated search must settle on the evaluated best bearing',
   );
-  const secrecyScore = Number(await page.locator('#secrecy-score').textContent());
-  assert.ok(secrecyScore >= 0 && secrecyScore <= 100, 'Secrecy score must stay within 0–100');
+  const optimizedMetrics = await assertSecrecyRateIdentity();
+  assert.ok(
+    optimizedMetrics.secrecyRate + 0.011 >= rateBeforeOptimization,
+    'Secrecy-rate search must not make its objective worse',
+  );
+  assert.ok(
+    Math.abs(
+      optimizedMetrics.secrecyRate - Number(await field.getAttribute('data-best-secrecy-rate')),
+    ) <= 0.011,
+    'Animated search must settle on the evaluated maximum secrecy rate',
+  );
 
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
+  await page.setViewportSize({ width: 280, height: 600 });
   assert.equal(await page.locator('h1').textContent(), '保密波束实验');
+  assert.equal(await page.locator('.score-card-label').textContent(), '保密速率');
+  assert.equal(await page.locator('.wall-toggle-text').textContent(), '启用四墙多径');
+  assert.equal(await wallToggle.getAttribute('aria-label'), '启用四墙多径反射');
+  await assertNoOverflow(page, 'secrecy four-wall Chinese state');
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal(await page.locator('#wall-mode').isChecked(), false);
+  assert.equal(await page.locator('#field').getAttribute('data-walls'), 'false');
   await page.close();
+
+  const reducedPage = await openGame(browser, 'secrecy', {
+    randomValues: deterministicChannel,
+    reducedMotion: 'reduce',
+  });
+  await reducedPage.locator('.wall-toggle').click();
+  await reducedPage.locator('#optimize').click();
+  assert.equal(await reducedPage.locator('#field').getAttribute('data-optimizing'), 'false');
+  assert.equal(
+    await reducedPage.locator('#field').getAttribute('data-angle'),
+    await reducedPage.locator('#field').getAttribute('data-best-angle'),
+  );
+  await reducedPage.close();
 }
 
 async function checkHopper(browser) {
@@ -1051,9 +1249,10 @@ async function checkResource(browser) {
   );
 
   const rotations = (await board.getAttribute('data-rotations')).split('-').map(Number);
-  for (const [index, rotation] of rotations.entries()) {
+  solveBoard: for (const [index, rotation] of rotations.entries()) {
     for (let turn = 0; turn < (4 - rotation) % 4; turn += 1) {
       await page.locator(`[data-index="${index}"]`).click();
+      if ((await board.getAttribute('data-solved')) === 'true') break solveBoard;
     }
   }
   assert.equal(await board.getAttribute('data-solved'), 'true');

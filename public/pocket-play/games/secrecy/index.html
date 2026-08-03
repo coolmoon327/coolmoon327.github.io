@@ -4,33 +4,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#eef4f3" />
-    <title data-en="Secrecy Beam Lab" data-zh="保密波束实验">
-      Secrecy Beam Lab
-    </title>
+    <title data-en="Secrecy Beam Lab" data-zh="保密波束实验">Secrecy Beam Lab</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main class="game" aria-labelledby="game-title">
       <header class="game-header">
         <div>
-          <p
-            class="eyebrow"
-            data-en="PHYSICAL-LAYER SECURITY"
-            data-zh="物理层安全"
-          >
+          <p class="eyebrow" data-en="PHYSICAL-LAYER SECURITY" data-zh="物理层安全">
             PHYSICAL-LAYER SECURITY
           </p>
-          <h1
-            id="game-title"
-            data-en="Secrecy Beam Lab"
-            data-zh="保密波束实验"
-          >
+          <h1 id="game-title" data-en="Secrecy Beam Lab" data-zh="保密波束实验">
             Secrecy Beam Lab
           </h1>
         </div>
         <div class="score-card">
-          <span data-en="Secrecy score" data-zh="保密得分">Secrecy score</span>
-          <output id="secrecy-score" aria-label="Secrecy score">0</output>
+          <span class="score-card-label" data-en="Secrecy rate" data-zh="保密速率"
+            >Secrecy rate</span
+          >
+          <div class="score-value">
+            <output id="secrecy-rate" aria-label="Secrecy rate">0.00</output>
+            <span class="score-unit">bit/s/Hz</span>
+          </div>
         </div>
       </header>
 
@@ -42,9 +37,9 @@
         aria-valuemin="0"
         aria-valuemax="359"
         aria-valuenow="0"
-        aria-label="Alice antenna bearing"
-        data-aria-en="Alice antenna bearing"
-        data-aria-zh="Alice 天线方位"
+        aria-label="Alice antenna azimuth"
+        data-aria-en="Alice antenna azimuth"
+        data-aria-zh="Alice 天线方位角"
         aria-describedby="control-help"
         data-optimizing="false"
       >
@@ -60,6 +55,15 @@
             </linearGradient>
           </defs>
 
+          <rect
+            class="room-walls"
+            id="room-walls"
+            x="4"
+            y="4"
+            width="352"
+            height="202"
+            rx="4"
+          ></rect>
           <g id="reflection-layer"></g>
           <path class="beam" id="beam"></path>
           <line class="beam-axis" id="beam-axis"></line>
@@ -92,16 +96,37 @@
         </svg>
 
         <div class="bearing-chip">
-          <span data-en="Bearing" data-zh="方位">Bearing</span>
+          <span data-en="Azimuth" data-zh="方位角">Azimuth</span>
           <output id="bearing">0°</output>
         </div>
       </div>
 
+      <label class="wall-toggle" for="wall-mode">
+        <input
+          id="wall-mode"
+          type="checkbox"
+          aria-label="Enable four-wall multipath"
+          data-aria-en="Enable four-wall multipath"
+          data-aria-zh="启用四墙多径反射"
+        />
+        <span class="toggle-track" aria-hidden="true">
+          <span class="toggle-thumb"></span>
+        </span>
+        <span class="wall-toggle-copy">
+          <strong class="wall-toggle-text" data-en="Four-wall multipath" data-zh="启用四墙多径"
+            >Four-wall multipath</strong
+          >
+          <small data-en="Add one specular path from each wall" data-zh="为每面墙加入一条镜面反射径"
+            >Add one specular path from each wall</small
+          >
+        </span>
+      </label>
+
       <div
         class="links"
-        aria-label="Link quality"
-        data-aria-en="Link quality"
-        data-aria-zh="链路质量"
+        aria-label="Link rates and states"
+        data-aria-en="Link rates and states"
+        data-aria-zh="链路速率与状态"
       >
         <div class="link-card bob-link-card">
           <span>Bob</span>
@@ -127,10 +152,10 @@
           class="primary"
           id="optimize"
           type="button"
-          data-en="Find best bearing"
-          data-zh="搜索最佳方位"
+          data-en="Maximize secrecy rate"
+          data-zh="最大化保密速率"
         >
-          Find best bearing
+          Maximize secrecy rate
         </button>
       </div>
 
@@ -138,11 +163,11 @@
       <p
         class="help"
         id="control-help"
-        data-en="Drag inside the channel, or focus it and use the arrow keys. Dashed rays are simplified specular reflections."
-        data-zh="在信道图内拖拽，或聚焦后使用方向键。虚线表示简化的镜面反射路径。"
+        data-en="Drag inside the channel diagram, or focus it and use the arrow keys. Dashed rays show first-order reflections; the objective is [Rᵦ − Rₑ]⁺."
+        data-zh="在信道示意图内拖拽，或聚焦后使用方向键。虚线表示一阶反射径；优化目标为 [Rᵦ − Rₑ]⁺。"
       >
-        Drag inside the channel, or focus it and use the arrow keys. Dashed rays
-        are simplified specular reflections.
+        Drag inside the channel diagram, or focus it and use the arrow keys. Dashed rays show
+        first-order reflections; the objective is [Rᵦ − Rₑ]⁺.
       </p>
     </main>
 

@@ -11,7 +11,7 @@
     pinching: { title: { en: 'Pinching Antenna Lab', zh: '夹持天线实验' }, height: 680 },
     secrecy: {
       title: { en: 'Secrecy Beam Lab', zh: '保密波束实验' },
-      height: 520,
+      height: 600,
     },
     hopper: { title: { en: 'Hopping Apprentice', zh: '跳频学徒' }, height: 600 },
     orbit: { title: { en: 'Link Acquisition', zh: '链路捕获' }, height: 360 },

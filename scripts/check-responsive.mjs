@@ -43,7 +43,7 @@ const gameHeights = {
   return: 430,
   movable: 720,
   pinching: 680,
-  secrecy: 520,
+  secrecy: 600,
   hopper: 600,
   orbit: 360,
   signature: 260,
@@ -475,7 +475,7 @@ async function auditMobileNavbarGeometry(page, route, scenario) {
   }
 
   await toggler.click();
-  await page.waitForTimeout(230);
+  await page.waitForTimeout(500);
   const openState = await page.evaluate(() => {
     const bars = [...document.querySelectorAll('#navbar-toggler .icon-bar')];
     return {

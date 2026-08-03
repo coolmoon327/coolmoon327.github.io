@@ -988,16 +988,16 @@ export const site = {
       {
         id: 'secrecy',
         category: 'wireless',
-        height: 520,
+        height: 600,
         title: { en: 'Secrecy Beam Lab', zh: '保密波束实验' },
-        meta: { en: 'Secure beam steering · 30 sec–3 min', zh: '安全波束成形 · 30 秒–3 分钟' },
+        meta: { en: 'Secure beam steering · 30 sec–3 min', zh: '安全波束指向 · 30 秒–3 分钟' },
         description: {
-          en: 'Aim Alice’s directional beam toward Bob while keeping Eve outside both the direct and reflected signal paths.',
-          zh: '转动 Alice 的定向天线，让 Bob 获得可靠信号，同时压低 Eve 经直达与反射路径接收到的信号。',
+          en: "Steer Alice's beam in a compact coherent-multipath model with a direct path, reflector-assisted paths, and optional first-order reflections from all four walls. Compare Bob's and Eve's achievable rates, then maximize the instantaneous secrecy rate.",
+          zh: '在这个简化的相干多径模型中调整 Alice 的波束方向，观察直达径、反射板辅助路径，以及可选的四墙一阶反射；比较 Bob 与 Eve 的可达速率，并最大化瞬时保密速率。',
         },
         tags: {
-          en: ['Alice / Bob / Eve', 'Reflectors', 'Secrecy score'],
-          zh: ['Alice / Bob / Eve', '反射面', '保密得分'],
+          en: ['Instantaneous secrecy rate', 'Coherent multipath', 'Four-wall option'],
+          zh: ['瞬时保密速率', '相干多径', '四墙模式'],
         },
       },
       {

@@ -1,4 +1,4 @@
-@import url("../shared/theme.css");
+@import url('../shared/theme.css');
 
 :root {
   --bob: #2563eb;
@@ -10,7 +10,7 @@
   --field-bg: #f5f8f7;
 }
 
-html[data-theme="dark"] {
+html[data-theme='dark'] {
   --bob: #60a5fa;
   --bob-soft: rgba(96, 165, 250, 0.16);
   --eve: #fca5a5;
@@ -32,12 +32,7 @@ body {
   place-items: stretch center;
   color: var(--game-text);
   background:
-    radial-gradient(
-      circle at 12% 0%,
-      var(--game-accent-soft),
-      transparent 13rem
-    ),
-    var(--game-bg);
+    radial-gradient(circle at 12% 0%, var(--game-accent-soft), transparent 13rem), var(--game-bg);
   font-family: var(--game-font);
 }
 
@@ -79,7 +74,7 @@ h1 {
 
 .score-card {
   display: grid;
-  min-width: 76px;
+  min-width: 92px;
   padding: 0.42rem 0.55rem;
   gap: 0.1rem;
   color: var(--game-muted);
@@ -89,16 +84,31 @@ h1 {
   text-align: right;
 }
 
-.score-card span {
+.score-card-label {
   font-size: 0.54rem;
   white-space: nowrap;
 }
 
-#secrecy-score {
+.score-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: end;
+  gap: 0.2rem;
+}
+
+#secrecy-rate {
   color: var(--game-accent);
   font-family: var(--game-mono);
   font-size: 1rem;
   font-weight: 800;
+}
+
+.score-unit {
+  color: var(--game-muted);
+  font-family: var(--game-mono);
+  font-size: 0.48rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .field {
@@ -108,8 +118,7 @@ h1 {
   color: var(--beam-color);
   background:
     linear-gradient(var(--game-divider) 1px, transparent 1px),
-    linear-gradient(90deg, var(--game-divider) 1px, transparent 1px),
-    var(--field-bg);
+    linear-gradient(90deg, var(--game-divider) 1px, transparent 1px), var(--field-bg);
   background-size: 30px 30px;
   border: 1px solid var(--game-divider);
   border-radius: calc(var(--game-radius) + 2px);
@@ -129,8 +138,22 @@ h1 {
   overflow: hidden;
 }
 
+.room-walls {
+  fill: none;
+  stroke: color-mix(in srgb, var(--reflection) 72%, var(--game-divider));
+  stroke-dasharray: 3 2;
+  stroke-linejoin: round;
+  stroke-opacity: 0;
+  stroke-width: 2.2;
+  transition: stroke-opacity 180ms ease;
+}
+
+.field[data-walls='true'] .room-walls {
+  stroke-opacity: 0.92;
+}
+
 .beam {
-  fill: url("#beam-fill");
+  fill: url('#beam-fill');
   pointer-events: none;
 }
 
@@ -143,7 +166,7 @@ h1 {
 
 .reflection-beam {
   color: var(--reflection);
-  fill: url("#reflection-fill");
+  fill: url('#reflection-fill');
 }
 
 .reflection-axis,
@@ -192,6 +215,12 @@ h1 {
 
 .link-path.reflected {
   stroke-dasharray: 4 4;
+}
+
+.wall-link-path {
+  stroke-dasharray: 2.5 4.5;
+  stroke-opacity: 0.62;
+  stroke-width: 1.05;
 }
 
 .node text {
@@ -282,12 +311,12 @@ h1 {
 
 .link-card {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
   min-width: 0;
-  min-height: 42px;
+  min-height: 54px;
   padding: 0.45rem 0.55rem;
-  gap: 0.45rem;
+  gap: 0.14rem;
   border: 1px solid var(--game-divider);
   border-radius: var(--game-radius);
   font-size: 0.66rem;
@@ -307,12 +336,99 @@ h1 {
 }
 
 .link-card output {
-  overflow: hidden;
-  font-size: 0.64rem;
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 0.6rem;
   font-weight: 700;
-  text-align: right;
-  text-overflow: ellipsis;
+  line-height: 1.22;
+  text-align: left;
+  white-space: normal;
+}
+
+.wall-toggle {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.7rem minmax(0, 1fr);
+  align-items: center;
+  min-height: 48px;
+  padding: 0.4rem 0.55rem;
+  gap: 0.5rem;
+  color: var(--game-text);
+  background: var(--game-surface);
+  border: 1px solid var(--game-divider);
+  border-radius: var(--game-radius);
+  cursor: pointer;
+}
+
+.wall-toggle input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
   white-space: nowrap;
+}
+
+.toggle-track {
+  position: relative;
+  display: block;
+  width: 2.45rem;
+  height: 1.4rem;
+  background: color-mix(in srgb, var(--game-muted) 32%, transparent);
+  border: 1px solid var(--game-divider);
+  border-radius: 999px;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0.16rem;
+  width: 0.94rem;
+  height: 0.94rem;
+  background: var(--game-surface);
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+  transform: translateY(-50%);
+  transition: transform 160ms ease;
+}
+
+.wall-toggle input:checked + .toggle-track {
+  background: var(--game-accent);
+  border-color: var(--game-accent);
+}
+
+.wall-toggle input:checked + .toggle-track .toggle-thumb {
+  transform: translate(1.02rem, -50%);
+}
+
+.wall-toggle:has(input:focus-visible) {
+  outline: 3px solid var(--game-accent);
+  outline-offset: 2px;
+}
+
+.wall-toggle:has(input:disabled) {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.wall-toggle-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.05rem;
+}
+
+.wall-toggle-text {
+  font-size: 0.68rem;
+  line-height: 1.15;
+}
+
+.wall-toggle-copy small {
+  color: var(--game-muted);
+  font-size: 0.57rem;
+  line-height: 1.24;
 }
 
 .controls {
@@ -371,11 +487,11 @@ h1 {
   text-align: center;
 }
 
-.status[data-state="secure"] {
+.status[data-state='secure'] {
   color: var(--game-accent-strong);
 }
 
-.status[data-state="exposed"] {
+.status[data-state='exposed'] {
   color: var(--game-danger);
 }
 
@@ -413,7 +529,7 @@ h1 {
   }
 
   .score-card {
-    min-width: 70px;
+    min-width: 86px;
     padding-inline: 0.42rem;
   }
 
@@ -424,7 +540,12 @@ h1 {
 
   .link-card {
     padding-inline: 0.42rem;
-    gap: 0.3rem;
+  }
+
+  .wall-toggle {
+    grid-template-columns: 2.55rem minmax(0, 1fr);
+    padding-inline: 0.46rem;
+    gap: 0.38rem;
   }
 
   .controls button {
@@ -436,17 +557,5 @@ h1 {
 @media (prefers-reduced-motion: reduce) {
   .node.is-active .node-halo {
     animation: none;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bob: #60a5fa;
-    --bob-soft: rgba(96, 165, 250, 0.16);
-    --eve: #fca5a5;
-    --eve-soft: rgba(252, 165, 165, 0.13);
-    --beam-color: #5eead4;
-    --reflection: #fbbf24;
-    --field-bg: #171b1d;
   }
 }
