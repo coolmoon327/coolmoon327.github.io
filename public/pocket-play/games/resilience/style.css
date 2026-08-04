@@ -119,7 +119,7 @@ h1 {
 .metrics span {
   overflow: hidden;
   color: var(--game-muted);
-  font-size: 0.48rem;
+  font-size: 0.6rem;
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -128,7 +128,7 @@ h1 {
 .metrics output {
   color: var(--game-text);
   font-family: var(--game-mono);
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -141,6 +141,20 @@ h1 {
   border: 1px solid var(--game-divider);
   border-radius: calc(var(--game-radius) + 2px);
   box-shadow: var(--game-shadow);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.field[data-resync='pending'] {
+  border-color: var(--predicted);
+}
+
+.field[data-resync='applied'] {
+  border-color: var(--fresh);
+  box-shadow:
+    var(--game-shadow),
+    0 0 0 2px color-mix(in srgb, var(--fresh) 20%, transparent);
 }
 
 #scene {
@@ -377,6 +391,7 @@ h1 {
   color: var(--game-on-accent);
   background: var(--game-accent);
   border-color: var(--game-accent);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--game-accent) 18%, transparent);
 }
 
 .payloads button:hover:not([aria-pressed='true']) {
@@ -385,7 +400,7 @@ h1 {
 
 .payloads strong {
   overflow: hidden;
-  font-size: 0.66rem;
+  font-size: 0.7rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -393,7 +408,7 @@ h1 {
 .payloads small {
   overflow: hidden;
   color: var(--game-muted);
-  font-size: 0.48rem;
+  font-size: 0.625rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -407,20 +422,70 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+.episode-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.42rem;
+}
+
+.episode-control,
+.resync-control {
+  min-width: 0;
+  min-height: 52px;
+  padding: 0.46rem 0.5rem;
+  border-radius: var(--game-radius);
+  cursor: pointer;
+  font-weight: 800;
+}
+
 .episode-control {
-  min-height: 46px;
-  padding: 0.5rem 0.65rem;
   color: var(--game-on-accent);
   background: var(--game-accent);
   border: 1px solid var(--game-accent);
-  border-radius: var(--game-radius);
-  cursor: pointer;
   font-size: 0.7rem;
-  font-weight: 800;
 }
 
 .episode-control:hover {
   background: var(--game-accent-strong);
+}
+
+.resync-control {
+  display: grid;
+  align-content: center;
+  gap: 0.1rem;
+  color: var(--game-text);
+  background: var(--game-surface);
+  border: 1px solid var(--game-divider);
+  text-align: center;
+}
+
+.resync-control:hover:not(:disabled),
+.resync-control[data-state='pending'] {
+  border-color: var(--predicted);
+  background: color-mix(in srgb, var(--predicted) 10%, var(--game-surface));
+}
+
+.resync-control:disabled {
+  cursor: default;
+  opacity: 0.52;
+}
+
+.resync-control span {
+  font-size: 0.68rem;
+  line-height: 1.08;
+}
+
+.resync-control small {
+  color: var(--game-muted);
+  font-size: 0.6rem;
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.resync-control output {
+  color: var(--predicted);
+  font-family: var(--game-mono);
+  font-weight: 850;
 }
 
 .status {
@@ -447,12 +512,32 @@ button:focus-visible {
   color: var(--hold);
 }
 
+.status[data-resync='pending'] {
+  color: var(--predicted);
+}
+
+.status[data-resync='applied'] {
+  color: var(--fresh);
+}
+
 .note {
   margin: -0.16rem auto 0;
   color: var(--game-muted);
-  font-size: 0.56rem;
+  font-size: 0.625rem;
   line-height: 1.31;
   text-align: center;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 @keyframes cache-pulse {
@@ -475,7 +560,7 @@ button:focus-visible {
   }
 }
 
-@media (max-width: 320px) {
+@media (max-width: 360px) {
   .game {
     padding: 0.66rem;
     gap: 0.48rem;
@@ -491,19 +576,21 @@ button:focus-visible {
   }
 
   .metrics {
-    gap: 0.25rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.32rem;
   }
 
   .metrics > div {
-    padding-inline: 0.2rem;
+    min-height: 44px;
+    padding-inline: 0.36rem;
   }
 
   .metrics span {
-    font-size: 0.43rem;
+    font-size: 0.6rem;
   }
 
   .metrics output {
-    font-size: 0.61rem;
+    font-size: 0.76rem;
   }
 
   .payloads {
@@ -515,7 +602,18 @@ button:focus-visible {
   }
 
   .payloads small {
-    font-size: 0.43rem;
+    font-size: 0.625rem;
+  }
+}
+
+@media (max-width: 300px) {
+  .episode-controls {
+    gap: 0.3rem;
+  }
+
+  .episode-control,
+  .resync-control {
+    padding-inline: 0.28rem;
   }
 }
 
@@ -526,6 +624,10 @@ button:focus-visible {
   }
 
   .semantic-link {
+    transition: none;
+  }
+
+  .field {
     transition: none;
   }
 }

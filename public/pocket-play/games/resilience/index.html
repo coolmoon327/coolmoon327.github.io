@@ -13,7 +13,7 @@
     <script src="./game.js" defer></script>
   </head>
   <body>
-    <main class="game" aria-labelledby="game-title">
+    <main class="game" aria-labelledby="game-title" aria-describedby="keyboard-help">
       <header class="game-header">
         <div>
           <p class="eyebrow" data-en="SEMANTIC LINK RESILIENCE" data-zh="语义链路韧性">
@@ -40,7 +40,7 @@
           <output id="service">—</output>
         </div>
         <div>
-          <span data-en="Cache age" data-zh="缓存时龄">Cache age</span>
+          <span data-en="Cache age" data-zh="缓存年龄">Cache age</span>
           <output id="cache-age">—</output>
         </div>
         <div>
@@ -129,18 +129,57 @@
         </button>
       </div>
 
-      <button class="episode-control" id="episode-control" type="button" aria-keyshortcuts="Space">
-        Start episode
-      </button>
+      <div class="episode-controls">
+        <button
+          class="episode-control"
+          id="episode-control"
+          type="button"
+          aria-keyshortcuts="Space"
+        >
+          Start episode
+        </button>
+        <button
+          class="resync-control"
+          id="resync-control"
+          type="button"
+          aria-keyshortcuts="R"
+          aria-describedby="resync-help"
+        >
+          <span data-en="Force resync" data-zh="强制重同步">Force resync</span>
+          <small>
+            <output id="resync-token">1 / 1</output>
+            <span data-en="token · +4.0 gap" data-zh="令牌 · 缺口 +4.0">token · +4.0 gap</span>
+          </small>
+        </button>
+      </div>
 
       <p class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></p>
       <p
         class="note"
-        data-en="The disturbance stays hidden. Choose from link outcomes alone; fresh state degrades to prediction cache, then safe hold. This is a conceptual model, not a paper reproduction."
-        data-zh="扰动真值始终隐藏，请只根据链路结果决策；新鲜状态失联后依次降级为预测缓存与安全保持。这是概念模型，并非论文复现实验。"
+        data-en="Fresh semantic state refreshes the cache. During an outage, predicted state carries control until the cache expires and the system enters safe hold. This is a conceptual resilience model, not a paper reproduction."
+        data-zh="收到最新语义状态时刷新缓存；链路中断后先由预测缓存维持控制，缓存失效后转入安全保持。本游戏仅演示韧性机制，并非论文复现。"
       >
-        The disturbance stays hidden. Choose from link outcomes alone; fresh state degrades to
-        prediction cache, then safe hold. This is a conceptual model, not a paper reproduction.
+        Fresh semantic state refreshes the cache. During an outage, predicted state carries control
+        until the cache expires and the system enters safe hold. This is a conceptual resilience
+        model, not a paper reproduction.
+      </p>
+      <p
+        class="sr-only"
+        id="resync-help"
+        data-en="Available once per episode while running. The next slot is guaranteed to receive fresh semantic state, and 4.0 is added to the service gap."
+        data-zh="每局运行期间仅可使用一次。下一时隙必定收到最新语义状态，同时累计服务缺口增加 4.0。"
+      >
+        Available once per episode while running. The next slot is guaranteed to receive fresh
+        semantic state, and 4.0 is added to the service gap.
+      </p>
+      <p
+        class="sr-only"
+        id="keyboard-help"
+        data-en="Press 1, 2, or 3 to choose a payload, Space to start or pause, and R to force one resynchronization while the episode is running."
+        data-zh="按 1、2、3 选择载荷，按空格开始或暂停；实验运行时按 R 使用一次强制重同步。"
+      >
+        Press 1, 2, or 3 to choose a payload, Space to start or pause, and R to force one
+        resynchronization while the episode is running.
       </p>
     </main>
   </body>

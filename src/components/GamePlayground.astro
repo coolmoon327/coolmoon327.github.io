@@ -14,11 +14,26 @@ const assetBase = withBase('/pocket-play/');
 
 type PlaygroundGame = (typeof site.playground.games)[number];
 
-const balanceGameColumns = (games: PlaygroundGame[]) => {
+const balanceGameColumns = (games: PlaygroundGame[], currentLocale: 'en' | 'zh') => {
   const columns: [PlaygroundGame[], PlaygroundGame[]] = [[], []];
   const heights = [0, 0];
+  const balanceOrder = [...games];
 
-  for (const game of games) {
+  // The English copy for STL is taller than the world-model copy. Processing those
+  // two cards in the opposite order keeps both masonry columns visually balanced;
+  // mobile reading order is still restored by --game-order.
+  if (currentLocale === 'en') {
+    const worldIndex = balanceOrder.findIndex((game) => game.id === 'world');
+    const stlIndex = balanceOrder.findIndex((game) => game.id === 'stl');
+    if (worldIndex >= 0 && stlIndex >= 0) {
+      [balanceOrder[worldIndex], balanceOrder[stlIndex]] = [
+        balanceOrder[stlIndex],
+        balanceOrder[worldIndex],
+      ];
+    }
+  }
+
+  for (const game of balanceOrder) {
     const columnIndex = heights[0] <= heights[1] ? 0 : 1;
     columns[columnIndex].push(game);
     heights[columnIndex] += game.height;
@@ -44,7 +59,7 @@ const balanceGameColumns = (games: PlaygroundGame[]) => {
     {
       content.sections.map((section) => {
         const games = site.playground.games.filter((game) => game.category === section.id);
-        const gameColumns = balanceGameColumns(games);
+        const gameColumns = balanceGameColumns(games, locale);
 
         return (
           <section class="collection" aria-labelledby={`playground-${section.id}`}>
@@ -289,6 +304,7 @@ const balanceGameColumns = (games: PlaygroundGame[]) => {
 
   .game-description {
     margin: 0;
+    overflow-wrap: anywhere;
     color: var(--global-text-color-light);
     line-height: 1.65;
   }

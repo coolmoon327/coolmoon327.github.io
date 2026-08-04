@@ -7,8 +7,8 @@
     bandit: { title: { en: 'Explore–Exploit Lab', zh: '探索与利用' }, height: 430 },
     qpath: { title: { en: 'Routing Apprentice', zh: '路由学徒' }, height: 620 },
     return: { title: { en: 'Return Route', zh: '折扣回报' }, height: 430 },
-    world: { title: { en: 'Latent Look-Ahead', zh: '潜空间预演' }, height: 600 },
-    stl: { title: { en: 'Semantic Sentinel', zh: '时序语义哨兵' }, height: 600 },
+    world: { title: { en: 'Latent Look-Ahead', zh: '潜空间预演' }, height: 660 },
+    stl: { title: { en: 'Semantic Sentinel', zh: '时序语义哨兵' }, height: 660 },
     movable: { title: { en: 'Movable Antenna Lab', zh: '可移动天线实验' }, height: 720 },
     pinching: { title: { en: 'Pinching Antenna Lab', zh: '夹持天线实验' }, height: 680 },
     secrecy: {
@@ -16,7 +16,7 @@
       height: 620,
     },
     hopper: { title: { en: 'Hopping Apprentice', zh: '跳频学徒' }, height: 600 },
-    backscatter: { title: { en: 'Signal Judo', zh: '借波突围' }, height: 620 },
+    backscatter: { title: { en: 'Signal Judo', zh: '借波突围' }, height: 680 },
     resilience: {
       title: { en: 'Predict Through the Outage', zh: '断链续航' },
       height: 600,

@@ -5,7 +5,11 @@
   const SEGMENT_SIZE = 3;
   const CHECKPOINTS = 3;
   const RECENT_WINDOW = 4;
-  const MONITOR_THRESHOLD = 1 / 3;
+  const thresholdProfiles = {
+    sensitive: { value: 0.2 },
+    balanced: { value: 1 / 3 },
+    tolerant: { value: 0.5 },
+  };
   const runtime = window.PocketRuntime;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -25,6 +29,10 @@
   const costOutput = document.querySelector('#response-cost');
   const checkpointOutput = document.querySelector('#checkpoint');
   const rateFill = document.querySelector('#rate-fill');
+  const rateTrack = document.querySelector('.rate-track');
+  const thresholdValueOutput = document.querySelector('#threshold-value');
+  const thresholdGroup = document.querySelector('#threshold-options');
+  const thresholdButtons = [...document.querySelectorAll('[data-threshold]')];
 
   const copy = {
     en: {
@@ -38,8 +46,8 @@
       decision: (checkpoint, rate, margin) =>
         `Checkpoint ${checkpoint}/${CHECKPOINTS} · recent violations ${rate}, semantic margin ${margin}. How much response is justified?`,
       paused: 'Page hidden · the trace is paused without losing the current slot.',
-      complete: (score, delivered, cost) =>
-        `Trace complete · score ${score}/100, ${delivered} packets delivered, response cost ${cost}.`,
+      complete: (score, delivered, cost, falseAlarms, misses) =>
+        `Trace complete · score ${score}/100, ${delivered} packets delivered, cost ${cost}, ${falseAlarms} false alarms, ${misses} misses.`,
       correctHold: 'Good restraint: an isolated mismatch did not justify structural change.',
       correctRepair: 'Good repair: persistent drift justified a small, targeted response.',
       correctProbe:
@@ -69,6 +77,13 @@
       failure: 'result violated the observation',
       probed: 'probe slot, no reward sample',
       responseNames: { hold: 'hold', repair: 'local repair', probe: 'probe longer' },
+      thresholdNames: {
+        sensitive: 'sensitive',
+        balanced: 'balanced',
+        tolerant: 'tolerant',
+      },
+      thresholdGroupLabel: 'Detection threshold',
+      thresholdLabel: (name, value) => `${name} threshold, ${value}`,
       choiceAnnouncement: (choice, message) => `${choice}. ${message}`,
     },
     zh: {
@@ -80,8 +95,8 @@
       decision: (checkpoint, rate, margin) =>
         `检查点 ${checkpoint}/${CHECKPOINTS} · 近期违例率 ${rate}，语义裕度 ${margin}。现有证据足以支持哪种响应？`,
       paused: '页面已隐藏，轨迹已暂停，当前时隙不会丢失。',
-      complete: (score, delivered, cost) =>
-        `轨迹结束 · 得分 ${score}/100，成功传输 ${delivered} 个数据包，响应成本 ${cost}。`,
+      complete: (score, delivered, cost, falseAlarms, misses) =>
+        `轨迹结束 · 得分 ${score}/100，成功传输 ${delivered} 个数据包，响应成本 ${cost}，误报 ${falseAlarms} 次，漏报 ${misses} 次。`,
       correctHold: '判断克制：一次孤立的不一致还不足以支持结构调整。',
       correctRepair: '判断合理：持续漂移足以支持一次小范围、定向的修复。',
       correctProbe: '升级合理：局部修复后漂移仍在，值得采用更长的探测。',
@@ -109,6 +124,9 @@
       failure: '结果违背观测语义',
       probed: '探测时隙，不产生奖励样本',
       responseNames: { hold: '保持', repair: '局部修复', probe: '延长探测' },
+      thresholdNames: { sensitive: '灵敏', balanced: '均衡', tolerant: '宽松' },
+      thresholdGroupLabel: '监测阈值',
+      thresholdLabel: (name, value) => `${name}阈值，${value}`,
       choiceAnnouncement: (choice, message) => `选择${choice}。${message}`,
     },
   };
@@ -130,6 +148,9 @@
   let responseCost = 0;
   let correctChoices = 0;
   let lateChoices = 0;
+  let monitorFalseAlarms = 0;
+  let monitorMisses = 0;
+  let thresholdMode = 'balanced';
   let currentResponse = 'hold';
   let selectedResponse = '';
   let scenario = scenarios[0];
@@ -156,6 +177,10 @@
     return `${value >= 0 ? '+' : '−'}${Math.abs(value).toFixed(2)}`;
   }
 
+  function monitorThreshold() {
+    return thresholdProfiles[thresholdMode].value;
+  }
+
   function recentRate() {
     const recent = violationSamples.slice(-RECENT_WINDOW);
     if (recent.length === 0) return 0;
@@ -163,7 +188,8 @@
   }
 
   function semanticMargin() {
-    return (MONITOR_THRESHOLD - recentRate()) / MONITOR_THRESHOLD;
+    const threshold = monitorThreshold();
+    return (threshold - recentRate()) / threshold;
   }
 
   function recommendedResponse() {
@@ -171,9 +197,18 @@
     const currentSegment = violationSamples.slice(-SEGMENT_SIZE);
     const segmentRate =
       currentSegment.reduce((sum, value) => sum + value, 0) / Math.max(1, currentSegment.length);
-    if (currentResponse === 'repair') return segmentRate <= MONITOR_THRESHOLD ? 'hold' : 'probe';
-    if (rate <= MONITOR_THRESHOLD) return 'hold';
+    const threshold = monitorThreshold();
+    if (currentResponse === 'repair') return segmentRate <= threshold ? 'hold' : 'probe';
+    if (rate <= threshold) return 'hold';
     return 'repair';
+  }
+
+  function recordMonitorTradeoff() {
+    const alarmRaised = recentRate() > monitorThreshold();
+    const currentSegment = violationSamples.slice(-SEGMENT_SIZE);
+    const persistentMismatch = currentSegment.reduce((sum, value) => sum + value, 0) >= 2;
+    if (alarmRaised && !persistentMismatch) monitorFalseAlarms += 1;
+    if (!alarmRaised && persistentMismatch) monitorMisses += 1;
   }
 
   function score() {
@@ -183,7 +218,14 @@
       0,
       Math.min(
         100,
-        Math.round(deliveryPoints + judgmentPoints - responseCost * 2 - lateChoices * 3),
+        Math.round(
+          deliveryPoints +
+            judgmentPoints -
+            responseCost * 2 -
+            lateChoices * 3 -
+            monitorFalseAlarms * 4 -
+            monitorMisses * 7,
+        ),
       ),
     );
   }
@@ -332,7 +374,7 @@
       );
     }
     if (phase === 'feedback') return feedbackText(localized);
-    return localized.complete(score(), delivered, responseCost);
+    return localized.complete(score(), delivered, responseCost, monitorFalseAlarms, monitorMisses);
   }
 
   function responseText(localized) {
@@ -358,12 +400,17 @@
     marginOutput.textContent = formatMargin(margin);
     costOutput.textContent = String(responseCost);
     checkpointOutput.textContent = `${checkpoint} / ${CHECKPOINTS}`;
-    rateFill.style.width = `${Math.round(rate * 100)}%`;
-    rateFill.classList.toggle(
-      'is-warning',
-      rate > MONITOR_THRESHOLD * 0.75 && rate <= MONITOR_THRESHOLD,
+    const threshold = monitorThreshold();
+    const thresholdPercent = formatRate(threshold);
+    thresholdValueOutput.textContent = thresholdPercent;
+    rateTrack.style.setProperty('--monitor-threshold', `${Math.round(threshold * 100)}%`);
+    thresholdGroup.setAttribute(
+      'aria-label',
+      `${localized.thresholdGroupLabel}, ${thresholdPercent}`,
     );
-    rateFill.classList.toggle('is-danger', rate > MONITOR_THRESHOLD);
+    rateFill.style.width = `${Math.round(rate * 100)}%`;
+    rateFill.classList.toggle('is-warning', rate > threshold * 0.75 && rate <= threshold);
+    rateFill.classList.toggle('is-danger', rate > threshold);
     marginOutput.classList.toggle('is-positive', margin >= 0);
     marginOutput.classList.toggle('is-negative', margin < 0);
     prompt.classList.toggle('is-warning', phase === 'feedback' && feedbackKey === 'tooEarly');
@@ -375,6 +422,22 @@
     responseButtons.forEach((button) => {
       button.disabled = suspended || phase !== 'decision';
       button.dataset.selected = String(button.dataset.response === selectedResponse);
+    });
+
+    const thresholdEditable = !suspended && (phase === 'ready' || phase === 'complete');
+    thresholdButtons.forEach((button) => {
+      const selected = button.dataset.threshold === thresholdMode;
+      button.disabled = !thresholdEditable;
+      button.setAttribute('aria-checked', String(selected));
+      button.tabIndex = selected ? 0 : -1;
+      button.dataset.selected = String(selected);
+      button.setAttribute(
+        'aria-label',
+        localized.thresholdLabel(
+          localized.thresholdNames[button.dataset.threshold],
+          formatRate(thresholdProfiles[button.dataset.threshold].value),
+        ),
+      );
     });
 
     startButton.hidden = phase !== 'ready' && phase !== 'complete';
@@ -394,6 +457,10 @@
     game.dataset.delivered = String(delivered);
     game.dataset.cost = String(responseCost);
     game.dataset.score = String(score());
+    game.dataset.threshold = thresholdMode;
+    game.dataset.thresholdValue = threshold.toFixed(3);
+    game.dataset.falseAlarms = String(monitorFalseAlarms);
+    game.dataset.misses = String(monitorMisses);
     game.dataset.suspended = String(suspended);
     game.dataset.motion = reducedMotion.matches ? 'reduced' : 'full';
   }
@@ -413,6 +480,7 @@
   }
 
   function enterDecision() {
+    recordMonitorTradeoff();
     phase = 'decision';
     checkpoint = slotIndex / SEGMENT_SIZE;
     selectedResponse = '';
@@ -446,7 +514,13 @@
     selectedResponse = '';
     feedbackKey = '';
     render();
-    announcer.textContent = strings().complete(score(), delivered, responseCost);
+    announcer.textContent = strings().complete(
+      score(),
+      delivered,
+      responseCost,
+      monitorFalseAlarms,
+      monitorMisses,
+    );
     startButton.focus();
   }
 
@@ -487,6 +561,13 @@
     schedule(beginNextSegment, 860);
   }
 
+  function selectThreshold(mode) {
+    if (!(mode in thresholdProfiles) || suspended) return;
+    if (phase !== 'ready' && phase !== 'complete') return;
+    thresholdMode = mode;
+    render();
+  }
+
   function startEpisode() {
     window.clearTimeout(timer);
     pendingAction = null;
@@ -499,6 +580,8 @@
     responseCost = 0;
     correctChoices = 0;
     lateChoices = 0;
+    monitorFalseAlarms = 0;
+    monitorMisses = 0;
     currentResponse = 'hold';
     selectedResponse = '';
     events = [];
@@ -520,6 +603,8 @@
     responseCost = 0;
     correctChoices = 0;
     lateChoices = 0;
+    monitorFalseAlarms = 0;
+    monitorMisses = 0;
     currentResponse = 'hold';
     selectedResponse = '';
     events = [];
@@ -532,12 +617,30 @@
   responseButtons.forEach((button) => {
     button.addEventListener('click', () => chooseResponse(button.dataset.response));
   });
+  thresholdButtons.forEach((button) => {
+    button.addEventListener('click', () => selectThreshold(button.dataset.threshold));
+  });
   resetButton.addEventListener('click', reset);
   startButton.addEventListener('click', startEpisode);
 
   game.addEventListener('keydown', (event) => {
     if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
     const key = event.key.toLowerCase();
+
+    if (
+      event.target instanceof HTMLButtonElement &&
+      event.target.matches('[data-threshold]') &&
+      ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)
+    ) {
+      event.preventDefault();
+      const offset = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
+      const index = thresholdButtons.indexOf(event.target);
+      const nextButton =
+        thresholdButtons[(index + offset + thresholdButtons.length) % thresholdButtons.length];
+      selectThreshold(nextButton.dataset.threshold);
+      nextButton.focus();
+      return;
+    }
 
     if (key === 'r') {
       event.preventDefault();
@@ -548,6 +651,12 @@
     if (phase === 'decision' && ['1', '2', '3'].includes(key)) {
       event.preventDefault();
       chooseResponse(['hold', 'repair', 'probe'][Number(key) - 1]);
+      return;
+    }
+
+    if ((phase === 'ready' || phase === 'complete') && ['1', '2', '3'].includes(key)) {
+      event.preventDefault();
+      selectThreshold(['sensitive', 'balanced', 'tolerant'][Number(key) - 1]);
       return;
     }
 

@@ -11,13 +11,13 @@ const games = {
   bandit: 430,
   qpath: 620,
   return: 430,
-  world: 600,
-  stl: 600,
+  world: 660,
+  stl: 660,
   movable: 720,
   pinching: 680,
   secrecy: 620,
   hopper: 600,
-  backscatter: 620,
+  backscatter: 680,
   resilience: 600,
   orbit: 360,
   signature: 260,
@@ -216,7 +216,7 @@ async function checkRunner(browser) {
         'none',
       );
     }
-    await fixturePage.locator('.obstacle').first().waitFor({ state: 'attached', timeout: 2_000 });
+    await fixturePage.locator('.obstacle').first().waitFor({ state: 'attached', timeout: 5_000 });
     assert.equal(
       await fixturePage
         .locator('.obstacle')
@@ -867,31 +867,50 @@ async function checkReturn(browser) {
 }
 
 async function checkWorld(browser) {
-  const page = await openGame(browser, 'world', { width: 280, reducedMotion: 'reduce' });
+  const page = await openGame(browser, 'world', {
+    width: 280,
+    reducedMotion: 'reduce',
+    randomValues: Array(600).fill(0.5),
+  });
   const field = page.locator('#field');
   const actionButtons = page.locator('[data-action]');
 
   assert.equal(await field.getAttribute('data-phase'), 'ready');
   assert.equal(await page.locator('#user-layer > *').count(), 9);
   assert.equal(await page.locator('#round').textContent(), '0');
+  assert.equal(await actionButtons.count(), 7);
+  assert.deepEqual(await page.evaluate(() => window.__worldDebug.actions), [
+    'north',
+    'south',
+    'west',
+    'east',
+    'descend',
+    'hold',
+    'climb',
+  ]);
+  const initialUav = await page.evaluate(() => window.__worldDebug.snapshot().uav);
 
-  const forecastState = await page.locator('[data-action="0"]').evaluate((button) => {
+  const forecastState = await page.locator('[data-action="east"]').evaluate((button) => {
     button.click();
     return {
       phase: document.querySelector('#field')?.dataset.phase,
       action: document.querySelector('#field')?.dataset.action,
       ghosts: document.querySelector('#ghost-layer')?.childElementCount,
+      predictedX: Number(document.querySelector('#predicted-uav')?.getAttribute('cx')),
+      actualX: document.querySelector('#uav')?.transform.baseVal.consolidate().matrix.e,
       disabled: [...document.querySelectorAll('button[data-action]')].every(
         (actionButton) => actionButton.disabled,
       ),
     };
   });
-  assert.deepEqual(forecastState, {
-    phase: 'forecast',
-    action: '0',
-    ghosts: 27,
-    disabled: true,
-  });
+  assert.equal(forecastState.phase, 'forecast');
+  assert.equal(forecastState.action, 'east');
+  assert.equal(forecastState.ghosts, 27);
+  assert.equal(forecastState.disabled, true);
+  assert.ok(
+    forecastState.predictedX > forecastState.actualX,
+    'East must preview an eastward UAV move',
+  );
 
   await page.waitForFunction(() => document.querySelector('#field')?.dataset.phase === 'observed');
   assert.equal(await page.locator('#ghost-layer > *').count(), 0);
@@ -913,6 +932,10 @@ async function checkWorld(browser) {
     });
   });
   assert.equal(coverageAlignment.every(Boolean), true, 'World-model coverage must match service');
+  const movedEast = await page.evaluate(() => window.__worldDebug.snapshot().uav);
+  assert.ok(movedEast.x > initialUav.x);
+  assert.equal(movedEast.y, initialUav.y);
+  assert.equal(movedEast.height, initialUav.height);
   await assertNoOverflow(page, 'world observed');
 
   const error = await page.locator('#prediction-error').textContent();
@@ -923,10 +946,76 @@ async function checkWorld(browser) {
   await page.locator('#reset').click();
   assert.equal(await field.getAttribute('data-phase'), 'ready');
   assert.equal(await page.locator('#round').textContent(), '0');
-  await page.locator('[data-action="0"]').focus();
+  await page.locator('button[data-action="west"]').focus();
+  await page.keyboard.press('Space');
+  await page.waitForFunction(
+    () =>
+      document.querySelector('#field')?.dataset.phase === 'observed' &&
+      document.querySelector('#field')?.dataset.action === 'west',
+  );
+  assert.ok(Number(await field.getAttribute('data-uav-x')) < initialUav.x);
+
+  await page.locator('button[data-action="south"]').click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector('#field')?.dataset.phase === 'observed' &&
+      document.querySelector('#field')?.dataset.action === 'south' &&
+      document.querySelector('#round')?.textContent === '2',
+  );
+  assert.ok(Number(await field.getAttribute('data-uav-y')) > initialUav.y);
+
+  await page.locator('button[data-action="descend"]').click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector('#field')?.dataset.phase === 'observed' &&
+      document.querySelector('#field')?.dataset.action === 'descend' &&
+      document.querySelector('#round')?.textContent === '3',
+  );
+  assert.ok(Number(await field.getAttribute('data-uav-height')) < initialUav.height);
+
+  for (let round = 4; round <= 8; round += 1) {
+    await page.locator('button[data-action="west"]').click();
+    await page.waitForFunction(
+      (expectedRound) =>
+        document.querySelector('#field')?.dataset.phase === 'observed' &&
+        document.querySelector('#field')?.dataset.action === 'west' &&
+        Number(document.querySelector('#round')?.textContent) === expectedRound,
+      round,
+    );
+  }
+  assert.equal(Number(await field.getAttribute('data-uav-x')), 0.1);
+  assert.equal(await field.getAttribute('data-clamped'), 'true');
+
+  await page.locator('#reset').click();
+  await page.locator('[data-action="hold"]').focus();
   await page.keyboard.press('ArrowUp');
   await page.waitForFunction(() => document.querySelector('#field')?.dataset.phase === 'observed');
-  assert.equal(await field.getAttribute('data-action'), '1');
+  assert.equal(await field.getAttribute('data-action'), 'north');
+  assert.ok(Number(await field.getAttribute('data-uav-y')) < initialUav.y);
+
+  await page.keyboard.press('PageUp');
+  await page.waitForFunction(
+    () =>
+      document.querySelector('#field')?.dataset.phase === 'observed' &&
+      document.querySelector('#field')?.dataset.action === 'climb',
+  );
+  assert.ok(Number(await field.getAttribute('data-uav-height')) > initialUav.height);
+
+  await page.locator('#reset').click();
+  await page.evaluate(() => document.activeElement?.blur());
+  for (let round = 1; round <= 3; round += 1) {
+    await page.keyboard.press('Space');
+    await page.waitForFunction(
+      (expectedRound) =>
+        document.querySelector('#field')?.dataset.phase === 'observed' &&
+        Number(document.querySelector('#round')?.textContent) === expectedRound,
+      round,
+    );
+  }
+  assert.equal(await field.getAttribute('data-lock-streak'), '3');
+  assert.equal(await field.getAttribute('data-locked'), 'true');
+  assert.equal(await page.locator('#lock-chip .is-active').count(), 3);
+  await assertNoOverflow(page, 'world locked zh');
   await page.close();
 }
 
@@ -937,6 +1026,25 @@ async function checkStl(browser) {
   assert.equal(await game.getAttribute('data-monitor-only'), 'true');
   assert.equal(await game.getAttribute('data-phase'), 'ready');
   assert.equal(await game.getAttribute('data-total-slots'), '12');
+  assert.equal(await game.getAttribute('data-threshold'), 'balanced');
+  assert.equal(await game.getAttribute('data-threshold-value'), '0.333');
+  assert.equal(await page.locator('button[data-threshold]').count(), 3);
+  await page.locator('button[data-threshold="sensitive"]').click();
+  assert.equal(await game.getAttribute('data-threshold'), 'sensitive');
+  assert.equal(
+    await page.locator('button[data-threshold="sensitive"]').getAttribute('aria-checked'),
+    'true',
+  );
+  await page.keyboard.press('ArrowRight');
+  assert.equal(await game.getAttribute('data-threshold'), 'balanced');
+  await page.keyboard.press('ArrowRight');
+  assert.equal(await game.getAttribute('data-threshold'), 'tolerant');
+  assert.equal(
+    await page.locator('button[data-threshold="tolerant"]').getAttribute('aria-checked'),
+    'true',
+  );
+  await page.keyboard.press('2');
+  assert.equal(await game.getAttribute('data-threshold'), 'balanced');
 
   await page.locator('#start-button').click();
   for (let checkpoint = 1; checkpoint <= 3; checkpoint += 1) {
@@ -952,6 +1060,9 @@ async function checkStl(browser) {
     const currentResponse = await game.getAttribute('data-response');
     if (margin < 0 && currentResponse === 'hold') assert.notEqual(recommended, 'hold');
     if (checkpoint === 1) {
+      assert.equal(await page.locator('button[data-threshold="tolerant"]').isDisabled(), true);
+      await page.locator('button[data-threshold="tolerant"]').click({ force: true });
+      assert.equal(await game.getAttribute('data-threshold'), 'balanced');
       await page.keyboard.press(String(['hold', 'repair', 'probe'].indexOf(recommended) + 1));
     } else {
       await page.locator(`button[data-response="${recommended}"]`).click();
@@ -962,12 +1073,18 @@ async function checkStl(browser) {
   assert.equal(await game.getAttribute('data-slot'), '12');
   assert.match(await game.getAttribute('data-score'), /^\d+$/);
   assert.match(await game.getAttribute('data-violation-rate'), /^\d+\.\d{3}$/);
+  assert.match(await game.getAttribute('data-false-alarms'), /^\d+$/);
+  assert.match(await game.getAttribute('data-misses'), /^\d+$/);
   await assertNoOverflow(page, 'stl complete');
 
   const score = await game.getAttribute('data-score');
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
   assert.equal(await page.locator('h1').textContent(), '时序语义哨兵');
   assert.equal(await game.getAttribute('data-score'), score);
+  await page.locator('button[data-threshold="tolerant"]').click();
+  assert.equal(await game.getAttribute('data-threshold'), 'tolerant');
+  assert.equal(await game.getAttribute('data-threshold-value'), '0.500');
+  assert.match(await page.locator('button[data-threshold="tolerant"]').textContent(), /宽松/);
 
   await page.locator('#reset-button').click();
   assert.equal(await game.getAttribute('data-phase'), 'ready');
@@ -976,7 +1093,11 @@ async function checkStl(browser) {
 }
 
 async function checkBackscatter(browser) {
-  const page = await openGame(browser, 'backscatter', { width: 280, reducedMotion: 'reduce' });
+  const page = await openGame(browser, 'backscatter', {
+    width: 240,
+    language: 'zh',
+    reducedMotion: 'reduce',
+  });
   const game = page.locator('.game[data-game="backscatter"]');
   const arena = page.locator('#arena');
 
@@ -984,6 +1105,19 @@ async function checkBackscatter(browser) {
   assert.equal(await game.getAttribute('data-slot'), '1');
   assert.equal(await game.getAttribute('data-complete'), 'false');
   assert.equal(await page.locator('#follow-actions').isHidden(), true);
+  assert.equal(await page.locator('h1').textContent(), '借波突围');
+  assert.match(await page.locator('.rhythm-heading').textContent(), /非概率/);
+  await assertNoOverflow(page, 'backscatter zh primary 240px');
+  const primaryTargetSizes = await page.locator('#primary-actions button').evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const bounds = button.getBoundingClientRect();
+      return { width: bounds.width, height: bounds.height };
+    }),
+  );
+  assert.ok(
+    primaryTargetSizes.every(({ width, height }) => width >= 44 && height >= 44),
+    `Signal Judo controls must remain touchable at 240px: ${JSON.stringify(primaryTargetSizes)}`,
+  );
 
   const batteryBeforeProbe = Number.parseInt(await page.locator('#battery').textContent(), 10);
   await page.locator('#primary-actions [data-action="probe"]').click();
@@ -993,15 +1127,27 @@ async function checkBackscatter(browser) {
     batteryBeforeProbe - 1,
   );
   assert.match(await arena.getAttribute('data-carrier'), /^(quiet|weak|steady|broken)$/);
-  assert.match(await page.locator('#status').textContent(), /Probe complete/);
-  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
-  assert.doesNotMatch(await page.locator('#status').textContent(), /Probe complete/);
   assert.match(await page.locator('#status').textContent(), /探测完成/);
+  await assertNoOverflow(page, 'backscatter zh follow 240px');
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'en', theme: 'light' }));
+  assert.match(await page.locator('#status').textContent(), /Probe complete/);
   await page.locator('#follow-actions [data-action="harvest"]').click();
   assert.equal(await game.getAttribute('data-phase'), 'primary');
   assert.equal(await game.getAttribute('data-slot'), '2');
   assert.equal(await page.locator('#history li').count(), 1);
+  assert.match(await page.locator('#history li').first().textContent(), /[○≈∿⋯]/);
+  assert.match(
+    await page.locator('#history li').first().getAttribute('data-observation'),
+    /^(quiet|weak|steady|broken)$/,
+  );
+  const rhythmSampleCount = await page
+    .locator('#rhythm-strip i b')
+    .evaluateAll((counts) => counts.reduce((sum, count) => sum + Number(count.textContent), 0));
+  assert.equal(rhythmSampleCount, 1);
+  assert.match(
+    await game.getAttribute('data-adaptation'),
+    /^(calibrated|needed|probed|recovered)$/,
+  );
 
   let sawDrift = false;
   for (
@@ -1022,7 +1168,7 @@ async function checkBackscatter(browser) {
   assert.equal(await page.locator('#results').isVisible(), true);
   assert.equal(await page.locator('#history li').count(), 4);
   assert.match(await page.locator('#result-recovery').textContent(), /^0 \/ 100/);
-  await assertNoOverflow(page, 'backscatter complete');
+  await assertNoOverflow(page, 'backscatter complete 240px');
 
   const delivered = Number.parseInt(await page.locator('#result-delivered').textContent(), 10);
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
@@ -1032,9 +1178,16 @@ async function checkBackscatter(browser) {
     delivered,
   );
   assert.match(await page.locator('#result-delivered').textContent(), /个数据包/);
+  await assertNoOverflow(page, 'backscatter complete zh 240px');
+  const restartBounds = await page.locator('#restart').boundingBox();
+  assert.ok(
+    restartBounds && restartBounds.y + restartBounds.height <= 681,
+    `Signal Judo Chinese restart control must remain visible: ${JSON.stringify(restartBounds)}`,
+  );
   await page.locator('#restart').click();
   assert.equal(await game.getAttribute('data-slot'), '1');
   assert.equal(await game.getAttribute('data-complete'), 'false');
+  await assertNoOverflow(page, 'backscatter restarted zh 240px');
   await page.close();
 }
 
@@ -1042,16 +1195,34 @@ async function checkResilience(browser) {
   const page = await openGame(browser, 'resilience', { width: 280, clock: true });
   const field = page.locator('#field');
 
-  await page.locator('[data-payload="heavy"]').click();
-  assert.equal(await page.locator('[data-payload="heavy"]').getAttribute('aria-pressed'), 'true');
-  assert.equal(await page.locator('[data-payload="medium"]').getAttribute('aria-pressed'), 'false');
+  assert.equal(await field.getAttribute('data-resync-used'), 'false');
+  assert.equal(await page.locator('#resync-token').textContent(), '1 / 1');
+  assert.equal(await page.locator('#resync-control').isDisabled(), true);
   await page.keyboard.press('1');
   assert.equal(await page.locator('[data-payload="light"]').getAttribute('aria-pressed'), 'true');
+  await page.locator('[data-payload="heavy"]').focus();
+  await page.keyboard.press('Space');
+  assert.equal(await page.locator('[data-payload="heavy"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('[data-payload="medium"]').getAttribute('aria-pressed'), 'false');
+  assert.equal(await page.locator('#resync-control').isDisabled(), true);
 
-  await page.locator('#episode-control').click();
+  await page.locator('#episode-control').focus();
+  await page.keyboard.press('Space');
+  assert.equal(await page.locator('#resync-control').isEnabled(), true);
+  await page.locator('#resync-control').focus();
+  await page.keyboard.press('Space');
+  assert.equal(await field.getAttribute('data-resync-used'), 'true');
+  assert.equal(await field.getAttribute('data-resync-pending'), 'true');
+  assert.equal(await field.getAttribute('data-resync-cost'), '4.0');
+  assert.equal(await page.locator('#service-gap').textContent(), '4.0');
+  assert.equal(await page.locator('#resync-token').textContent(), '0 / 1');
+  assert.equal(await page.locator('#resync-control').isDisabled(), true);
   await page.clock.runFor(1700);
   assert.equal(await page.locator('#slot').textContent(), '1 / 24');
-  assert.match(await field.getAttribute('data-source'), /^(fresh|predicted|hold)$/);
+  assert.equal(await field.getAttribute('data-source'), 'fresh');
+  assert.equal(await field.getAttribute('data-resync'), 'applied');
+  assert.equal(await field.getAttribute('data-resync-pending'), 'false');
+  assert.ok(Number(await page.locator('#service-gap').textContent()) >= 4);
   assert.ok(
     (await page.locator('#history > .fresh, #history > .predicted, #history > .hold').count()) >= 1,
   );
@@ -1077,6 +1248,10 @@ async function checkResilience(browser) {
   assert.equal(await page.locator('h1').textContent(), '断链续航');
   assert.equal(await page.locator('#service-gap').textContent(), serviceGap);
   assert.equal(await page.locator('#episode-control').textContent(), '再来一局');
+  await page.locator('#episode-control').click();
+  assert.equal(await page.locator('#resync-token').textContent(), '1 / 1');
+  assert.equal(await field.getAttribute('data-resync-used'), 'false');
+  await page.locator('#episode-control').click();
   await page.close();
 }
 
@@ -1957,48 +2132,41 @@ async function checkHopper(browser) {
   await page.close();
 }
 
-async function stopOrbitAtAngle(page, expectedAngle, tolerance = 4) {
-  return page.evaluate(
-    ({ expected, allowed }) =>
-      new Promise((resolve, reject) => {
-        const timeout = window.setTimeout(
-          () => reject(new Error(`Orbit did not reach ${expected} degrees`)),
-          6_000,
-        );
-
-        function stopWhenAligned() {
-          const angle = Number(document.querySelector('#field').dataset.currentAngle);
-          const distance = Math.abs(angle - expected) % 360;
-          const hint = document.querySelector('#hint');
-          const assistState = hint.dataset.assistState || '';
-          if (
-            Number.isFinite(angle) &&
-            assistState &&
-            Math.min(distance, 360 - distance) <= allowed
-          ) {
-            window.clearTimeout(timeout);
-            const assistStatus = document.querySelector('#assist-status');
-            const targetZone = document.querySelector('.target-zone');
-            const cue = {
-              state: assistState,
-              visibleText: hint.textContent,
-              announcedText: assistStatus.textContent,
-              targetAnimation: getComputedStyle(targetZone).animationName,
-              hintHeight: hint.getBoundingClientRect().height,
-              scrollHeight: document.documentElement.scrollHeight,
-              viewportHeight: window.innerHeight,
-            };
-            document.querySelector('#action').click();
-            resolve(cue);
-            return;
-          }
-          window.requestAnimationFrame(stopWhenAligned);
+async function stopOrbitAtAngle(page, expectedAngle, tolerance = 10) {
+  for (let frame = 0; frame < 240; frame += 1) {
+    const cue = await page.evaluate(
+      ({ expected, allowed }) => {
+        const angle = Number(document.querySelector('#field').dataset.currentAngle);
+        const distance = Math.abs(angle - expected) % 360;
+        const hint = document.querySelector('#hint');
+        const assistState = hint.dataset.assistState || '';
+        if (
+          Number.isFinite(angle) &&
+          assistState &&
+          Math.min(distance, 360 - distance) <= allowed
+        ) {
+          const assistStatus = document.querySelector('#assist-status');
+          const targetZone = document.querySelector('.target-zone');
+          const cue = {
+            state: assistState,
+            visibleText: hint.textContent,
+            announcedText: assistStatus.textContent,
+            targetAnimation: getComputedStyle(targetZone).animationName,
+            hintHeight: hint.getBoundingClientRect().height,
+            scrollHeight: document.documentElement.scrollHeight,
+            viewportHeight: window.innerHeight,
+          };
+          document.querySelector('#action').click();
+          return cue;
         }
-
-        stopWhenAligned();
-      }),
-    { expected: expectedAngle, allowed: tolerance },
-  );
+        return null;
+      },
+      { expected: expectedAngle, allowed: tolerance },
+    );
+    if (cue) return cue;
+    await page.clock.runFor(32);
+  }
+  throw new Error(`Orbit did not reach ${expectedAngle} degrees`);
 }
 
 async function runOrbitRound(page, offset) {
@@ -2036,6 +2204,7 @@ async function runOrbitRound(page, offset) {
 
 async function checkOrbit(browser, reducedMotion = 'no-preference') {
   const page = await openGame(browser, 'orbit', {
+    clock: true,
     reducedMotion,
     width: reducedMotion === 'reduce' ? 280 : 420,
   });
@@ -2081,7 +2250,7 @@ async function checkOrbit(browser, reducedMotion = 'no-preference') {
   assert.equal(first.fieldAssistState, null, 'Orbit result must clear the field assist state');
   assert.equal(first.targetAnimation, 'none', 'Orbit result must stop target emphasis');
 
-  const second = await runOrbitRound(page, first.tolerance + 8);
+  const second = await runOrbitRound(page, first.tolerance + 12);
   assert.equal(second.result, 'miss', 'Stopping outside the visible window must miss');
   assert.equal(
     second.cueAtStop.state,
@@ -2098,7 +2267,7 @@ async function checkOrbit(browser, reducedMotion = 'no-preference') {
     'Visible close cue must fit the game viewport',
   );
 
-  const third = await runOrbitRound(page, first.tolerance + 32);
+  const third = await runOrbitRound(page, first.tolerance + 44);
   assert.equal(third.result, 'miss', 'Stopping far outside the window must miss');
   assert.equal(third.cueAtStop.state, 'far', 'Visible assist must identify a distant target');
   assert.match(third.cueAtStop.visibleText, /still far/);

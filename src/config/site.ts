@@ -990,31 +990,31 @@ export const site = {
       {
         id: 'world',
         category: 'learning',
-        height: 600,
+        height: 660,
         title: { en: 'Latent Look-Ahead', zh: '潜空间预演' },
         meta: { en: 'Conceptual world model · 30–90 sec', zh: '概念世界模型 · 30–90 秒' },
         description: {
-          en: 'Guide a mobile relay while a compact action-conditioned model predicts the next latent state. Compare its forecast with the revealed outcome and let each step refine the model online.',
-          zh: '操控移动中继，并让一个紧凑的动作条件模型在潜空间中预测下一状态；将预测与随后揭示的真实结果对照，每一步都会继续修正模型。',
+          en: 'Move a UAV relay north, south, east, or west, adjust its altitude, and keep drifting maritime users inside coverage. A compact action-conditioned model previews three latent steps before the next observation and learns online from every reveal.',
+          zh: '向四周移动无人机中继并调整飞行高度，尽量让随海流漂移的用户保持在覆盖范围内。紧凑的动作条件模型会先在潜空间中预演三步，待真实观测返回后，再据此在线校正模型。',
         },
         tags: {
-          en: ['Latent rollout', 'Prediction error', 'Online update'],
-          zh: ['潜状态滚动预测', '预测误差', '在线更新'],
+          en: ['Seven flight actions', 'Latent rollout', 'Service lock'],
+          zh: ['七种飞行动作', '潜状态滚动预测', '连续服务锁定'],
         },
       },
       {
         id: 'stl',
         category: 'learning',
-        height: 600,
+        height: 660,
         title: { en: 'Semantic Sentinel', zh: '时序语义哨兵' },
         meta: { en: 'Temporal-logic monitor · 30–90 sec', zh: '时序逻辑监测 · 30–90 秒' },
         description: {
-          en: 'Read a short observation–action–outcome stream, interpret a sliding-window report, and choose whether to hold, repair locally, or probe longer before service degrades.',
-          zh: '观察一段“观测—动作—结果”序列，解读滑动窗口报告，并在服务明显下降前选择保持、局部修复或延长探测。',
+          en: 'Tune a temporal-logic alert threshold, read a short observation–action–outcome stream, and decide whether to hold, repair locally, or probe longer. Sensitive monitoring catches faults earlier but raises false alarms; tolerant monitoring risks missed faults.',
+          zh: '调整时序逻辑告警阈值，观察简短的“观测—动作—结果”序列，再选择维持、局部修复或延长探测。灵敏阈值能更早发现故障，却更容易误报；宽松阈值则可能漏报。',
         },
         tags: {
-          en: ['Sliding window', 'Semantic margin', 'False-alarm tradeoff'],
-          zh: ['滑动窗口', '语义裕度', '误报权衡'],
+          en: ['Adjustable threshold', 'Semantic margin', 'False alarm vs miss'],
+          zh: ['可调告警阈值', '语义裕度', '误报与漏报权衡'],
         },
       },
       {
@@ -1083,16 +1083,16 @@ export const site = {
       {
         id: 'backscatter',
         category: 'wireless',
-        height: 620,
+        height: 680,
         title: { en: 'Signal Judo', zh: '借波突围' },
         meta: { en: 'Adversarial backscatter · 1–3 min', zh: '对抗式反向散射 · 1–3 分钟' },
         description: {
-          en: 'Manage a finite queue and battery across ten slots. Probe an opponent whose rhythm can shift, then decide when its signal is a threat, an energy source, or a carrier worth backscattering.',
-          zh: '在十个时隙中管理有限的数据队列与电量。先试探会改变节奏的对手，再判断它的信号此刻是威胁、能量来源，还是可借用的反向散射载波。',
+          en: 'Manage a finite queue and battery across ten slots. Probe a shifting opponent, read the last four observed carrier outcomes, and adapt when its signal is a threat, an energy source, or a carrier worth backscattering.',
+          zh: '在十个时隙中管理有限的数据队列与电量。通过探测跟踪对手不断变化的发射节奏，结合最近四轮载波观测，判断当前信号是威胁、能量来源，还是可供反向散射利用的载波。',
         },
         tags: {
-          en: ['Queue + battery', 'Two-stage decisions', 'Hidden rhythm'],
-          zh: ['队列与电量', '两阶段决策', '隐藏节奏'],
+          en: ['Queue + battery', 'Observation trail', 'Adaptive rhythm'],
+          zh: ['队列与电量', '观测记录', '节奏适应'],
         },
       },
       {
@@ -1102,12 +1102,12 @@ export const site = {
         title: { en: 'Predict Through the Outage', zh: '断链续航' },
         meta: { en: 'Semantic-link recovery · 30–90 sec', zh: '语义链路恢复 · 30–90 秒' },
         description: {
-          en: 'Choose how much semantic telemetry to send through a fragile link, fall back to predicted state when packets vanish, and recover service without overreacting to every brief outage.',
-          zh: '选择遥测语义信息的发送粒度；链路丢包时依靠预测状态维持服务，并在短暂中断与持续失效之间作出不过度反应的恢复决策。',
+          en: 'Choose how much semantic telemetry to send through a fragile link, fall back to predicted state during outages, and spend one forced resynchronization at the right moment. The rescue guarantees a fresh state but carries an explicit control cost.',
+          zh: '选择遥测语义信息的发送粒度，在链路中断时依靠预测状态维持服务，并把一次强制重新同步用在最合适的时机。它能保证下一时隙获得最新状态，但会带来明确的控制开销。',
         },
         tags: {
-          en: ['Cached prediction', 'Recovery time', 'Service gap'],
-          zh: ['预测缓存', '恢复时间', '服务缺口'],
+          en: ['Cached prediction', 'One rescue token', 'Service gap'],
+          zh: ['预测缓存', '一次强制同步机会', '服务缺口'],
         },
       },
       {

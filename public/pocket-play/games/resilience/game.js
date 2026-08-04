@@ -5,6 +5,7 @@ const TOTAL_SLOTS = 24;
 const SLOT_DURATION_MS = 1700;
 const CACHE_LIMIT = 4;
 const SERVICE_REFERENCE = 82;
+const RESYNC_GAP_COST = 4;
 
 const payloadProfiles = {
   light: { fidelity: 72, clearReliability: 0.97, stressedReliability: 0.7 },
@@ -24,6 +25,8 @@ const gapOutput = document.querySelector('#service-gap');
 const sourceOutput = document.querySelector('#source');
 const status = document.querySelector('#status');
 const episodeControl = document.querySelector('#episode-control');
+const resyncControl = document.querySelector('#resync-control');
+const resyncTokenOutput = document.querySelector('#resync-token');
 const payloadButtons = [...document.querySelectorAll('[data-payload]')];
 
 let selectedPayload = 'medium';
@@ -45,6 +48,9 @@ let recoveryStartedAt = null;
 let recoverySlots = null;
 let recoveryCandidateFresh = 0;
 let degradationEvidence = 0;
+let resyncUsed = false;
+let resyncPending = false;
+let lastResyncApplied = false;
 
 function text(english, chinese) {
   return window.PocketRuntime.text(english, chinese);
@@ -107,18 +113,19 @@ function makePackets() {
 function cacheAgeLabel() {
   if (cacheAge === null) return '—';
   if (source === 'hold' && cacheAge > CACHE_LIMIT) return text('expired', '已过期');
-  return text(`${cacheAge} slots`, `${cacheAge} 槽`);
+  return text(`${cacheAge} slots`, `${cacheAge} 个时隙`);
 }
 
 function recoveryLabel() {
-  if (recoverySlots !== null) return text(`${recoverySlots} slots`, `${recoverySlots} 槽`);
+  if (recoverySlots !== null) return text(`${recoverySlots} slots`, `${recoverySlots} 个时隙`);
   if (complete && recoveryStartedAt !== null) return text('not recovered', '尚未恢复');
   if (recoveryStartedAt !== null) return text('recovering', '恢复中');
   return '—';
 }
 
 function sourceLabel() {
-  if (source === 'fresh') return text('Fresh', '新鲜状态');
+  if (source === 'fresh' && lastResyncApplied) return text('Forced fresh', '强制刷新');
+  if (source === 'fresh') return text('Fresh', '最新状态');
   if (source === 'predicted') return text('Predicted', '预测缓存');
   if (source === 'hold') return text('Safe hold', '安全保持');
   return text('Standby', '待机');
@@ -134,16 +141,28 @@ function statusLabel() {
   if (paused) {
     return text('Episode paused. Resume when you are ready.', '本局已暂停，准备好后可继续。');
   }
+  if (resyncPending) {
+    return text(
+      `Resync queued. The next slot is guaranteed fresh; ${RESYNC_GAP_COST.toFixed(1)} has been added to the service gap.`,
+      `重同步请求已发出：下一时隙必定收到最新状态，累计服务缺口增加 ${RESYNC_GAP_COST.toFixed(1)}。`,
+    );
+  }
   if (!running) {
     return text(
       'Choose a payload, then start. Keys 1–3 switch payloads during the episode.',
       '先选择语义载荷，再开始实验；运行中可按 1–3 切换载荷。',
     );
   }
+  if (lastResyncApplied) {
+    return text(
+      'Forced resynchronization delivered fresh semantic state and refreshed the prediction cache.',
+      '强制重同步已收到最新语义状态，并刷新了预测缓存。',
+    );
+  }
   if (source === 'fresh') {
     return text(
-      'Fresh semantic state arrived; the prediction cache has been refreshed.',
-      '新鲜语义状态到达，预测缓存已同步刷新。',
+      'Fresh semantic state arrived and refreshed the prediction cache.',
+      '收到最新语义状态，预测缓存已刷新。',
     );
   }
   if (source === 'predicted') {
@@ -177,7 +196,7 @@ function renderHistory() {
     }
     const label =
       historySources[index] === 'fresh'
-        ? text('Fresh state', '新鲜状态')
+        ? text('Fresh state', '最新状态')
         : historySources[index] === 'predicted'
           ? text('Prediction cache', '预测缓存')
           : text('Safe hold', '安全保持');
@@ -190,7 +209,7 @@ function renderHistory() {
     'aria-label',
     text(
       `Recent control sources: ${freshCount} fresh, ${predictedCount} predicted, ${holdCount} safe hold`,
-      `近期控制来源：${freshCount} 次新鲜状态、${predictedCount} 次预测缓存、${holdCount} 次安全保持`,
+      `近期控制来源：${freshCount} 次最新状态、${predictedCount} 次预测缓存、${holdCount} 次安全保持`,
     ),
   );
 }
@@ -212,9 +231,34 @@ function renderUi() {
   sourceOutput.textContent = sourceLabel();
   status.textContent = statusLabel();
   status.dataset.source = source;
+  status.dataset.resync = resyncPending ? 'pending' : lastResyncApplied ? 'applied' : 'idle';
   field.dataset.source = source;
   field.dataset.meanService = meanService === null ? '' : meanService.toFixed(2);
+  field.dataset.resync = lastResyncApplied ? 'applied' : resyncPending ? 'pending' : 'idle';
+  field.dataset.resyncUsed = String(resyncUsed);
+  field.dataset.resyncPending = String(resyncPending);
+  field.dataset.resyncCost = RESYNC_GAP_COST.toFixed(1);
   episodeControl.textContent = controlLabel();
+  resyncTokenOutput.textContent = resyncUsed ? '0 / 1' : '1 / 1';
+  resyncControl.disabled = !running || resyncUsed;
+  resyncControl.dataset.state = resyncPending
+    ? 'pending'
+    : resyncUsed
+      ? 'spent'
+      : running
+        ? 'ready'
+        : 'locked';
+  resyncControl.setAttribute(
+    'aria-label',
+    resyncUsed
+      ? text('Force resync unavailable; token spent', '强制重同步不可用，令牌已使用')
+      : running
+        ? text(
+            `Force resync; one token. Next slot fresh, service gap plus ${RESYNC_GAP_COST.toFixed(1)}`,
+            `强制重同步，剩余一个令牌；下一时隙刷新，服务缺口增加 ${RESYNC_GAP_COST.toFixed(1)}`,
+          )
+        : text('Force resync becomes available while running', '强制重同步将在实验运行后可用'),
+  );
   payloadButtons.forEach((button) => {
     button.setAttribute('aria-pressed', String(button.dataset.payload === selectedPayload));
   });
@@ -259,7 +303,10 @@ function stepEpisode() {
   slot += 1;
   const profile = payloadProfiles[selectedPayload];
   const reliability = isHiddenPressure() ? profile.stressedReliability : profile.clearReliability;
-  const synchronizationSucceeded = Math.random() < reliability;
+  const forcedFresh = resyncPending;
+  const synchronizationSucceeded = forcedFresh || Math.random() < reliability;
+  resyncPending = false;
+  lastResyncApplied = forcedFresh;
 
   if (synchronizationSucceeded) {
     source = 'fresh';
@@ -350,6 +397,9 @@ function resetEpisode() {
   recoverySlots = null;
   recoveryCandidateFresh = 0;
   degradationEvidence = 0;
+  resyncUsed = false;
+  resyncPending = false;
+  lastResyncApplied = false;
   recoveryOutput.removeAttribute('data-unrecovered');
   renderUi();
 }
@@ -360,14 +410,31 @@ function selectPayload(payload) {
   renderUi();
 }
 
+function forceResync() {
+  if (!running || resyncUsed) return;
+  resyncUsed = true;
+  resyncPending = true;
+  lastResyncApplied = false;
+  cumulativeGap += RESYNC_GAP_COST;
+  renderUi();
+}
+
 payloadButtons.forEach((button) => {
   button.addEventListener('click', () => selectPayload(button.dataset.payload));
 });
 
 episodeControl.addEventListener('click', toggleEpisode);
+resyncControl.addEventListener('click', forceResync);
 
 window.addEventListener('keydown', (event) => {
-  if (event.repeat) return;
+  if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (
+    event.code === 'Space' &&
+    event.target instanceof Element &&
+    event.target.closest('button, a, input, select, textarea, [contenteditable="true"]')
+  ) {
+    return;
+  }
   const payloadKeys = { Digit1: 'light', Digit2: 'medium', Digit3: 'heavy' };
   if (event.code in payloadKeys) {
     event.preventDefault();
@@ -377,6 +444,11 @@ window.addEventListener('keydown', (event) => {
   if (event.code === 'Space') {
     event.preventDefault();
     toggleEpisode();
+    return;
+  }
+  if (event.code === 'KeyR') {
+    event.preventDefault();
+    forceResync();
   }
 });
 

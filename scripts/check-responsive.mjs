@@ -52,13 +52,13 @@ const gameHeights = {
   bandit: 430,
   qpath: 620,
   return: 430,
-  world: 600,
-  stl: 600,
+  world: 660,
+  stl: 660,
   movable: 720,
   pinching: 680,
   secrecy: 620,
   hopper: 600,
-  backscatter: 620,
+  backscatter: 680,
   resilience: 600,
   orbit: 360,
   signature: 260,
@@ -212,6 +212,53 @@ async function measurePage(page) {
       })
       .filter((item) => item.left < -1 || item.right > viewportWidth + 1);
 
+    const horizontalOverflowElements = [...document.querySelectorAll('body *')]
+      .filter(isVisible)
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          tag: element.tagName.toLowerCase(),
+          id: element.id,
+          className: typeof element.className === 'string' ? element.className : '',
+          text: element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 72),
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+        };
+      })
+      .filter(
+        (item) =>
+          item.left < -1 ||
+          item.right > viewportWidth + 1 ||
+          item.scrollWidth > item.clientWidth + 1,
+      )
+      .slice(0, 20);
+
+    const shadowOverflowElements = [...document.querySelectorAll('pocket-game')]
+      .flatMap((host) => [...(host.shadowRoot?.querySelectorAll('*') ?? [])])
+      .filter(isVisible)
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          tag: element.tagName.toLowerCase(),
+          part: element.getAttribute('part'),
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+        };
+      })
+      .filter(
+        (item) =>
+          item.left < -1 ||
+          item.right > viewportWidth + 1 ||
+          item.scrollWidth > item.clientWidth + 1,
+      )
+      .slice(0, 20);
+
     const navbar = document.querySelector('.navbar');
     const navbarRect = navbar?.getBoundingClientRect();
     const navShell = navbar?.firstElementChild;
@@ -339,6 +386,8 @@ async function measurePage(page) {
       clientHeight: viewportHeight,
       scrollHeight: Math.max(root.scrollHeight, body?.scrollHeight ?? 0),
       outsideControls,
+      horizontalOverflowElements,
+      shadowOverflowElements,
       navOverlap,
       navbar: navbarRect
         ? {

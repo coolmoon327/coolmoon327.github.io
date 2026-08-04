@@ -12,6 +12,7 @@
     steady: { en: 'Steady carrier', zh: '连续载波' },
     broken: { en: 'Broken carrier', zh: '间歇载波' },
   };
+  const OBSERVATION_GLYPH = { idle: '·', quiet: '○', weak: '≈', steady: '∿', broken: '⋯' };
   const ACTION_COPY = {
     direct: { en: 'DIR', zh: '直传' },
     probe: { en: 'PRB', zh: '探测' },
@@ -21,26 +22,29 @@
     cautious: { en: 'LOW', zh: '低速' },
   };
 
-  const game = document.querySelector('.game');
-  const slotOutput = document.querySelector('#slot');
-  const queueOutput = document.querySelector('#queue');
-  const batteryOutput = document.querySelector('#battery');
-  const deliveredOutput = document.querySelector('#delivered');
-  const arena = document.querySelector('#arena');
-  const observationOutput = document.querySelector('#observation');
-  const historyList = document.querySelector('#history');
-  const decisionTitle = document.querySelector('#decision-title');
-  const primaryActions = document.querySelector('#primary-actions');
-  const followActions = document.querySelector('#follow-actions');
-  const status = document.querySelector('#status');
-  const results = document.querySelector('#results');
-  const resultDelivered = document.querySelector('#result-delivered');
-  const resultLost = document.querySelector('#result-lost');
-  const resultEnergy = document.querySelector('#result-energy');
-  const resultRecovery = document.querySelector('#result-recovery');
-  const resultNote = document.querySelector('#result-note');
-  const gradeOutput = document.querySelector('#grade');
-  const restartButton = document.querySelector('#restart');
+  const $ = (selector) => document.querySelector(selector);
+  const game = $('.game');
+  const slotOutput = $('#slot');
+  const queueOutput = $('#queue');
+  const batteryOutput = $('#battery');
+  const deliveredOutput = $('#delivered');
+  const arena = $('#arena');
+  const observationOutput = $('#observation');
+  const historyList = $('#history');
+  const decisionTitle = $('#decision-title');
+  const primaryActions = $('#primary-actions');
+  const followActions = $('#follow-actions');
+  const status = $('#status');
+  const rhythmStrip = $('#rhythm-strip');
+  const adaptationOutput = $('#adaptation');
+  const results = $('#results');
+  const resultDelivered = $('#result-delivered');
+  const resultLost = $('#result-lost');
+  const resultEnergy = $('#result-energy');
+  const resultRecovery = $('#result-recovery');
+  const resultNote = $('#result-note');
+  const gradeOutput = $('#grade');
+  const restartButton = $('#restart');
 
   let state;
 
@@ -165,7 +169,8 @@
           : entry.lost
             ? `−${entry.lost}`
             : '·';
-      item.textContent = `S${entry.slot} · ${actionLabel(entry.action)} · ${delta}`;
+      item.textContent = `${OBSERVATION_GLYPH[entry.observation]} ${actionLabel(entry.action)} ${delta}`;
+      item.dataset.observation = entry.observation;
       item.dataset.result =
         entry.delivered || entry.energy ? 'success' : entry.lost ? 'loss' : 'neutral';
       item.setAttribute(
@@ -182,6 +187,33 @@
   function recoveryScore() {
     if (state.firstRecoverySlot === null) return 0;
     return Math.max(20, 100 - (state.firstRecoverySlot - state.shiftSlot) * 20);
+  }
+
+  function renderLearningCues() {
+    const samples = state.history.filter((entry) => entry.observation !== 'idle').slice(-4);
+    const counts = { quiet: 0, weak: 0, steady: 0, broken: 0 };
+    samples.forEach((entry) => (counts[entry.observation] += 1));
+    rhythmStrip.querySelectorAll('i').forEach((segment) => {
+      const count = counts[segment.dataset.rhythm];
+      segment.style.setProperty(
+        '--share',
+        `${samples.length ? (count / samples.length) * 100 : 0}%`,
+      );
+      segment.querySelector('b').textContent = count;
+    });
+    rhythmStrip.ariaLabel = text(
+      `Recent sample counts, not probabilities: quiet ${counts.quiet}, weak ${counts.weak}, steady ${counts.steady}, broken ${counts.broken}.`,
+      `近期样本计数，并非概率：安静 ${counts.quiet}，微弱 ${counts.weak}，连续 ${counts.steady}，间歇 ${counts.broken}。`,
+    );
+
+    let cue = ['calibrated', text('Pre-shift calibration', '漂移前校准')];
+    if (state.firstRecoverySlot !== null) cue = ['recovered', text('Link recovered', '已恢复')];
+    else if (state.slot >= state.shiftSlot)
+      cue = state.postShiftProbed
+        ? ['probed', text('Fresh probe acquired', '已探测')]
+        : ['needed', text('New evidence needed', '需要新证据')];
+    game.dataset.adaptation = adaptationOutput.dataset.state = cue[0];
+    adaptationOutput.textContent = cue[1];
   }
 
   function renderResults() {
@@ -241,6 +273,7 @@
     results.hidden = !state.complete;
     setButtonStates();
     renderHistory();
+    renderLearningCues();
     if (state.complete) renderResults();
   }
 

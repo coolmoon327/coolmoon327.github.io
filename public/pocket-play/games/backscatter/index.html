@@ -24,18 +24,16 @@
           <h1 id="game-title" data-en="Signal Judo" data-zh="借波突围">Signal Judo</h1>
         </div>
         <p class="slot-badge">
-          <span data-en="Slot" data-zh="时隙">Slot</span>
-          <output id="slot">1 / 10</output>
+          <span data-en="Slot" data-zh="时隙">Slot</span><output id="slot">1 / 10</output>
         </p>
       </header>
 
       <p
         class="intro"
-        data-en="Interference can be a threat, a carrier, or an energy source. Read the rhythm before you commit."
-        data-zh="干扰既可能是威胁，也可能成为载波或能量来源。先观察节奏，再决定如何出手。"
+        data-en="Interference can threaten, power, or carry the link. Read its rhythm before acting."
+        data-zh="干扰可能是威胁、能量或载波。先看节奏，再出手。"
       >
-        Interference can be a threat, a carrier, or an energy source. Read the rhythm before you
-        commit.
+        Interference can threaten, power, or carry the link. Read its rhythm before acting.
       </p>
 
       <dl
@@ -64,20 +62,39 @@
         </h2>
         <div class="scene" aria-hidden="true">
           <span class="node terminal"><span>TX</span></span>
-          <span class="channel">
-            <i class="wave wave-one"></i>
-            <i class="wave wave-two"></i>
-            <i class="wave wave-three"></i>
-            <i class="return-wave"></i>
-            <i class="packet packet-one"></i>
-            <i class="packet packet-two"></i>
-          </span>
+          <span class="channel"
+            ><i class="wave wave-one"></i><i class="wave wave-two"></i
+            ><i class="wave wave-three"></i><i class="return-wave"></i
+            ><i class="packet packet-one"></i><i class="packet packet-two"></i
+          ></span>
           <span class="node gateway"><span>RX</span></span>
           <span class="opponent"><i></i><span>?</span></span>
+          <span
+            class="drift-cue"
+            aria-hidden="true"
+            data-en="RHYTHM SHIFT · SAMPLE AGAIN"
+            data-zh="节奏变化 · 请重新探测"
+            >RHYTHM SHIFT · SAMPLE AGAIN</span
+          >
         </div>
         <div class="observation-strip">
-          <span data-en="Coarse observation" data-zh="粗粒度观测">Coarse observation</span>
-          <strong id="observation">—</strong>
+          <span data-en="Coarse observation" data-zh="粗粒度观测">Coarse observation</span
+          ><strong id="observation">—</strong>
+        </div>
+        <div class="rhythm">
+          <div class="rhythm-heading">
+            <span
+              data-en="Empirical rhythm · last ≤4 samples, not probability"
+              data-zh="节奏判断 · 最近 ≤4 个样本的经验频率（非概率）"
+              >Empirical rhythm · last ≤4 samples, not probability</span
+            ><output id="adaptation">—</output>
+          </div>
+          <div class="rhythm-strip" id="rhythm-strip" role="img" aria-label="">
+            <i data-rhythm="quiet">○<b>0</b></i
+            ><i data-rhythm="weak">≈<b>0</b></i
+            ><i data-rhythm="steady">∿<b>0</b></i
+            ><i data-rhythm="broken">⋯<b>0</b></i>
+          </div>
         </div>
         <ol
           class="history"
@@ -100,20 +117,20 @@
           aria-label="First-stage actions"
         >
           <button type="button" data-action="direct" aria-keyshortcuts="1">
-            <span data-en="Direct" data-zh="直接发送">Direct</span>
-            <small data-en="fast · costs energy" data-zh="更快 · 消耗能量"
+            <span data-en="Direct" data-zh="直接发送">Direct</span
+            ><small data-en="fast · costs energy" data-zh="更快 · 消耗能量"
               >fast · costs energy</small
             >
           </button>
           <button type="button" data-action="probe" aria-keyshortcuts="2">
-            <span data-en="Probe" data-zh="探测">Probe</span>
-            <small data-en="observe · costs 1 EU" data-zh="观测 · 消耗 1 能量单位"
+            <span data-en="Probe" data-zh="探测">Probe</span
+            ><small data-en="observe · costs 1 EU" data-zh="观测 · 消耗 1 能量单位"
               >observe · costs 1 EU</small
             >
           </button>
           <button type="button" data-action="wait" aria-keyshortcuts="3">
-            <span data-en="Wait" data-zh="等待">Wait</span>
-            <small data-en="listen · save resources" data-zh="监听 · 保存资源"
+            <span data-en="Wait" data-zh="等待">Wait</span
+            ><small data-en="listen · save resources" data-zh="监听 · 保存资源"
               >listen · save resources</small
             >
           </button>
@@ -128,18 +145,18 @@
           hidden
         >
           <button type="button" data-action="reflect" aria-keyshortcuts="1">
-            <span data-en="Reflect" data-zh="借波反射">Reflect</span>
-            <small data-en="needs a steady carrier" data-zh="需要连续载波"
+            <span data-en="Reflect" data-zh="借波反射">Reflect</span
+            ><small data-en="needs a steady carrier" data-zh="需要连续载波"
               >needs a steady carrier</small
             >
           </button>
           <button type="button" data-action="harvest" aria-keyshortcuts="2">
-            <span data-en="Harvest" data-zh="射频采能">Harvest</span>
-            <small data-en="no payload now" data-zh="本时隙不传数据">no payload now</small>
+            <span data-en="Harvest" data-zh="射频采能">Harvest</span
+            ><small data-en="no payload now" data-zh="本时隙不传数据">no payload now</small>
           </button>
           <button type="button" data-action="cautious" aria-keyshortcuts="3">
-            <span data-en="Guarded" data-zh="保守传输">Guarded</span>
-            <small data-en="one low-rate packet" data-zh="尝试发送 1 个包"
+            <span data-en="Guarded" data-zh="保守传输">Guarded</span
+            ><small data-en="one low-rate packet" data-zh="尝试发送 1 个包"
               >one low-rate packet</small
             >
           </button>
@@ -149,10 +166,10 @@
       <p class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></p>
       <p
         class="keyboard-help"
-        data-en="Use the buttons or press 1–3. Game units are illustrative, not measured radio values."
-        data-zh="可点击按钮或按 1–3。所有数值均为游戏化单位，并非实测无线参数。"
+        data-en="Buttons or 1–3. Values are game units, not radio measurements."
+        data-zh="点击按钮或按 1–3；数值为游戏单位，非实测参数。"
       >
-        Use the buttons or press 1–3. Game units are illustrative, not measured radio values.
+        Buttons or 1–3. Values are game units, not radio measurements.
       </p>
 
       <section class="results" id="results" aria-labelledby="results-title" hidden>

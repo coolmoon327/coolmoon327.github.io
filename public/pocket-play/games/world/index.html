@@ -62,6 +62,7 @@
           <rect class="water" x="0" y="0" width="360" height="220"></rect>
           <rect class="water-grid" x="0" y="0" width="360" height="220"></rect>
           <g id="ghost-layer"></g>
+          <line id="uav-vector" class="uav-vector" x1="180" y1="110" x2="180" y2="110"></line>
           <ellipse
             id="predicted-coverage"
             class="predicted-coverage"
@@ -70,9 +71,10 @@
             rx="68"
             ry="46"
           ></ellipse>
+          <circle id="predicted-uav" class="predicted-uav" cx="180" cy="110" r="7"></circle>
           <ellipse id="coverage" class="coverage" cx="180" cy="110" rx="68" ry="46"></ellipse>
           <g id="user-layer"></g>
-          <g class="uav" transform="translate(180 110)">
+          <g id="uav" class="uav" transform="translate(180 110)">
             <circle class="uav-halo" r="17"></circle>
             <path
               d="M -12 0 H 12 M 0 -12 V 12 M -16 -8 H -8 V 0 M 16 -8 H 8 V 0 M -16 8 H -8 V 0 M 16 8 H 8 V 0"
@@ -86,30 +88,72 @@
           <output id="phase">Ready</output>
         </div>
         <div class="field-chip height-chip">
-          <span data-en="UAV" data-zh="高度">UAV</span>
+          <span data-en="Altitude" data-zh="高度">Altitude</span>
           <output id="height">Mid</output>
+        </div>
+        <div
+          class="field-chip lock-chip"
+          id="lock-chip"
+          aria-label="High-service link lock: 0 of 3 rounds"
+        >
+          <span data-en="Link lock" data-zh="链路锁定">Link lock</span>
+          <span class="lock-pips" aria-hidden="true"><i></i><i></i><i></i></span>
+          <output id="lock-count">0 / 3</output>
+          <small data-en="at least 62%" data-zh="服务不低于 62%">at least 62%</small>
         </div>
       </div>
 
       <div
-        class="actions"
+        class="control-deck"
         role="group"
-        aria-label="Choose the next UAV action"
-        data-aria-en="Choose the next UAV action"
-        data-aria-zh="选择下一步无人机动作"
+        aria-label="UAV control deck"
+        data-aria-en="UAV control deck"
+        data-aria-zh="无人机控制台"
       >
-        <button type="button" data-action="-1" aria-keyshortcuts="ArrowDown">
-          <span aria-hidden="true">↓</span>
-          <strong data-en="Descend" data-zh="下降">Descend</strong>
-        </button>
-        <button type="button" data-action="0" aria-keyshortcuts="Space">
-          <span aria-hidden="true">•</span>
-          <strong data-en="Hold" data-zh="保持">Hold</strong>
-        </button>
-        <button type="button" data-action="1" aria-keyshortcuts="ArrowUp">
-          <span aria-hidden="true">↑</span>
-          <strong data-en="Climb" data-zh="上升">Climb</strong>
-        </button>
+        <div
+          class="move-actions"
+          role="group"
+          aria-label="Move the UAV on the map"
+          data-aria-en="Move the UAV on the map"
+          data-aria-zh="在地图中移动无人机"
+        >
+          <button type="button" data-action="west" aria-keyshortcuts="ArrowLeft">
+            <span aria-hidden="true">←</span>
+            <strong data-en="West" data-zh="向西">West</strong>
+          </button>
+          <button type="button" data-action="north" aria-keyshortcuts="ArrowUp">
+            <span aria-hidden="true">↑</span>
+            <strong data-en="North" data-zh="向北">North</strong>
+          </button>
+          <button class="hold-action" type="button" data-action="hold" aria-keyshortcuts="Space">
+            <span aria-hidden="true">•</span>
+            <strong data-en="Hover" data-zh="悬停">Hover</strong>
+          </button>
+          <button type="button" data-action="south" aria-keyshortcuts="ArrowDown">
+            <span aria-hidden="true">↓</span>
+            <strong data-en="South" data-zh="向南">South</strong>
+          </button>
+          <button type="button" data-action="east" aria-keyshortcuts="ArrowRight">
+            <span aria-hidden="true">→</span>
+            <strong data-en="East" data-zh="向东">East</strong>
+          </button>
+        </div>
+        <div
+          class="altitude-actions"
+          role="group"
+          aria-label="Change UAV altitude"
+          data-aria-en="Change UAV altitude"
+          data-aria-zh="调整无人机高度"
+        >
+          <button type="button" data-action="descend" aria-keyshortcuts="PageDown">
+            <span aria-hidden="true">−</span>
+            <strong data-en="Descend" data-zh="降低高度">Descend</strong>
+          </button>
+          <button type="button" data-action="climb" aria-keyshortcuts="PageUp">
+            <span aria-hidden="true">＋</span>
+            <strong data-en="Climb" data-zh="提升高度">Climb</strong>
+          </button>
+        </div>
       </div>
 
       <div class="utility-row">
@@ -125,11 +169,11 @@
       <p class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></p>
       <p
         class="note"
-        data-en="A conceptual model: each action produces three translucent latent forecasts before the next observation arrives. It is not a paper reproduction."
-        data-zh="这是一个概念模型：每次操作后先生成三步半透明潜状态预测，再揭示下一次观测；它并非论文复现实验。"
+        data-en="A conceptual model: steer the relay while three translucent latent forecasts anticipate the moving users. It is not a paper reproduction."
+        data-zh="这是一个概念模型：移动空中中继，并借助三步半透明潜状态预测追踪用户群；它并非论文复现实验。"
       >
-        A conceptual model: each action produces three translucent latent forecasts before the next
-        observation arrives. It is not a paper reproduction.
+        A conceptual model: steer the relay while three translucent latent forecasts anticipate the
+        moving users. It is not a paper reproduction.
       </p>
     </main>
   </body>

@@ -4,7 +4,7 @@
 
 html,
 body {
-  min-width: 280px;
+  min-width: 240px;
   min-height: 100%;
 }
 
@@ -28,8 +28,9 @@ button {
 
 .game {
   display: grid;
-  grid-template-rows: auto auto auto minmax(168px, 1fr) auto auto auto;
-  gap: 0.55rem;
+  grid-template-rows: auto auto auto minmax(190px, 230px) auto auto auto;
+  align-content: space-between;
+  gap: 0.5rem;
   width: min(100%, 440px);
   min-height: 100svh;
   margin-inline: auto;
@@ -96,7 +97,7 @@ h1 {
 
 .intro {
   color: var(--game-muted);
-  font-size: 0.66rem;
+  font-size: 0.7rem;
   line-height: 1.35;
 }
 
@@ -126,7 +127,7 @@ h1 {
 .result-grid dt {
   overflow: hidden;
   color: var(--game-muted);
-  font-size: 0.54rem;
+  font-size: 0.58rem;
   font-weight: 750;
   text-overflow: ellipsis;
   text-transform: uppercase;
@@ -137,15 +138,16 @@ h1 {
 .result-grid dd {
   margin: 0.08rem 0 0;
   font-family: var(--game-mono);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
 .arena {
   display: grid;
-  grid-template-rows: minmax(104px, 1fr) auto auto;
-  min-height: 168px;
+  grid-template-rows: minmax(72px, 1fr) auto auto auto;
+  min-height: 190px;
+  max-height: 230px;
   overflow: hidden;
   background:
     linear-gradient(var(--game-divider) 1px, transparent 1px),
@@ -157,7 +159,7 @@ h1 {
 
 .scene {
   position: relative;
-  min-height: 104px;
+  min-height: 72px;
   overflow: hidden;
 }
 
@@ -206,6 +208,28 @@ h1 {
   font-size: 0.72rem;
   font-weight: 900;
   transform: translateX(-50%);
+}
+
+.drift-cue {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  max-width: 42%;
+  padding: 0.2rem 0.3rem;
+  color: var(--game-danger);
+  background: var(--game-bg);
+  border: 1px solid var(--game-danger);
+  border-radius: 3px;
+  opacity: 0;
+  font-family: var(--game-mono);
+  font-size: 0.46rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.arena[data-drift='true'] .drift-cue {
+  opacity: 1;
 }
 
 .opponent i,
@@ -270,18 +294,24 @@ h1 {
   height: 28px;
 }
 
-.arena[data-carrier='weak'] .wave,
-.arena[data-carrier='steady'] .wave,
-.arena[data-carrier='broken'] .wave {
-  opacity: 0.8;
-}
-
 .arena[data-carrier='weak'] .wave {
-  opacity: 0.32;
+  opacity: 0.38;
+  border-top-style: dotted;
 }
 
-.arena[data-carrier='broken'] .wave-two {
-  opacity: 0.16;
+.arena[data-carrier='steady'] .wave {
+  opacity: 0.9;
+  border-color: var(--game-accent);
+}
+
+.arena[data-carrier='broken'] .wave {
+  opacity: 0.62;
+  border-top-style: dashed;
+}
+
+.arena[data-carrier='quiet'] .channel::before,
+.arena[data-carrier='broken'] .channel::before {
+  background: repeating-linear-gradient(90deg, var(--game-divider) 0 7px, transparent 7px 13px);
 }
 
 .return-wave {
@@ -350,6 +380,53 @@ h1 {
   font-family: var(--game-mono);
   font-size: 0.62rem;
   text-align: right;
+}
+
+.rhythm {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.28rem 0.45rem;
+  background: var(--game-surface);
+  border-top: 1px solid var(--game-divider);
+}
+
+.rhythm-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  color: var(--game-muted);
+  font-size: 0.5rem;
+  line-height: 1.15;
+}
+
+.rhythm-heading output {
+  flex: 0 0 auto;
+  color: var(--game-text);
+  font-weight: 800;
+}
+
+.rhythm-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.rhythm-strip i {
+  display: flex;
+  min-height: 18px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.08rem 0.22rem;
+  background: linear-gradient(90deg, var(--game-accent-soft) var(--share, 0%), var(--game-bg) 0);
+  border: 1px solid var(--game-divider);
+  border-radius: 2px;
+  font-style: normal;
+  font-size: 0.58rem;
+}
+
+.rhythm-strip b {
+  font: 0.48rem var(--game-mono);
 }
 
 .history {
@@ -446,7 +523,7 @@ h1 {
 
 .action-grid button span {
   overflow-wrap: anywhere;
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   font-weight: 800;
   line-height: 1.1;
 }
@@ -454,13 +531,13 @@ h1 {
 .action-grid button small {
   overflow-wrap: anywhere;
   color: var(--game-muted);
-  font-size: 0.5rem;
+  font-size: 0.54rem;
   line-height: 1.15;
 }
 
 .status {
   min-height: 2.45em;
-  font-size: 0.64rem;
+  font-size: 0.68rem;
   font-weight: 650;
   line-height: 1.25;
   text-align: center;
@@ -468,7 +545,7 @@ h1 {
 
 .keyboard-help {
   color: var(--game-muted);
-  font-size: 0.52rem;
+  font-size: 0.56rem;
   line-height: 1.25;
   text-align: center;
 }
@@ -525,7 +602,8 @@ h1 {
 }
 
 .game[data-complete='true'] {
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  align-content: center;
 }
 
 .game[data-complete='true'] .intro,
@@ -588,8 +666,29 @@ html[data-embed='true'] .game {
   }
 }
 
+@media (max-width: 279px) {
+  .game {
+    gap: 0.4rem;
+    padding: 0.65rem 0.5rem;
+  }
+
+  .slot-badge {
+    min-width: 4.15rem;
+  }
+
+  .action-grid button {
+    padding-inline: 0.12rem;
+  }
+
+  .rhythm-heading {
+    font-size: 0.47rem;
+  }
+}
+
 @media (max-height: 520px) {
   .game {
+    grid-template-rows: none;
+    align-content: start;
     gap: 0.4rem;
     padding-block: 0.65rem;
   }
@@ -609,6 +708,7 @@ html[data-embed='true'] .game {
 
   .arena {
     min-height: 145px;
+    max-height: 190px;
   }
 }
 
@@ -616,28 +716,23 @@ html[data-embed='true'] .game {
   .arena[data-carrier='steady'] .wave {
     animation: carrier-breathe 850ms ease-in-out infinite alternate;
   }
-
   .arena[data-carrier='broken'] .wave {
     animation: carrier-break 720ms steps(2, end) infinite;
   }
-
   .arena[data-drift='true'] .opponent {
     animation: drift-notice 680ms ease-out;
   }
-
   @keyframes carrier-breathe {
     to {
       opacity: 0.38;
       transform: translate(-50%, -50%) scaleX(1.15);
     }
   }
-
   @keyframes carrier-break {
     50% {
       opacity: 0.12;
     }
   }
-
   @keyframes packet-flight {
     from {
       left: 4%;
@@ -646,7 +741,6 @@ html[data-embed='true'] .game {
       left: calc(96% - 9px);
     }
   }
-
   @keyframes return-signal {
     from {
       clip-path: inset(0 100% 0 0);
@@ -655,14 +749,12 @@ html[data-embed='true'] .game {
       clip-path: inset(0);
     }
   }
-
   @keyframes energy-charge {
     50% {
       box-shadow: 0 0 0 12px var(--game-accent-soft);
       transform: translateY(-50%) scale(1.08);
     }
   }
-
   @keyframes drift-notice {
     35% {
       transform: translateX(-50%) rotate(-8deg);

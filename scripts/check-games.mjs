@@ -213,7 +213,7 @@ for (const game of expectedGames) {
     const normalizedSource = readFileSync(path, 'utf8').replaceAll('\r\n', '\n');
     return sum + Buffer.byteLength(normalizedSource, 'utf8');
   }, 0);
-  const sourceBudget = game === 'secrecy' ? 50_000 : 40_000;
+  const sourceBudget = ['secrecy', 'stl', 'backscatter'].includes(game) ? 50_000 : 40_000;
   if (totalBytes > sourceBudget) {
     errors.push(
       `games/${game}: ${totalBytes} bytes exceeds ${sourceBudget / 1_000} KB source budget`,
