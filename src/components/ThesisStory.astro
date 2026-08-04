@@ -3,15 +3,20 @@ import { site } from '@config/site';
 import Base from '@layouts/Base.astro';
 import { withBase } from '@utils/base';
 
+import InlineGame from './InlineGame.astro';
+
 interface Props {
   locale: 'en' | 'zh';
 }
 
 const { locale } = Astro.props;
 const content = site.thesis[locale];
+const gameAssetBase = withBase('/pocket-play/');
 ---
 
 <Base title={content.title} description={content.overview}>
+  <script slot="head" is:inline data-astro-rerun defer src={`${gameAssetBase}embed.js`}></script>
+
   <article class="thesis-page page-container">
     <header class="thesis-hero">
       <a class="back-link" href={withBase(content.backHref)}>← {content.backLabel}</a>
@@ -60,6 +65,8 @@ const content = site.thesis[locale];
         }
       </ol>
     </section>
+
+    <InlineGame locale={locale} {...content.inlineGame} />
 
     <section class="artifacts" aria-labelledby="artifacts-heading">
       <div class="section-heading">

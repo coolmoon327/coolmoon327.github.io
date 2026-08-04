@@ -22,13 +22,20 @@ const gameIds = [
 ];
 
 const coreRoutes = [
-  { path: '/', lang: 'en', marker: 'Yuhang Shen', switchHref: '/zh/' },
+  {
+    path: '/',
+    lang: 'en',
+    marker: 'Yuhang Shen',
+    switchHref: '/zh/',
+    embeddedGames: ['orbit'],
+  },
   {
     path: '/research/',
     lang: 'en',
     marker: 'Current doctoral research',
     switchHref: '/zh/research/',
     advisorHref: paschalisProfileUrl,
+    embeddedGames: ['secrecy'],
     requiredMarkers: [
       'Academic background',
       'selected recognition',
@@ -51,6 +58,7 @@ const coreRoutes = [
     lang: 'en',
     marker: 'Public implementation trail',
     switchHref: '/zh/research/openraas-thesis/',
+    embeddedGames: ['resource'],
     requiredMarkers: ['M.Eng. in Information and Communication Engineering'],
     forbiddenMarkers: ['M.Eng. in Network Engineering'],
   },
@@ -81,14 +89,14 @@ const coreRoutes = [
     lang: 'en',
     marker: 'Fourteen small, dependency-free games',
     switchHref: '/zh/games/',
-    games: true,
+    embeddedGames: gameIds,
   },
   {
     path: '/playground/',
     lang: 'en',
     marker: 'Fourteen small, dependency-free games',
     switchHref: '/zh/playground/',
-    games: true,
+    embeddedGames: gameIds,
   },
   {
     path: '/owner/',
@@ -97,13 +105,20 @@ const coreRoutes = [
     switchHref: '/zh/owner/',
     owner: true,
   },
-  { path: '/zh/', lang: 'zh-CN', marker: '近期发表与录用论文', switchHref: '/' },
+  {
+    path: '/zh/',
+    lang: 'zh-CN',
+    marker: '近期发表与录用论文',
+    switchHref: '/',
+    embeddedGames: ['orbit'],
+  },
   {
     path: '/zh/research/',
     lang: 'zh-CN',
     marker: '当前博士研究',
     switchHref: '/research/',
     advisorHref: paschalisProfileUrl,
+    embeddedGames: ['secrecy'],
     requiredMarkers: [
       '学术背景与代表性荣誉',
       '博士阶段科研奖学金',
@@ -125,6 +140,7 @@ const coreRoutes = [
     lang: 'zh-CN',
     marker: '相关开源实现',
     switchHref: '/research/openraas-thesis/',
+    embeddedGames: ['resource'],
     requiredMarkers: ['工学硕士（信息与通信工程）'],
     forbiddenMarkers: ['工学硕士（网络工程）'],
   },
@@ -155,14 +171,14 @@ const coreRoutes = [
     lang: 'zh-CN',
     marker: '这里有 14 款无需额外依赖的轻量小游戏',
     switchHref: '/games/',
-    games: true,
+    embeddedGames: gameIds,
   },
   {
     path: '/zh/playground/',
     lang: 'zh-CN',
     marker: '这里有 14 款无需额外依赖的轻量小游戏',
     switchHref: '/playground/',
-    games: true,
+    embeddedGames: gameIds,
   },
   {
     path: '/zh/owner/',
@@ -229,16 +245,28 @@ for (const route of coreRoutes) {
   if (route.advisorHref && html.includes('khazna.ku.ac.ae/en/persons/paschalis-sofotasios')) {
     failures.push(`${route.path}: still contains the retired Paschalis Sofotasios Khazna link`);
   }
-  if (route.games) {
+  const embedScriptCount = (
+    html.match(/<script\b[^>]*\bsrc=["'][^"']*\/pocket-play\/embed\.js["'][^>]*>/gi) ?? []
+  ).length;
+  const expectedEmbedScriptCount = route.embeddedGames ? 1 : 0;
+  if (embedScriptCount !== expectedEmbedScriptCount) {
+    failures.push(
+      `${route.path}: expected ${expectedEmbedScriptCount} pocket-game embed script, found ${embedScriptCount}`,
+    );
+  }
+  if (route.embeddedGames) {
     const embeddedGames = [...html.matchAll(/<pocket-game\b[^>]*\bgame="([^"]+)"/g)].map(
       (match) => match[1],
     );
-    if (embeddedGames.length !== gameIds.length) {
+    if (embeddedGames.length !== route.embeddedGames.length) {
       failures.push(
-        `${route.path}: expected ${gameIds.length} embedded games, found ${embeddedGames.length}`,
+        `${route.path}: expected ${route.embeddedGames.length} embedded games, found ${embeddedGames.length}`,
       );
     }
-    for (const gameId of gameIds) {
+    if (new Set(embeddedGames).size !== embeddedGames.length) {
+      failures.push(`${route.path}: contains duplicate embedded game ids`);
+    }
+    for (const gameId of route.embeddedGames) {
       if (!embeddedGames.includes(gameId)) {
         failures.push(`${route.path}: missing embedded game ${gameId}`);
       }
@@ -247,9 +275,9 @@ for (const route of coreRoutes) {
     const localizedGames = [
       ...html.matchAll(new RegExp(`<pocket-game\\b[^>]*\\blang="${expectedGameLanguage}"`, 'g')),
     ].length;
-    if (localizedGames !== gameIds.length) {
+    if (localizedGames !== route.embeddedGames.length) {
       failures.push(
-        `${route.path}: expected ${gameIds.length} games with lang=${expectedGameLanguage}, found ${localizedGames}`,
+        `${route.path}: expected ${route.embeddedGames.length} games with lang=${expectedGameLanguage}, found ${localizedGames}`,
       );
     }
   }

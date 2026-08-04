@@ -282,6 +282,14 @@ export const site = {
         'Wireless optimization, resource allocation, and online decision-making',
         'Edge and fog systems, with foundations in nonlinear signal analysis',
       ],
+      inlineGame: {
+        game: 'orbit',
+        eyebrow: 'Interactive aside · Link acquisition',
+        title: 'Catch a signal between sections',
+        body: 'Start an orbital pass and lock the satellite inside the acquisition window. Two clicks turn a short reading pause into a live sketch of timing in wireless link acquisition.',
+        collectionLabel: 'Explore the full playground',
+        fallbackLabel: 'This game needs a little more screen width to remain comfortably playable.',
+      },
       publicationsLabel: 'Recent accepted & published work',
       publicationsAction: 'Open publication',
       publicationsPending: 'Proceedings link pending',
@@ -483,6 +491,14 @@ export const site = {
         '无线资源优化、分配与在线决策',
         '边缘与雾计算及非线性信号分析',
       ],
+      inlineGame: {
+        game: 'orbit',
+        eyebrow: '交互旁注 · 链路捕获',
+        title: '趁阅读间隙，捕获一次链路',
+        body: '启动一次卫星过站，再在捕获窗口内完成锁定。只需两次点击，就能通过一个小小的动态实验感受无线链路建立中的时机判断。',
+        collectionLabel: '前往小游戏实验室',
+        fallbackLabel: '为了保证操作空间，这个游戏需要稍宽一些的屏幕。',
+      },
       publicationsLabel: '近期发表与录用论文',
       publicationsAction: '查看论文',
       publicationsPending: '会议论文集链接尚未发布',
@@ -693,6 +709,14 @@ export const site = {
       publicStatusLabel: 'Public record',
       publicStatus:
         'The public record includes an IEEE JSAC Early Access article and two papers accepted at IEEE ICMLCN 2026.',
+      inlineGame: {
+        game: 'secrecy',
+        eyebrow: 'Interactive model · Physical-layer security',
+        title: 'Steer the channel, not just the signal',
+        body: "Adjust Alice's antenna azimuth and compare Bob's and Eve's achievable rates. Add four-wall multipath, then watch the search maximize instantaneous secrecy rate in a compact two-dimensional model.",
+        collectionLabel: 'Explore the full playground',
+        fallbackLabel: 'This model needs a little more screen width to keep its controls usable.',
+      },
       trajectoryLabel: 'Research trajectory',
       trajectoryIntro:
         'The progression from systems and resource cooperation to secure wireless optimization is part of one continuous research story.',
@@ -812,6 +836,14 @@ export const site = {
       publicStatusLabel: '公开成果',
       publicStatus:
         '目前公开成果包括一篇 IEEE JSAC Early Access 论文和两篇 IEEE ICMLCN 2026 录用论文。',
+      inlineGame: {
+        game: 'secrecy',
+        eyebrow: '交互模型 · 物理层安全',
+        title: '亲手调整一束保密波束',
+        body: '调整 Alice 的天线方位角，比较 Bob 与 Eve 的可达速率；还可以启用四墙多径，再观察自动搜索如何提高简化二维模型中的瞬时保密速率。',
+        collectionLabel: '前往小游戏实验室',
+        fallbackLabel: '为了保证控制区可用，这个模型需要稍宽一些的屏幕。',
+      },
       trajectoryLabel: '研究主线',
       trajectoryIntro: '从异构资源协同到安全无线优化，这些工作沿着同一条研究主线逐步展开。',
       stages: [
@@ -1224,6 +1256,14 @@ export const site = {
           body: 'FogCom abstracts the scheduling problem into leader and follower decisions. A PPO policy filters storage candidates, while the selected compute provider makes the final choice using information unavailable to the leader.',
         },
       ],
+      inlineGame: {
+        game: 'resource',
+        eyebrow: 'Interactive architecture · OpenRaaS',
+        title: 'Assemble the resource path',
+        body: 'Rotate the network nodes until compute, storage, and image resources all reach the coordinator. The puzzle turns the architectural roles above into one small orchestration problem.',
+        collectionLabel: 'Explore the full playground',
+        fallbackLabel: 'This network puzzle needs a little more screen width to remain playable.',
+      },
       artifactsLabel: 'Public implementation trail',
       artifactsIntro:
         'These repositories are public artifacts from the same research trajectory. They clarify the architecture and simulation model; they are not presented as a claim that every thesis experiment is reproduced by the current repository state.',
@@ -1287,6 +1327,14 @@ export const site = {
           body: 'FogCom 将调度建模为领导者—跟随者两层决策：领导者端的 PPO 策略先筛选存储候选集，再由选定的计算节点利用仅本地可见的信息作出最终选择。',
         },
       ],
+      inlineGame: {
+        game: 'resource',
+        eyebrow: '交互架构 · OpenRaaS',
+        title: '把异构资源接入同一张服务网络',
+        body: '旋转网络节点，让计算、文件存储和镜像资源全部接入协调器。这个小谜题把上文中的资源职责与协同关系变成了一次可以亲手完成的组网过程。',
+        collectionLabel: '前往小游戏实验室',
+        fallbackLabel: '为了保留完整棋盘，这个组网游戏需要稍宽一些的屏幕。',
+      },
       artifactsLabel: '相关开源实现',
       artifactsIntro:
         '下列仓库展示同一研究脉络中的系统架构与仿真模型；仓库当前版本不等同于对论文全部实验的完整复现。',

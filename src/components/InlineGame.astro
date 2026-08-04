@@ -1,0 +1,351 @@
+---
+import { site } from '@config/site';
+import { withBase } from '@utils/base';
+
+type GameId = (typeof site.playground.games)[number]['id'];
+
+interface Props {
+  locale: 'en' | 'zh';
+  game: GameId;
+  eyebrow: string;
+  title: string;
+  body: string;
+  collectionLabel: string;
+  fallbackLabel: string;
+}
+
+const { locale, game, eyebrow, title, body, collectionLabel, fallbackLabel } = Astro.props;
+const metadata = site.playground.games.find((entry) => entry.id === game);
+
+if (!metadata) {
+  throw new Error(`Unknown inline game: ${game}`);
+}
+
+const language = locale === 'zh' ? 'zh-CN' : 'en';
+const assetBase = withBase('/pocket-play/');
+const standaloneHref = `${assetBase}games/${game}/?lang=${encodeURIComponent(language)}`;
+const collectionHref = withBase(locale === 'zh' ? '/zh/playground/' : '/playground/');
+const openLabel = site.playground.locales[locale].openLabel;
+const headingId = `inline-game-${game}-${locale}`;
+---
+
+<section
+  class="inline-game"
+  aria-labelledby={headingId}
+  data-inline-game={game}
+  data-game-height={metadata.height}
+>
+  <div class="inline-game__copy">
+    <p class="inline-game__eyebrow">{eyebrow}</p>
+    <h2 id={headingId}>{title}</h2>
+    <p class="inline-game__body">{body}</p>
+    <a class="inline-game__collection-link" href={collectionHref}>
+      {collectionLabel}
+      <span aria-hidden="true">→</span>
+    </a>
+  </div>
+
+  <figure class="inline-game__stage">
+    <figcaption>
+      <span>
+        <strong>{metadata.title[locale]}</strong>
+        <small>{metadata.meta[locale]}</small>
+      </span>
+      <a
+        href={standaloneHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${openLabel}: ${metadata.title[locale]}`}
+      >
+        {openLabel}
+        <span aria-hidden="true">↗</span>
+      </a>
+    </figcaption>
+
+    <div class="inline-game__viewport" style={`--inline-game-height: ${metadata.height}px`}>
+      <pocket-game
+        game={game}
+        height={metadata.height}
+        lang={language}
+        label={`${metadata.title[locale]} ${site.playground.locales[locale].miniGameLabel}`}
+        base={assetBase}
+        loading="lazy"></pocket-game>
+      <p class="inline-game__fallback">
+        <span>{fallbackLabel}</span>
+        <a href={standaloneHref} target="_blank" rel="noopener noreferrer">
+          {openLabel}
+          <span aria-hidden="true">↗</span>
+        </a>
+      </p>
+      <noscript>
+        <p class="inline-game__noscript">
+          <span>{fallbackLabel}</span>
+          <a href={standaloneHref}>{openLabel} →</a>
+        </p>
+      </noscript>
+    </div>
+  </figure>
+</section>
+
+<style>
+  .inline-game {
+    display: grid;
+    grid-template-columns: minmax(0, 0.82fr) minmax(300px, 446px);
+    gap: clamp(2.5rem, 7vw, 5rem);
+    align-items: center;
+    padding: clamp(3.75rem, 7vw, 5rem) 0;
+    border-top: 1px solid var(--global-divider-color);
+  }
+
+  .inline-game__copy,
+  .inline-game__stage,
+  .inline-game__stage figcaption > span {
+    min-width: 0;
+  }
+
+  .inline-game__copy {
+    max-width: 540px;
+  }
+
+  .inline-game__eyebrow {
+    margin: 0 0 0.8rem;
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .inline-game h2 {
+    margin: 0;
+    color: var(--global-text-color);
+    font-size: clamp(1.8rem, 4vw, 2.75rem);
+    letter-spacing: -0.045em;
+    line-height: 1.08;
+    text-wrap: balance;
+  }
+
+  .inline-game__body {
+    margin: 1rem 0 0;
+    color: var(--global-text-color-light);
+    line-height: 1.75;
+  }
+
+  .inline-game__collection-link,
+  .inline-game__stage figcaption a,
+  .inline-game__fallback a,
+  .inline-game__noscript a {
+    color: var(--global-theme-color);
+    font-weight: 700;
+    text-decoration: none;
+    text-underline-offset: 0.2em;
+  }
+
+  .inline-game__collection-link {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 1.35rem;
+    font-size: 0.84rem;
+  }
+
+  .inline-game__collection-link:hover,
+  .inline-game__collection-link:focus-visible,
+  .inline-game__stage figcaption a:hover,
+  .inline-game__stage figcaption a:focus-visible,
+  .inline-game__fallback a:hover,
+  .inline-game__fallback a:focus-visible {
+    text-decoration: underline;
+  }
+
+  .inline-game__stage {
+    width: 100%;
+    max-width: 446px;
+    justify-self: end;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--global-theme-color) 4%, var(--global-card-bg-color));
+    box-shadow: 0 20px 55px rgba(15, 23, 42, 0.07);
+  }
+
+  .inline-game__stage figcaption {
+    display: flex;
+    min-height: 62px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0.8rem;
+    border-bottom: 1px solid var(--global-divider-color);
+    background: var(--global-card-bg-color);
+  }
+
+  .inline-game__stage figcaption > span {
+    display: grid;
+    gap: 0.18rem;
+  }
+
+  .inline-game__stage figcaption strong {
+    color: var(--global-text-color);
+    font-size: 0.86rem;
+    overflow-wrap: anywhere;
+  }
+
+  .inline-game__stage figcaption small {
+    color: var(--global-text-color-light);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    line-height: 1.35;
+  }
+
+  .inline-game__stage figcaption a {
+    display: inline-flex;
+    min-height: 44px;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  .inline-game__viewport {
+    min-height: var(--inline-game-height);
+    padding: 0.75rem;
+  }
+
+  .inline-game__viewport pocket-game {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: var(--inline-game-height);
+  }
+
+  .inline-game__fallback {
+    display: none;
+  }
+
+  .inline-game__noscript {
+    display: grid;
+    max-width: 16rem;
+    gap: 0.8rem;
+    margin: 0;
+    color: var(--global-text-color-light);
+    font-size: 0.84rem;
+    line-height: 1.55;
+    text-align: center;
+  }
+
+  .inline-game__noscript a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .inline-game__viewport:has(.inline-game__noscript) {
+    display: grid;
+    min-height: 180px;
+    place-items: center;
+    padding: 1rem;
+  }
+
+  .inline-game__viewport:has(.inline-game__noscript) pocket-game,
+  .inline-game__viewport:has(.inline-game__noscript) .inline-game__fallback {
+    display: none;
+    min-height: 0;
+  }
+
+  @media (max-width: 900px) {
+    .inline-game {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.75rem;
+    }
+
+    .inline-game__copy {
+      max-width: 680px;
+    }
+
+    .inline-game__stage {
+      justify-self: center;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .inline-game__stage {
+      width: calc(100% + 2.5rem);
+      max-width: none;
+      margin-inline: -1.25rem;
+      border-inline: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .inline-game__stage figcaption {
+      padding-inline: 1.25rem;
+    }
+
+    .inline-game__viewport {
+      padding: 0;
+    }
+  }
+
+  @media (max-width: 279px) {
+    .inline-game__viewport {
+      display: grid;
+      min-height: 180px;
+      place-items: center;
+      padding: 1rem;
+    }
+
+    .inline-game__viewport pocket-game {
+      display: none;
+    }
+
+    .inline-game__fallback {
+      display: grid;
+      max-width: 16rem;
+      gap: 0.8rem;
+      margin: 0;
+      color: var(--global-text-color-light);
+      font-size: 0.84rem;
+      line-height: 1.55;
+      text-align: center;
+    }
+
+    .inline-game__fallback a {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  @media print {
+    .inline-game {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .inline-game__stage {
+      max-width: none;
+      box-shadow: none;
+    }
+
+    .inline-game__viewport {
+      display: grid;
+      min-height: 0;
+      padding: 1rem;
+    }
+
+    .inline-game__viewport pocket-game {
+      display: none;
+    }
+
+    .inline-game__fallback {
+      display: block;
+      margin: 0;
+    }
+  }
+</style>

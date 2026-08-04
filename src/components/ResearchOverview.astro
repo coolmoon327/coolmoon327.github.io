@@ -3,17 +3,22 @@ import { site } from '@config/site';
 import Base from '@layouts/Base.astro';
 import { withBase } from '@utils/base';
 
+import InlineGame from './InlineGame.astro';
+
 interface Props {
   locale: 'en' | 'zh';
 }
 
 const { locale } = Astro.props;
 const content = site.research[locale];
+const gameAssetBase = withBase('/pocket-play/');
 
 const isExternal = (href: string) => /^https?:\/\//.test(href);
 ---
 
 <Base title={content.title} description={content.intro}>
+  <script slot="head" is:inline data-astro-rerun defer src={`${gameAssetBase}embed.js`}></script>
+
   <div class="research-page page-container">
     <header class="page-hero">
       <p class="eyebrow">{content.eyebrow}</p>
@@ -66,6 +71,8 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
       <span>{content.publicStatusLabel}</span>
       <p id="public-status-heading">{content.publicStatus}</p>
     </aside>
+
+    <InlineGame locale={locale} {...content.inlineGame} />
 
     <section class="trajectory" aria-labelledby="trajectory-heading">
       <div class="section-heading">

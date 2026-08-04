@@ -5,6 +5,8 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 
 const baseUrl = (process.argv[2] ?? 'http://127.0.0.1:4321').replace(/\/$/, '');
+const previewUrl = new URL(baseUrl);
+const basePath = previewUrl.pathname.replace(/\/$/, '');
 const outputDir = path.resolve(process.argv[3] ?? 'test-results/responsive');
 const auditMode = process.argv[4] ?? 'all';
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
@@ -35,6 +37,15 @@ const routes = [
   '/zh/owner/',
   '/404.html',
 ];
+
+const inlineGamesByRoute = {
+  '/': 'orbit',
+  '/research/': 'secrecy',
+  '/research/openraas-thesis/': 'resource',
+  '/zh/': 'orbit',
+  '/zh/research/': 'secrecy',
+  '/zh/research/openraas-thesis/': 'resource',
+};
 
 const gameHeights = {
   runner: 360,
@@ -285,6 +296,38 @@ async function measurePage(page) {
             .gridTemplateColumns.split(' ')
             .filter((track) => track.length > 0).length
         : 0;
+    const inlineGames = [...document.querySelectorAll('[data-inline-game]')].map((section) => {
+      const copy = section.querySelector('.inline-game__copy');
+      const stage = section.querySelector('.inline-game__stage');
+      const host = section.querySelector('pocket-game');
+      const fallback = section.querySelector('.inline-game__fallback');
+      const copyRect = copy?.getBoundingClientRect();
+      const stageRect = stage?.getBoundingClientRect();
+
+      return {
+        game: section.getAttribute('data-inline-game'),
+        columnCount: gridTrackCount(section),
+        copy: copyRect
+          ? {
+              bottom: copyRect.bottom,
+              left: copyRect.left,
+              right: copyRect.right,
+              top: copyRect.top,
+            }
+          : null,
+        stage: stageRect
+          ? {
+              bottom: stageRect.bottom,
+              left: stageRect.left,
+              right: stageRect.right,
+              top: stageRect.top,
+              width: stageRect.width,
+            }
+          : null,
+        hostVisible: host ? isVisible(host) : false,
+        fallbackVisible: fallback ? isVisible(fallback) : false,
+      };
+    });
 
     return {
       clientWidth: viewportWidth,
@@ -304,6 +347,7 @@ async function measurePage(page) {
         : null,
       headingTop: headingRect ? Math.round(headingRect.top) : null,
       profileHeadingLines,
+      inlineGames,
       profile: profileGrid
         ? {
             cardCount: profileCards.length,
@@ -547,8 +591,14 @@ async function auditEmbeddedGames(page, route, scenario) {
       const rect = frame?.getBoundingClientRect();
       return {
         game: element.getAttribute('game'),
+        frameCount: element.shadowRoot?.querySelectorAll('iframe').length ?? 0,
+        frameSrc: frame?.src ?? null,
         frameWidth: rect ? Math.round(rect.width) : null,
         frameHeight: rect ? Math.round(rect.height) : null,
+        documentLanguage: doc?.documentElement.lang ?? null,
+        documentTheme: doc?.documentElement.dataset.theme ?? null,
+        hostLanguage: document.documentElement.lang,
+        hostTheme: document.documentElement.dataset.theme,
         clientWidth: root?.clientWidth ?? null,
         scrollWidth: Math.max(root?.scrollWidth ?? 0, body?.scrollWidth ?? 0),
         clientHeight: root?.clientHeight ?? null,
@@ -559,6 +609,26 @@ async function auditEmbeddedGames(page, route, scenario) {
 
   for (const audit of audits) {
     results.embeddedGameCases += 1;
+    const frameUrl = audit.frameSrc ? new URL(audit.frameSrc) : null;
+    const expectedPath = `${basePath}/pocket-play/games/${audit.game}/` || '/';
+    if (
+      audit.frameCount !== 1 ||
+      !frameUrl ||
+      frameUrl.origin !== previewUrl.origin ||
+      frameUrl.pathname !== expectedPath ||
+      frameUrl.searchParams.get('embed') !== '1' ||
+      audit.documentLanguage !== audit.hostLanguage ||
+      audit.documentTheme !== audit.hostTheme ||
+      audit.frameHeight < gameHeights[audit.game]
+    ) {
+      addFailure(
+        'embedded-game-settings',
+        route + '#' + audit.game,
+        scenario.name,
+        'Embedded game does not match its host route, language, theme, or minimum size',
+        audit,
+      );
+    }
     if (
       audit.clientWidth == null ||
       audit.scrollWidth > audit.clientWidth + 1 ||
@@ -648,6 +718,62 @@ async function auditSiteMatrix(browser) {
           scenario.name,
           'Page heading starts underneath the fixed navbar',
           metrics,
+        );
+      }
+      const expectedInlineGame = inlineGamesByRoute[route];
+      if (expectedInlineGame) {
+        const inlineGame = metrics.inlineGames[0];
+        if (metrics.inlineGames.length !== 1 || inlineGame?.game !== expectedInlineGame) {
+          addFailure(
+            'inline-game-layout',
+            route,
+            scenario.name,
+            `Expected one ${expectedInlineGame} inline game`,
+            { inlineGames: metrics.inlineGames },
+          );
+        } else if (!inlineGame.copy || !inlineGame.stage) {
+          addFailure(
+            'inline-game-layout',
+            route,
+            scenario.name,
+            'Inline game is missing its copy or stage region',
+            inlineGame,
+          );
+        } else {
+          const shouldUseColumns = scenario.width > 900;
+          const shouldUseFallback = scenario.width < results.minimumGameCssWidth;
+          const usesExpectedFlow = shouldUseColumns
+            ? inlineGame.columnCount === 2 && inlineGame.stage.left > inlineGame.copy.right
+            : inlineGame.columnCount === 1 && inlineGame.stage.top > inlineGame.copy.bottom;
+          const usesExpectedViewport = shouldUseFallback
+            ? !inlineGame.hostVisible && inlineGame.fallbackVisible
+            : inlineGame.hostVisible && !inlineGame.fallbackVisible;
+          const fillsMinimumViewport =
+            scenario.width !== results.minimumGameCssWidth ||
+            inlineGame.stage.width >= results.minimumGameCssWidth - 1;
+
+          if (!usesExpectedFlow || !usesExpectedViewport || !fillsMinimumViewport) {
+            addFailure(
+              'inline-game-layout',
+              route,
+              scenario.name,
+              'Inline game does not use the intended columns, mobile stack, or narrow fallback',
+              {
+                ...inlineGame,
+                shouldUseColumns,
+                shouldUseFallback,
+                fillsMinimumViewport,
+              },
+            );
+          }
+        }
+      } else if (metrics.inlineGames.length > 0) {
+        addFailure(
+          'inline-game-layout',
+          route,
+          scenario.name,
+          'Unexpected inline game on this route',
+          { inlineGames: metrics.inlineGames },
         );
       }
       if (route === '/publications/' && scenario.width >= 901 && metrics.hero) {
@@ -771,7 +897,8 @@ async function auditSiteMatrix(browser) {
       }
 
       await auditMobileMenu(page, route, scenario);
-      if (route.endsWith('/playground/') && scenario.width >= results.minimumGameCssWidth) {
+      const embeddedGameCount = await page.locator('pocket-game').count();
+      if (embeddedGameCount > 0 && scenario.width >= results.minimumGameCssWidth) {
         await auditEmbeddedGames(page, route, scenario);
       }
     }
@@ -1083,6 +1210,163 @@ async function auditResponsiveStates(browser) {
     );
   }
   await page.close();
+
+  const inlinePage = await browser.newPage();
+  const inlineErrors = [];
+  inlinePage.on('pageerror', (error) => inlineErrors.push(error.message));
+  await inlinePage.setViewportSize({ width: 390, height: 844 });
+
+  const readInlineState = () =>
+    inlinePage.locator('[data-inline-game]').evaluate((section) => {
+      const host = section.querySelector('pocket-game');
+      const frames = host?.shadowRoot?.querySelectorAll('iframe') ?? [];
+      const frame = frames[0];
+      const stylesheet = host?.shadowRoot?.querySelector('link[rel="stylesheet"]');
+      return {
+        game: section.getAttribute('data-inline-game'),
+        hostLanguage: document.documentElement.lang,
+        hostTheme: document.documentElement.dataset.theme,
+        frameLanguage: frame?.contentDocument?.documentElement.lang ?? null,
+        frameTheme: frame?.contentDocument?.documentElement.dataset.theme ?? null,
+        frameCount: frames.length,
+        stylesheetHref: stylesheet?.href ?? null,
+        embedScriptCount: document.querySelectorAll('script[src*="/pocket-play/embed.js"]').length,
+        customElementRegistered: Boolean(customElements.get('pocket-game')),
+      };
+    });
+
+  await inlinePage.setViewportSize({ width: 1024, height: 768 });
+  await inlinePage.goto(baseUrl + '/publications/', { waitUntil: 'domcontentloaded' });
+  await waitForStableLayout(inlinePage);
+  const researchHref = `${basePath}/research/` || '/';
+  await Promise.all([
+    inlinePage.waitForURL(baseUrl + '/research/'),
+    inlinePage.locator(`a[href="${researchHref}"]:visible`).first().click(),
+  ]);
+  await waitForStableLayout(inlinePage);
+  await waitForEmbeddedGames(inlinePage);
+  const inlineEnglish = await readInlineState();
+
+  await inlinePage.setViewportSize({ width: 390, height: 844 });
+  await inlinePage.locator('[data-light-toggle]:visible').first().click();
+  await inlinePage.waitForFunction(() => {
+    const host = document.querySelector('pocket-game');
+    const frame = host?.shadowRoot?.querySelector('iframe');
+    return (
+      frame?.contentDocument?.documentElement.dataset.theme ===
+      document.documentElement.dataset.theme
+    );
+  });
+  const inlineThemed = await readInlineState();
+
+  await Promise.all([
+    inlinePage.waitForURL(baseUrl + '/zh/research/'),
+    inlinePage.locator('a.language-switch:visible').first().click(),
+  ]);
+  await waitForStableLayout(inlinePage);
+  await waitForEmbeddedGames(inlinePage);
+  const inlineChinese = await readInlineState();
+
+  const thesisHref = `${basePath}/zh/research/openraas-thesis/` || '/';
+  await Promise.all([
+    inlinePage.waitForURL(baseUrl + '/zh/research/openraas-thesis/'),
+    inlinePage.locator(`a[href="${thesisHref}"]`).first().click(),
+  ]);
+  await waitForStableLayout(inlinePage);
+  await waitForEmbeddedGames(inlinePage);
+  const inlineThesis = await readInlineState();
+
+  await inlinePage.goBack({ waitUntil: 'domcontentloaded' });
+  await inlinePage.waitForURL(baseUrl + '/zh/research/');
+  await inlinePage.waitForTimeout(350);
+  await waitForStableLayout(inlinePage);
+  await waitForEmbeddedGames(inlinePage);
+  const inlineReturned = await readInlineState();
+
+  results.stateCases += 5;
+  const expectedStylesheetHref = new URL(`${basePath}/pocket-play/embed.css`, previewUrl.origin)
+    .href;
+  const validInlineState = (state, game, language) =>
+    state.game === game &&
+    state.hostLanguage === language &&
+    state.frameLanguage === language &&
+    state.hostTheme === state.frameTheme &&
+    state.frameCount === 1 &&
+    state.stylesheetHref === expectedStylesheetHref &&
+    state.embedScriptCount === 1 &&
+    state.customElementRegistered;
+  if (
+    !validInlineState(inlineEnglish, 'secrecy', 'en') ||
+    !validInlineState(inlineThemed, 'secrecy', 'en') ||
+    inlineThemed.hostTheme === inlineEnglish.hostTheme ||
+    !validInlineState(inlineChinese, 'secrecy', 'zh-CN') ||
+    !validInlineState(inlineThesis, 'resource', 'zh-CN') ||
+    !validInlineState(inlineReturned, 'secrecy', 'zh-CN') ||
+    inlineErrors.length > 0
+  ) {
+    addFailure(
+      'responsive-state',
+      'inline-games',
+      'theme-language-view-transitions',
+      'Inline games diverge after theme, language, or page-transition changes',
+      {
+        inlineEnglish,
+        inlineThemed,
+        inlineChinese,
+        inlineThesis,
+        inlineReturned,
+        inlineErrors,
+      },
+    );
+  }
+  await inlinePage.close();
+
+  const noScriptContext = await browser.newContext({
+    javaScriptEnabled: false,
+    viewport: { width: 390, height: 844 },
+  });
+  const noScriptPage = await noScriptContext.newPage();
+  await noScriptPage.goto(baseUrl + '/research/', { waitUntil: 'domcontentloaded' });
+  const noScriptState = await noScriptPage.locator('[data-inline-game]').evaluate((section) => {
+    const host = section.querySelector('pocket-game');
+    const fallback = section.querySelector('.inline-game__noscript');
+    const viewport = section.querySelector('.inline-game__viewport');
+    const fallbackLink = fallback?.querySelector('a');
+    const isVisible = (element) => {
+      if (!element) return false;
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return (
+        style.display !== 'none' &&
+        style.visibility !== 'hidden' &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
+    };
+    return {
+      hostVisible: isVisible(host),
+      fallbackVisible: isVisible(fallback),
+      fallbackHref: fallbackLink?.href ?? null,
+      viewportHeight: viewport?.getBoundingClientRect().height ?? null,
+    };
+  });
+  results.stateCases += 1;
+  if (
+    noScriptState.hostVisible ||
+    !noScriptState.fallbackVisible ||
+    !noScriptState.fallbackHref?.includes('/pocket-play/games/secrecy/') ||
+    noScriptState.viewportHeight == null ||
+    noScriptState.viewportHeight >= 300
+  ) {
+    addFailure(
+      'responsive-state',
+      'inline-games',
+      'javascript-disabled-fallback',
+      'Inline game does not expose a compact standalone fallback without JavaScript',
+      noScriptState,
+    );
+  }
+  await noScriptContext.close();
 
   const storageContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await storageContext.addInitScript(() => {

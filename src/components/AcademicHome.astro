@@ -3,6 +3,8 @@ import { site } from '@config/site';
 import Base from '@layouts/Base.astro';
 import { withBase } from '@utils/base';
 
+import InlineGame from './InlineGame.astro';
+
 interface Props {
   locale: 'en' | 'zh';
 }
@@ -10,12 +12,15 @@ interface Props {
 const { locale } = Astro.props;
 const content = site.home[locale];
 const researchProfile = site.research[locale];
+const gameAssetBase = withBase('/pocket-play/');
 const isExternal = (href: string) => /^https?:\/\//.test(href);
 const featuredPublications = content.publications.filter((paper) => paper.featured).slice(0, 3);
 const featuredProjects = content.projects.filter((project) => project.featured).slice(0, 4);
 ---
 
 <Base title={content.name} description={content.intro} isHome={true}>
+  <script slot="head" is:inline data-astro-rerun defer src={`${gameAssetBase}embed.js`}></script>
+
   <div class="home-shell page-container">
     <section class="hero" aria-labelledby="home-title">
       <div class="hero-copy">
@@ -79,6 +84,8 @@ const featuredProjects = content.projects.filter((project) => project.featured).
         }
       </ul>
     </section>
+
+    <InlineGame locale={locale} {...content.inlineGame} />
 
     <section
       id="selected-work"
