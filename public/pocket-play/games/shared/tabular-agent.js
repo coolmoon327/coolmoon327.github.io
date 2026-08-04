@@ -20,6 +20,7 @@
       );
       this.experiences = [];
       this.totalExperience = 0;
+      this.sourceExperience = { player: 0, agent: 0 };
       this.visitedStates = new Set();
       this.policyVersion = 0;
     }
@@ -83,9 +84,10 @@
       this.experiences.push(normalized);
       if (this.experiences.length > this.maxExperiences) this.experiences.shift();
       this.totalExperience += 1;
+      this.sourceExperience[normalized.source] += 1;
       this.visitedStates.add(normalized.state);
       this.visits[normalized.state][normalized.action] += 1;
-      this.update(normalized, normalized.source === 'player' ? 1.25 : 1);
+      this.update(normalized);
     }
 
     replay(episode, passes = 8) {
@@ -93,7 +95,7 @@
       for (let pass = 0; pass < passes; pass += 1) {
         for (let index = episode.length - 1; index >= 0; index -= 1) {
           const experience = episode[index];
-          this.update(experience, experience.source === 'player' ? 1.35 : 1);
+          this.update(experience);
         }
       }
     }
@@ -108,6 +110,18 @@
 
     get stateCoverage() {
       return this.visitedStates.size;
+    }
+
+    get playerExperienceCount() {
+      return this.sourceExperience.player;
+    }
+
+    get agentExperienceCount() {
+      return this.sourceExperience.agent;
+    }
+
+    get multiActionStateCount() {
+      return this.visits.filter((row) => row.filter((count) => count > 0).length > 1).length;
     }
   }
 

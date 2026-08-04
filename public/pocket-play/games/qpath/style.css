@@ -172,6 +172,22 @@ button.cell {
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--game-accent) 38%, transparent);
 }
 
+.cell.is-crash {
+  border-color: var(--game-danger);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--game-danger) 54%, transparent);
+}
+
+.cell.is-crash::after {
+  position: absolute;
+  z-index: 3;
+  color: var(--game-danger);
+  content: '×';
+  font-family: var(--game-mono);
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .policy {
   position: absolute;
   right: 3px;
@@ -211,6 +227,12 @@ button.cell {
   border-radius: 4px;
   background: var(--game-warning);
   box-shadow: 0 0 0 2px var(--game-warning);
+}
+
+.agent.is-crashed {
+  background: var(--game-danger);
+  box-shadow: 0 0 0 2px var(--game-danger);
+  opacity: 0.72;
 }
 
 .metrics {
@@ -324,7 +346,6 @@ button.cell {
 }
 
 .decision-actions .quiet {
-  grid-column: 1 / -1;
   min-height: 44px;
   color: var(--game-muted);
 }

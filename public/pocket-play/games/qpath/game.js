@@ -32,6 +32,7 @@ const decisionPanel = document.querySelector('#decision-panel');
 const decisionCopy = document.querySelector('#decision-copy');
 const playerNextButton = document.querySelector('#player-next');
 const agentNextButton = document.querySelector('#agent-next');
+const agentUntilButton = document.querySelector('#agent-until-success');
 const resetLearningButton = document.querySelector('#reset-learning');
 const moveButtons = [...document.querySelectorAll('[data-action]')];
 const demoOutput = document.querySelector('#demo-episodes');
@@ -52,15 +53,16 @@ startMarker.setAttribute('aria-hidden', 'true');
 let selectedGoal = null;
 let startPool = [START_STATE];
 let currentState = START_STATE;
-let lastPlayerStart = START_STATE;
+let lastEpisodeStart = null;
 let phase = 'choose';
 let controller = 'player';
 let stepCount = 0;
 let demoEpisodes = 0;
 let agentEpisodes = 0;
 let episodeExperience = [];
-let protectedPolicyRows = new Map();
 let agentTimer = 0;
+let agentRunMode = 'idle';
+let autoAttempts = 0;
 let readiness = 0;
 let statusState = { key: 'choose', data: {} };
 let summaryState = null;
@@ -280,15 +282,26 @@ function transition(state, action) {
   const nextRow = row + ACTIONS[action].row;
   const nextColumn = column + ACTIONS[action].column;
   if (nextRow < 0 || nextRow >= SIZE || nextColumn < 0 || nextColumn >= SIZE) {
-    return { nextState: state, reward: -0.24, done: false };
+    return { nextState: state, reward: -0.24, done: false, success: false, cause: 'edge' };
   }
   const nextState = nextRow * SIZE + nextColumn;
-  if (WALLS.has(nextState)) return { nextState: state, reward: -0.24, done: false };
-  if (nextState === selectedGoal.state) return { nextState, reward: 1, done: true };
+  if (WALLS.has(nextState)) {
+    return {
+      nextState: state,
+      reward: -1,
+      done: true,
+      success: false,
+      cause: 'obstacle',
+      crashState: nextState,
+    };
+  }
+  if (nextState === selectedGoal.state) {
+    return { nextState, reward: 1, done: true, success: true, cause: 'goal' };
+  }
   const progress =
     manhattanDistance(state, selectedGoal.state) - manhattanDistance(nextState, selectedGoal.state);
   const reward = (progress > 0 ? 0.12 : -0.07) - (RISKS.has(nextState) ? 0.22 : 0.02);
-  return { nextState, reward, done: false };
+  return { nextState, reward, done: false, success: false, cause: 'move' };
 }
 
 function policyTrace(start) {
@@ -303,7 +316,7 @@ function policyTrace(start) {
     const action = learner.greedyAction(state, [0, 1, 2, 3]);
     const result = transition(state, action);
     state = result.nextState;
-    if (result.done) return { states, success: true };
+    if (result.done) return { states, success: result.success };
   }
   return { states, success: false };
 }
@@ -312,46 +325,27 @@ function policyReachesGoal(start) {
   return policyTrace(start).success;
 }
 
-function snapshotSuccessfulPolicyRows() {
-  const snapshot = new Map();
-  startPool.forEach((start) => {
-    const trace = policyTrace(start);
-    if (!trace.success) return;
-    trace.states.forEach((state) => {
-      if (snapshot.has(state)) return;
-      snapshot.set(state, {
-        q: [...learner.q[state]],
-        visits: [...learner.visits[state]],
-      });
-    });
-  });
-  return snapshot;
-}
-
-function restoreProtectedPolicyRows() {
-  protectedPolicyRows.forEach((row, state) => {
-    learner.q[state] = [...row.q];
-    learner.visits[state] = [...row.visits];
-  });
-}
-
 function evaluatePolicy() {
   if (!selectedGoal || learner.experienceCount === 0) return 0;
   const successes = startPool.filter((start) => policyReachesGoal(start)).length;
   return Math.round((successes / startPool.length) * 100);
 }
 
-function nextPlayerStart() {
-  const offset = demoEpisodes % startPool.length;
+function nextEpisodeStart() {
+  const offset = (demoEpisodes + agentEpisodes) % startPool.length;
   const orderedStarts = Array.from(
     { length: startPool.length },
     (_, index) => startPool[(offset + index) % startPool.length],
   );
-  return (
-    orderedStarts.find((start) => !learner.hasLearnedState(start) && !policyReachesGoal(start)) ??
-    orderedStarts.find((start) => !policyReachesGoal(start)) ??
-    orderedStarts[0]
-  );
+  const rankedStarts = [
+    ...orderedStarts.filter(
+      (start) => !learner.hasLearnedState(start) && !policyReachesGoal(start),
+    ),
+    ...orderedStarts.filter((start) => !policyReachesGoal(start)),
+    ...orderedStarts,
+  ];
+  const uniqueStarts = [...new Set(rankedStarts)];
+  return uniqueStarts.find((start) => start !== lastEpisodeStart) ?? uniqueStarts[0];
 }
 
 function renderPolicy() {
@@ -378,8 +372,8 @@ function updateAccessibility() {
   board.setAttribute(
     'aria-label',
     t(
-      'Five-by-five routing world. Striped cells are blocked and amber dots mark costly links.',
-      '5×5 路由环境。斜纹格不可通行，琥珀色圆点表示高代价链路。',
+      'Five-by-five world. Stripes are fatal obstacles; amber dots are costly links.',
+      '5×5 路由环境。斜纹是致命障碍，琥珀色圆点是高代价链路。',
     ),
   );
   startMarker.textContent = t('S', '起');
@@ -406,42 +400,52 @@ function statusText() {
   const data = statusState.data;
   const activeGoal = selectedGoal ? goalName(selectedGoal) : '';
   const messages = {
-    choose: [
-      'Choose target A, B, or C. Your route will become the Agent’s first experience.',
-      '选择目标 A、B 或 C；你走出的路线会成为 Agent 的第一批经验。',
-    ],
+    choose: ['Choose a target, then choose the first explorer.', '选择目标，再决定由谁先探索。'],
     selected: [
-      `Target ${activeGoal} selected. Demonstrate one route, then decide who plays next.`,
-      `已选择目标 ${activeGoal}。先示范一条路线，再决定下一局由谁操作。`,
+      `Target ${activeGoal} ready. Either explorer can start.`,
+      `目标 ${activeGoal} 已就绪，双方均可开局。`,
     ],
     player: [
-      `Your episode: move the packet toward ${activeGoal}. Step ${data.step ?? 0}/${MAX_STEPS}.`,
-      `你的回合：把数据包送往 ${activeGoal}。第 ${data.step ?? 0}/${MAX_STEPS} 步。`,
+      `Human episode to ${activeGoal} · step ${data.step ?? 0}/${MAX_STEPS}.`,
+      `玩家回合，目标 ${activeGoal} · 第 ${data.step ?? 0}/${MAX_STEPS} 步。`,
     ],
     agent: [
-      `Agent episode in progress. It is acting from ${learner.experienceCount} recorded transitions.`,
-      `Agent 正在操作；当前策略来自 ${learner.experienceCount} 条已记录经验。`,
+      `Agent episode · ${learner.experienceCount} transitions learned.`,
+      `Agent 回合 · 已学习 ${learner.experienceCount} 条经验。`,
     ],
     successPlayer: [
-      `Route delivered. The Agent replayed your demonstration; policy reach is now ${data.readiness}%.`,
-      `路由成功。Agent 已用你的示范更新策略，策略可达率升至 ${data.readiness}%。`,
+      `Human delivered; shared-policy reach is ${data.readiness}%.`,
+      `玩家已送达；共享策略可达率为 ${data.readiness}%。`,
     ],
     failPlayer: [
-      `Episode ended before delivery. Failed moves still teach the Agent what to avoid.`,
-      '本局未能送达，但失败动作也会告诉 Agent 应该避开什么。',
+      'No delivery; every move still updated the policy.',
+      '本局未送达，但每一步仍然更新了策略。',
     ],
     successAgent: [
-      `Agent delivered the packet. Its own episode has also joined the replay buffer.`,
-      'Agent 已成功送达数据包；它本轮产生的经验也已加入经验池。',
+      `Agent delivered${data.attempts ? ` after ${data.attempts} tries` : ''}; its route updated the policy.`,
+      `Agent 已送达${data.attempts ? `（共 ${data.attempts} 局）` : ''}，并更新了策略。`,
     ],
     failAgent: [
-      `Agent did not arrive this time. Add another demonstration or let it explore again.`,
-      'Agent 这次尚未到达；你可以再示范一局，也可以让它继续探索。',
+      'Agent missed, but every transition still updated its policy.',
+      'Agent 尚未到达，但每一步仍然更新了策略。',
     ],
-    reset: [
-      'Learning reset. The topology stays fixed so you can teach the same routing problem again.',
-      '学习记录已清空；拓扑保持不变，可以重新教授同一个路由问题。',
+    crashPlayer: [
+      'Obstacle hit: episode over with a −1 penalty.',
+      '撞上障碍：本局立即终止，并获得 −1 惩罚。',
     ],
+    crashAgent: [
+      'Agent hit an obstacle; the terminal −1 updated its policy.',
+      'Agent 撞上障碍；带 −1 惩罚的终止经验已更新策略。',
+    ],
+    retryAgent: [
+      `Try ${data.attempts} failed; Agent is starting a new episode.`,
+      `第 ${data.attempts} 局未成功；Agent 将开启新一局。`,
+    ],
+    autoStopped: [
+      'Continuous exploration stopped; completed experience is retained.',
+      '连续探索已停止；此前的经验全部保留。',
+    ],
+    reset: ['Learning reset; topology unchanged.', '学习记录已清空，拓扑保持不变。'],
   };
   const pair = messages[statusState.key] || messages.choose;
   return t(pair[0], pair[1]);
@@ -455,14 +459,18 @@ function renderRouteSummary() {
   const directions = summaryState.actions.map((action) =>
     t(ACTIONS[action].en, ACTIONS[action].zh),
   );
+  const failureEnding =
+    summaryState.cause === 'obstacle'
+      ? t('after hitting an obstacle', '因撞上障碍而终止')
+      : t('before delivery', '但未能送达');
   routeSummary.textContent = summaryState.success
     ? t(
         `${summaryState.source === 'player' ? 'Player' : 'Agent'} route reached ${goalName(selectedGoal)}: ${directions.join(', ')}.`,
         `${summaryState.source === 'player' ? '玩家' : 'Agent'} 已到达 ${goalName(selectedGoal)}：${directions.join('、')}。`,
       )
     : t(
-        `${summaryState.source === 'player' ? 'Player' : 'Agent'} episode ended after ${summaryState.actions.length} steps.`,
-        `${summaryState.source === 'player' ? '玩家' : 'Agent'} 的回合在 ${summaryState.actions.length} 步后结束。`,
+        `${summaryState.source === 'player' ? 'Player' : 'Agent'} episode ended ${failureEnding} after ${summaryState.actions.length} steps.`,
+        `${summaryState.source === 'player' ? '玩家' : 'Agent'} 的回合在 ${summaryState.actions.length} 步后${failureEnding}。`,
       );
 }
 
@@ -476,7 +484,12 @@ function render() {
   game.dataset.startPoolSize = String(startPool.length);
   game.dataset.demoEpisodes = String(demoEpisodes);
   game.dataset.agentEpisodes = String(agentEpisodes);
+  game.dataset.agentRunMode = agentRunMode;
+  game.dataset.agentRunAttempts = String(autoAttempts);
   game.dataset.experienceCount = String(learner.experienceCount);
+  game.dataset.playerExperienceCount = String(learner.playerExperienceCount);
+  game.dataset.agentExperienceCount = String(learner.agentExperienceCount);
+  game.dataset.multiActionStateCount = String(learner.multiActionStateCount);
   game.dataset.stateCoverage = String(learner.stateCoverage);
   game.dataset.policyVersion = String(learner.policyVersion);
   game.dataset.readiness = String(readiness);
@@ -491,20 +504,31 @@ function render() {
   agentMarker.dataset.controller = controller;
 
   const isPlayer = phase === 'player';
+  const continuousAgent = agentRunMode === 'until-success';
   moveButtons.forEach((button) => {
     button.disabled = !isPlayer;
   });
-  decisionPanel.hidden = phase !== 'decision';
-  agentNextButton.disabled = phase !== 'decision' || learner.experienceCount === 0;
+  decisionPanel.hidden = phase !== 'decision' && !(phase === 'agent' && continuousAgent);
+  agentNextButton.disabled = phase !== 'decision' || !selectedGoal;
   playerNextButton.disabled = phase !== 'decision' || !selectedGoal;
-  playerNextButton.textContent = t(
-    demoEpisodes === 0 ? 'I will demonstrate' : 'I will play next',
-    demoEpisodes === 0 ? '我先示范一局' : '我继续操作',
-  );
-  agentNextButton.textContent = t('Let Agent try', '让 Agent 试一局');
+  playerNextButton.textContent = t('Human explores', '玩家探索一局');
+  agentNextButton.textContent = t('Agent explores once', 'Agent 探索一局');
+  agentUntilButton.disabled =
+    !selectedGoal || (phase !== 'decision' && !(phase === 'agent' && continuousAgent));
+  agentUntilButton.setAttribute('aria-pressed', String(continuousAgent));
+  agentUntilButton.textContent = continuousAgent
+    ? t(
+        phase === 'agent' ? 'Stop after this episode' : 'Stop continuous run',
+        phase === 'agent' ? '本局结束后停止' : '停止连续探索',
+      )
+    : t('Agent until success', 'Agent 探索至成功');
   resetLearningButton.textContent = t('Reset learning', '重置学习');
-  decisionCopy.textContent =
-    readiness === 100
+  decisionCopy.textContent = continuousAgent
+    ? t(
+        `Agent repeats fresh episodes until delivery · try ${autoAttempts}`,
+        `Agent 将从新起点持续探索至送达 · 第 ${autoAttempts} 局`,
+      )
+    : readiness === 100
       ? t(
           'Choose next · 19/19 starts reachable; routes may not be optimal',
           '选择下一局 · 19/19 个起点均可达，但路线未必最优',
@@ -523,33 +547,44 @@ function selectGoal(goal) {
   learner.reset();
   demoEpisodes = 0;
   agentEpisodes = 0;
-  protectedPolicyRows = new Map();
+  agentRunMode = 'idle';
+  autoAttempts = 0;
   controller = 'player';
   phase = 'decision';
   startPool = buildStartPool();
   currentState = START_STATE;
-  lastPlayerStart = START_STATE;
-  cells.forEach((cell) => cell.classList.remove('is-path'));
+  lastEpisodeStart = null;
+  cells.forEach((cell) => cell.classList.remove('is-path', 'is-crash'));
+  agentMarker.classList.remove('is-crashed');
   cells[START_STATE].append(startMarker, agentMarker);
   board.dataset.startState = String(START_STATE);
   statusState = { key: 'selected', data: { goal: goalName(goal) } };
   summaryState = null;
   game.dataset.lastEpisodeResult = '';
   game.dataset.lastEpisodeController = '';
+  game.dataset.lastEpisodeCause = '';
+  game.dataset.lastEpisodeReturn = '';
   render();
 }
 
 function startEpisode(nextController) {
   if (!selectedGoal || phase !== 'decision') return;
   window.clearTimeout(agentTimer);
+  if (nextController === 'player') {
+    agentRunMode = 'idle';
+    autoAttempts = 0;
+  } else if (agentRunMode === 'idle') {
+    agentRunMode = 'single';
+  }
   controller = nextController;
   phase = nextController;
   stepCount = 0;
   episodeExperience = [];
-  protectedPolicyRows = nextController === 'player' ? snapshotSuccessfulPolicyRows() : new Map();
-  cells.forEach((cell) => cell.classList.remove('is-path'));
-  const start = nextController === 'player' ? nextPlayerStart() : lastPlayerStart;
-  if (nextController === 'player') lastPlayerStart = start;
+  cells.forEach((cell) => cell.classList.remove('is-path', 'is-crash'));
+  agentMarker.classList.remove('is-crashed');
+  const start = nextEpisodeStart();
+  lastEpisodeStart = start;
+  if (nextController === 'agent' && agentRunMode === 'until-success') autoAttempts += 1;
   cells[start].append(startMarker);
   board.dataset.startState = String(start);
   placeAgent(start);
@@ -579,11 +614,15 @@ function performAction(action) {
   };
   episodeExperience.push(experience);
   learner.observe(experience);
+  if (result.cause === 'obstacle') {
+    cells[result.crashState].classList.add('is-crash');
+    agentMarker.classList.add('is-crashed');
+  }
   cells[result.nextState].classList.add('is-path');
   placeAgent(result.nextState);
 
   if (result.done || timedOut) {
-    finishEpisode(result.done);
+    finishEpisode(result.success, timedOut ? 'timeout' : result.cause);
     return;
   }
 
@@ -595,39 +634,45 @@ function performAction(action) {
   if (source === 'agent') scheduleAgentStep();
 }
 
-function finishEpisode(success) {
+function finishEpisode(success, cause) {
   window.clearTimeout(agentTimer);
   const source = controller;
-  let replayExperience = episodeExperience;
-  if (source === 'player' && success) {
-    // Preserve every previously successful greedy route while learning the new demonstration.
-    // This makes short-session progress visible without claiming a globally optimal policy.
-    restoreProtectedPolicyRows();
-    replayExperience = episodeExperience.filter(
-      (experience) => !protectedPolicyRows.has(experience.state),
-    );
-    replayExperience.forEach((experience) => {
-      experience.reward = Math.max(experience.reward, 0.05);
-    });
-  }
-  learner.replay(replayExperience, source === 'player' ? (success ? 14 : 8) : 6);
-  protectedPolicyRows = new Map();
+  learner.replay(episodeExperience, 8);
   if (source === 'player') demoEpisodes += 1;
   else agentEpisodes += 1;
   phase = 'decision';
   readiness = evaluatePolicy();
-  statusState = {
-    key: `${success ? 'success' : 'fail'}${source === 'player' ? 'Player' : 'Agent'}`,
-    data: { readiness },
-  };
+  const shouldRetry = source === 'agent' && agentRunMode === 'until-success' && !success;
+  const statusKey = shouldRetry
+    ? 'retryAgent'
+    : cause === 'obstacle'
+      ? `crash${source === 'player' ? 'Player' : 'Agent'}`
+      : `${success ? 'success' : 'fail'}${source === 'player' ? 'Player' : 'Agent'}`;
+  statusState = { key: statusKey, data: { readiness, attempts: autoAttempts } };
   summaryState = {
     success,
     source,
+    cause,
     actions: episodeExperience.map((item) => item.action),
   };
+  const episodeReturn = episodeExperience.reduce((total, item) => total + item.reward, 0);
   game.dataset.lastEpisodeResult = success ? 'success' : 'failure';
   game.dataset.lastEpisodeController = source;
+  game.dataset.lastEpisodeCause = cause;
+  game.dataset.lastEpisodeReward = String(episodeExperience.at(-1)?.reward ?? 0);
+  game.dataset.lastEpisodeReturn = String(episodeReturn);
+  if (source === 'agent' && !shouldRetry) agentRunMode = 'idle';
   render();
+  if (shouldRetry) scheduleAgentRetry();
+}
+
+function scheduleAgentRetry() {
+  window.clearTimeout(agentTimer);
+  const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 100 : 360;
+  agentTimer = window.setTimeout(() => {
+    if (document.hidden || phase !== 'decision' || agentRunMode !== 'until-success') return;
+    startEpisode('agent');
+  }, delay);
 }
 
 function scheduleAgentStep() {
@@ -635,7 +680,10 @@ function scheduleAgentStep() {
   const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 70 : 240;
   agentTimer = window.setTimeout(() => {
     if (phase !== 'agent' || document.hidden) return;
-    const epsilon = learner.hasLearnedState(currentState) ? 0 : 0.38;
+    const stateVisits = learner.visits[currentState].reduce((total, visits) => total + visits, 0);
+    const epsilon = learner.hasLearnedState(currentState)
+      ? Math.max(0.1, 0.45 / Math.sqrt(1 + stateVisits))
+      : 1;
     const action = learner.selectAction(currentState, [0, 1, 2, 3], epsilon);
     performAction(action);
   }, delay);
@@ -646,18 +694,22 @@ function resetLearning() {
   learner.reset();
   demoEpisodes = 0;
   agentEpisodes = 0;
+  agentRunMode = 'idle';
+  autoAttempts = 0;
   controller = 'player';
   phase = selectedGoal ? 'decision' : 'choose';
   episodeExperience = [];
-  protectedPolicyRows = new Map();
-  lastPlayerStart = START_STATE;
-  cells.forEach((cell) => cell.classList.remove('is-path'));
+  lastEpisodeStart = null;
+  cells.forEach((cell) => cell.classList.remove('is-path', 'is-crash'));
+  agentMarker.classList.remove('is-crashed');
   cells[START_STATE].append(startMarker, agentMarker);
   board.dataset.startState = String(START_STATE);
   statusState = { key: selectedGoal ? 'reset' : 'choose', data: {} };
   summaryState = null;
   game.dataset.lastEpisodeResult = '';
   game.dataset.lastEpisodeController = '';
+  game.dataset.lastEpisodeCause = '';
+  game.dataset.lastEpisodeReturn = '';
   render();
 }
 
@@ -669,7 +721,28 @@ moveButtons.forEach((button) => {
   button.addEventListener('click', () => performAction(Number(button.dataset.action)));
 });
 playerNextButton.addEventListener('click', () => startEpisode('player'));
-agentNextButton.addEventListener('click', () => startEpisode('agent'));
+agentNextButton.addEventListener('click', () => {
+  agentRunMode = 'single';
+  autoAttempts = 0;
+  startEpisode('agent');
+});
+agentUntilButton.addEventListener('click', () => {
+  if (agentRunMode === 'until-success') {
+    if (phase === 'agent') {
+      agentRunMode = 'single';
+    } else {
+      window.clearTimeout(agentTimer);
+      agentRunMode = 'idle';
+      statusState = { key: 'autoStopped', data: {} };
+    }
+    render();
+    return;
+  }
+  if (phase !== 'decision' || !selectedGoal) return;
+  agentRunMode = 'until-success';
+  autoAttempts = 0;
+  startEpisode('agent');
+});
 resetLearningButton.addEventListener('click', resetLearning);
 
 document.addEventListener('keydown', (event) => {
@@ -682,6 +755,9 @@ document.addEventListener('keydown', (event) => {
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && phase === 'agent') scheduleAgentStep();
+  if (!document.hidden && phase === 'decision' && agentRunMode === 'until-success') {
+    scheduleAgentRetry();
+  }
 });
 
 runtime.onChange(render);

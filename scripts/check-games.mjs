@@ -25,6 +25,7 @@ const expectedGames = [
   'resource',
 ];
 const sourceExtensions = new Set(['.html', '.css', '.js']);
+const agentGames = new Set(['qpath', 'hopper']);
 const errors = [];
 const tabularAgentPath = join(siteRoot, 'games', 'shared', 'tabular-agent.js');
 const gameDirectories = readdirSync(join(siteRoot, 'games'), { withFileTypes: true })
@@ -70,8 +71,16 @@ for (const game of expectedGames) {
     if (!markup.includes('../shared/runtime.js')) {
       errors.push(`games/${game}/index.html: shared runtime is not loaded`);
     }
-    if (['qpath', 'hopper'].includes(game) && !markup.includes('../shared/tabular-agent.js')) {
+    if (agentGames.has(game) && !markup.includes('../shared/tabular-agent.js')) {
       errors.push(`games/${game}/index.html: shared tabular agent is not loaded`);
+    }
+    if (
+      agentGames.has(game) &&
+      (!markup.includes('id="agent-next"') ||
+        !markup.includes('id="agent-until-success"') ||
+        !markup.includes('data-agent-run-mode="idle"'))
+    ) {
+      errors.push(`games/${game}/index.html: missing equal-exploration Agent controls`);
     }
     if (!markup.includes('../shared/theme.css') && !styles.includes('../shared/theme.css')) {
       errors.push(`games/${game}: shared theme is not loaded`);

@@ -3,9 +3,10 @@
 
   const CHANNEL_COUNT = 3;
   const TOTAL_SLOTS = 12;
+  const SUCCESS_TARGET = 9;
   const STATE_COUNT = 18;
   const ACTIONS = [0, 1, 2];
-  const PLAYER_SEED_ORDER = [0, 2, 3, 4, 7, 8, 1, 5, 6];
+  const EPISODE_SEED_ORDER = [0, 2, 3, 4, 7, 8, 1, 5, 6];
   const runtime = window.PocketRuntime;
   const TabularAgent = window.PocketTabularAgent;
   const game = document.querySelector('#game');
@@ -22,6 +23,7 @@
   const decisionCopy = document.querySelector('#decision-copy');
   const playerNextButton = document.querySelector('#player-next');
   const agentNextButton = document.querySelector('#agent-next');
+  const agentUntilButton = document.querySelector('#agent-until-success');
   const resetLearningButton = document.querySelector('#reset-learning');
   const resetButton = document.querySelector('#reset-button');
   const channelGroup = document.querySelector('#channel-group');
@@ -41,10 +43,11 @@
   let demoEpisodes = 0;
   let agentEpisodes = 0;
   let episodeSeed = 0;
-  let lastPlayerSeed = 0;
   let lastResult = 'none';
   let episodeExperience = [];
   let agentTimer = 0;
+  let agentRunMode = 'idle';
+  let autoAttempts = 0;
   let statusState = { key: 'ready', data: {} };
 
   const t = (english, chinese) => runtime.text(english, chinese);
@@ -99,8 +102,8 @@
     const data = statusState.data;
     const messages = {
       ready: [
-        'You see only the previous interference result. Demonstrate one episode, then hand over.',
-        '你只能看到上一时隙的干扰结果。先示范一局，再把控制权交给 Agent。',
+        'You see only the previous interference result. Human or Agent can open the first episode.',
+        '你只能看到上一时隙的干扰结果；玩家或 Agent 都可以直接开始第一局。',
       ],
       player: [
         `Your episode · slot ${data.slot ?? 1}/${TOTAL_SLOTS}. Predict the hidden jammer and send.`,
@@ -111,12 +114,24 @@
         `Agent 回合 · 第 ${data.slot ?? 1}/${TOTAL_SLOTS} 个时隙。观察它如何利用 ${learner.experienceCount} 条经验决策。`,
       ],
       playerDone: [
-        `Demonstration stored: ${data.successes}/${TOTAL_SLOTS} packets delivered. Choose who plays next.`,
-        `示范已记入经验：共 ${TOTAL_SLOTS} 个数据包，成功送达 ${data.successes} 个。请选择下一局由谁操作。`,
+        `Human episode stored: ${data.successes}/${TOTAL_SLOTS} packets delivered${data.success ? ' — target reached' : ''}.`,
+        `玩家回合已记入经验：${TOTAL_SLOTS} 个数据包中成功送达 ${data.successes} 个${data.success ? '，达到本局目标' : ''}。`,
       ],
       agentDone: [
-        `Agent round stored: ${data.successes}/${TOTAL_SLOTS} packets delivered. Add a demonstration or let it try again.`,
-        `Agent 回合已记入经验：共 ${TOTAL_SLOTS} 个数据包，成功送达 ${data.successes} 个。你可以继续示范，也可以让它再试一次。`,
+        `Agent episode stored: ${data.successes}/${TOTAL_SLOTS} packets delivered. Its own choices updated the shared policy.`,
+        `Agent 回合已记入经验：${TOTAL_SLOTS} 个数据包中成功送达 ${data.successes} 个；它自己的选择也更新了共享策略。`,
+      ],
+      agentSuccess: [
+        `Agent reached the ${SUCCESS_TARGET}/${TOTAL_SLOTS} target${data.attempts ? ` after ${data.attempts} attempt${data.attempts === 1 ? '' : 's'}` : ''}.`,
+        `Agent 已达到 ${SUCCESS_TARGET}/${TOTAL_SLOTS} 的成功目标${data.attempts ? `，连续探索共 ${data.attempts} 局` : ''}。`,
+      ],
+      agentRetry: [
+        `Attempt ${data.attempts} delivered ${data.successes}/${TOTAL_SLOTS}. Agent is opening a new episode and will keep learning.`,
+        `第 ${data.attempts} 局送达 ${data.successes}/${TOTAL_SLOTS}；Agent 将开启新一局并继续学习。`,
+      ],
+      autoStopped: [
+        'Continuous Agent exploration stopped between episodes. Completed experience is retained.',
+        '已在两局之间停止 Agent 连续探索；此前积累的经验全部保留。',
       ],
       reset: [
         'Learning reset. The same compact 18-state problem is ready for a new lesson.',
@@ -157,6 +172,7 @@
     game.dataset.actionCount = String(CHANNEL_COUNT);
     game.dataset.channelCount = String(CHANNEL_COUNT);
     game.dataset.totalSlots = String(TOTAL_SLOTS);
+    game.dataset.successTarget = String(SUCCESS_TARGET);
     game.dataset.slot = String(slotIndex);
     game.dataset.previousJammer = String(previousJammer);
     game.dataset.previousChannel = String(previousChannel);
@@ -169,8 +185,13 @@
     game.dataset.safeChannelCount = String(CHANNEL_COUNT - 1);
     game.dataset.demoEpisodes = String(demoEpisodes);
     game.dataset.agentEpisodes = String(agentEpisodes);
+    game.dataset.agentRunMode = agentRunMode;
+    game.dataset.agentRunAttempts = String(autoAttempts);
     game.dataset.episodeSeed = String(episodeSeed);
     game.dataset.experienceCount = String(learner.experienceCount);
+    game.dataset.playerExperienceCount = String(learner.playerExperienceCount);
+    game.dataset.agentExperienceCount = String(learner.agentExperienceCount);
+    game.dataset.multiActionStateCount = String(learner.multiActionStateCount);
     game.dataset.stateCoverage = String(learner.stateCoverage);
     game.dataset.policyVersion = String(learner.policyVersion);
     game.dataset.readiness = String(readiness);
@@ -189,18 +210,29 @@
     );
     prompt.textContent = statusText();
     prompt.classList.toggle('is-danger', lastResult === 'collision' && phase !== 'decision');
-    decisionPanel.hidden = phase !== 'decision';
-    decisionCopy.textContent = t(
-      `Choose the next controller · Safe-policy coverage ${readiness}%`,
-      `选择下一局由谁操作 · 安全策略覆盖率 ${readiness}%`,
-    );
-    playerNextButton.textContent = t(
-      demoEpisodes === 0 ? 'I will demonstrate' : 'I will play next',
-      demoEpisodes === 0 ? '我先示范一局' : '我继续操作',
-    );
-    agentNextButton.textContent = t('Let Agent try', '让 Agent 试一局');
+    const continuousAgent = agentRunMode === 'until-success';
+    decisionPanel.hidden = phase !== 'decision' && !(phase === 'agent' && continuousAgent);
+    decisionCopy.textContent = continuousAgent
+      ? t(
+          `Agent keeps opening fresh episodes until at least ${SUCCESS_TARGET}/${TOTAL_SLOTS} packets arrive · attempt ${autoAttempts}`,
+          `Agent 将不断开启新一局，直到至少送达 ${SUCCESS_TARGET}/${TOTAL_SLOTS} 个数据包 · 当前第 ${autoAttempts} 局`,
+        )
+      : t(
+          `Choose the next explorer · Success ≥ ${SUCCESS_TARGET}/${TOTAL_SLOTS} · Safe-policy coverage ${readiness}%`,
+          `选择下一局由谁探索 · 成功目标 ≥ ${SUCCESS_TARGET}/${TOTAL_SLOTS} · 安全策略覆盖率 ${readiness}%`,
+        );
+    playerNextButton.textContent = t('Human explores', '玩家探索一局');
+    agentNextButton.textContent = t('Agent explores once', 'Agent 探索一局');
+    agentUntilButton.disabled = phase !== 'decision' && !(phase === 'agent' && continuousAgent);
+    agentUntilButton.setAttribute('aria-pressed', String(continuousAgent));
+    agentUntilButton.textContent = continuousAgent
+      ? t(
+          phase === 'agent' ? 'Stop after this episode' : 'Stop continuous run',
+          phase === 'agent' ? '本局结束后停止' : '停止连续探索',
+        )
+      : t('Agent until success', 'Agent 探索至成功');
     resetLearningButton.textContent = t('Reset learning', '重置学习');
-    agentNextButton.disabled = phase !== 'decision' || learner.experienceCount === 0;
+    agentNextButton.disabled = phase !== 'decision';
     playerNextButton.disabled = phase !== 'decision';
     channelButtons.forEach((button) => {
       button.disabled = phase !== 'player';
@@ -215,14 +247,17 @@
   function startEpisode(nextController) {
     if (phase !== 'decision') return;
     window.clearTimeout(agentTimer);
+    if (nextController === 'player') {
+      agentRunMode = 'idle';
+      autoAttempts = 0;
+    } else if (agentRunMode === 'idle') {
+      agentRunMode = 'single';
+    }
     controller = nextController;
     phase = nextController;
     slotIndex = 0;
-    episodeSeed =
-      nextController === 'player'
-        ? PLAYER_SEED_ORDER[demoEpisodes % PLAYER_SEED_ORDER.length]
-        : lastPlayerSeed;
-    if (nextController === 'player') lastPlayerSeed = episodeSeed;
+    episodeSeed = EPISODE_SEED_ORDER[(demoEpisodes + agentEpisodes) % EPISODE_SEED_ORDER.length];
+    if (nextController === 'agent' && agentRunMode === 'until-success') autoAttempts += 1;
     previousJammer = Math.floor(episodeSeed / CHANNEL_COUNT);
     previousChannel = episodeSeed % CHANNEL_COUNT;
     selectedChannel = previousChannel;
@@ -296,15 +331,36 @@
   function finishEpisode() {
     window.clearTimeout(agentTimer);
     const source = controller;
-    learner.replay(episodeExperience, source === 'player' ? 12 : 5);
+    learner.replay(episodeExperience, 8);
     if (source === 'player') demoEpisodes += 1;
     else agentEpisodes += 1;
+    const success = successes >= SUCCESS_TARGET;
+    const shouldRetry = source === 'agent' && agentRunMode === 'until-success' && !success;
     phase = 'decision';
     statusState = {
-      key: source === 'player' ? 'playerDone' : 'agentDone',
-      data: { successes },
+      key: shouldRetry
+        ? 'agentRetry'
+        : source === 'player'
+          ? 'playerDone'
+          : success
+            ? 'agentSuccess'
+            : 'agentDone',
+      data: { successes, success, attempts: autoAttempts },
     };
+    game.dataset.lastEpisodeResult = success ? 'success' : 'failure';
+    game.dataset.lastEpisodeController = source;
+    if (source === 'agent' && !shouldRetry) agentRunMode = 'idle';
     render();
+    if (shouldRetry) scheduleAgentRetry();
+  }
+
+  function scheduleAgentRetry() {
+    window.clearTimeout(agentTimer);
+    const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 100 : 360;
+    agentTimer = window.setTimeout(() => {
+      if (document.hidden || phase !== 'decision' || agentRunMode !== 'until-success') return;
+      startEpisode('agent');
+    }, delay);
   }
 
   function scheduleAgentStep() {
@@ -313,7 +369,10 @@
     agentTimer = window.setTimeout(() => {
       if (phase !== 'agent' || document.hidden) return;
       const state = encodeState();
-      const epsilon = learner.hasLearnedState(state) ? 0 : 0.34;
+      const stateVisits = learner.visits[state].reduce((total, visits) => total + visits, 0);
+      const epsilon = learner.hasLearnedState(state)
+        ? Math.max(0.1, 0.42 / Math.sqrt(1 + stateVisits))
+        : 1;
       resolveChannel(learner.selectAction(state, ACTIONS, epsilon));
     }, delay);
   }
@@ -328,7 +387,8 @@
     previousJammer = 0;
     previousChannel = 0;
     episodeSeed = 0;
-    lastPlayerSeed = 0;
+    agentRunMode = 'idle';
+    autoAttempts = 0;
     jammerMode = modeForSlot(0);
     successes = 0;
     collisions = 0;
@@ -336,6 +396,8 @@
     agentEpisodes = 0;
     lastResult = 'none';
     episodeExperience = [];
+    game.dataset.lastEpisodeResult = '';
+    game.dataset.lastEpisodeController = '';
     clearTrail();
     statusState = { key: 'reset', data: {} };
     render();
@@ -346,11 +408,35 @@
     button.addEventListener('click', () => resolveChannel(Number(button.dataset.channel)));
   });
   playerNextButton.addEventListener('click', () => startEpisode('player'));
-  agentNextButton.addEventListener('click', () => startEpisode('agent'));
+  agentNextButton.addEventListener('click', () => {
+    agentRunMode = 'single';
+    autoAttempts = 0;
+    startEpisode('agent');
+  });
+  agentUntilButton.addEventListener('click', () => {
+    if (agentRunMode === 'until-success') {
+      if (phase === 'agent') {
+        agentRunMode = 'single';
+      } else {
+        window.clearTimeout(agentTimer);
+        agentRunMode = 'idle';
+        statusState = { key: 'autoStopped', data: {} };
+      }
+      render();
+      return;
+    }
+    if (phase !== 'decision') return;
+    agentRunMode = 'until-success';
+    autoAttempts = 0;
+    startEpisode('agent');
+  });
   resetLearningButton.addEventListener('click', resetLearning);
   resetButton.addEventListener('click', resetLearning);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && phase === 'agent') scheduleAgentStep();
+    if (!document.hidden && phase === 'decision' && agentRunMode === 'until-success') {
+      scheduleAgentRetry();
+    }
   });
   runtime.onChange(render);
   render();

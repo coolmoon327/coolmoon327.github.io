@@ -962,14 +962,14 @@ export const site = {
         category: 'learning',
         height: 620,
         title: { en: 'Routing Apprentice', zh: '路由学徒' },
-        meta: { en: 'Human-guided Q-learning · 20–90 sec', zh: '人机协同 Q 学习 · 20–90 秒' },
+        meta: { en: 'Human–Agent Q-learning · 20–60 sec', zh: '人机共同探索 Q 学习 · 20–60 秒' },
         description: {
-          en: 'Walk one route yourself, feed every step into a compact Q-table, then choose whether you or the Agent runs the next episode.',
-          zh: '先亲自走出一条路线，让每一步都成为小型 Q 表的学习经验；回合结束后，再决定由你继续操作，还是让 Agent 接管。',
+          en: 'Human and Agent explore fresh routing episodes as equals, and every transition updates the same compact Q-table. Let the Agent run once or keep learning until its next delivery.',
+          zh: '玩家与 Agent 以同等方式在新的路由回合中探索，每一步都会更新同一张小型 Q 表；你可以让 Agent 探索一局，也可以让它连续学习直到下一次成功送达。',
         },
         tags: {
-          en: ['19 decision states', 'Player demonstrations', 'Policy replay'],
-          zh: ['19 个决策状态', '玩家示范', '策略回放'],
+          en: ['19 decision states', 'Shared exploration', 'Terminal obstacles'],
+          zh: ['19 个决策状态', '人机共同探索', '障碍终止惩罚'],
         },
       },
       {
@@ -1067,14 +1067,17 @@ export const site = {
         category: 'wireless',
         height: 600,
         title: { en: 'Hopping Apprentice', zh: '跳频学徒' },
-        meta: { en: 'Human-guided anti-jamming · 30–90 sec', zh: '人机协同抗干扰 · 30–90 秒' },
+        meta: {
+          en: 'Human–Agent anti-jamming · 30 sec–3 min',
+          zh: '人机共同探索抗干扰 · 30 秒–3 分钟',
+        },
         description: {
-          en: 'Predict the next hidden jammer, turn your channel choices into experience, then watch an 18-state Agent learn to take over.',
-          zh: '根据上一时隙的观测，预测下一时隙受干扰的信道；你的每次选频都会成为经验，供一个仅含 18 个状态的 Agent 学习并接管。',
+          en: 'Human and Agent alternate fresh interference episodes, with every channel choice updating the same 18-state policy. Ask the Agent to explore once or continue until it delivers at least 9 of 12 packets.',
+          zh: '玩家与 Agent 轮流面对新的干扰回合，每次选频都会更新同一个 18 状态策略；你可以让 Agent 探索一局，也可以让它持续学习，直到一局内至少送达 9 个数据包。',
         },
         tags: {
-          en: ['18-state table', 'Player demonstrations', 'Live throughput'],
-          zh: ['18 状态表格学习', '玩家示范', '实时吞吐率'],
+          en: ['18-state table', 'Shared exploration', 'Run until success'],
+          zh: ['18 状态表格学习', '人机共同探索', '连续探索至成功'],
         },
       },
       {

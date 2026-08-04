@@ -16,6 +16,7 @@
       data-controller="player"
       data-channel-count="3"
       data-total-slots="12"
+      data-success-target="9"
       data-slot="0"
       data-previous-jammer="0"
       data-previous-channel="1"
@@ -27,15 +28,22 @@
       data-safe-channel-count="2"
       data-demo-episodes="0"
       data-agent-episodes="0"
+      data-agent-run-mode="idle"
+      data-agent-run-attempts="0"
       data-experience-count="0"
+      data-player-experience-count="0"
+      data-agent-experience-count="0"
+      data-multi-action-state-count="0"
       data-state-coverage="0"
       data-policy-version="0"
       data-readiness="0"
+      data-last-episode-result=""
+      data-last-episode-controller=""
     >
       <header class="topline">
         <div>
-          <p class="kicker" data-en="HUMAN-IN-THE-LOOP ANTI-JAMMING" data-zh="人在回路抗干扰学习">
-            HUMAN-IN-THE-LOOP ANTI-JAMMING
+          <p class="kicker" data-en="HUMAN–AGENT CO-LEARNING" data-zh="人机共同探索">
+            HUMAN–AGENT CO-LEARNING
           </p>
           <h1 id="game-title" data-en="Hopping Apprentice" data-zh="跳频学徒">
             Hopping Apprentice
@@ -65,7 +73,7 @@
           <output id="throughput">0%</output>
         </div>
         <div class="metric">
-          <span data-en="Your demos" data-zh="你的示范">Your demos</span>
+          <span data-en="Human episodes" data-zh="玩家回合">Human episodes</span>
           <output id="demo-episodes">0</output>
         </div>
         <div class="metric">
@@ -130,14 +138,17 @@
       </section>
 
       <p class="prompt" id="prompt">
-        You see only the previous interference result. Demonstrate one episode, then hand over.
+        You see only the previous interference result. Human or Agent can open the first episode.
       </p>
 
       <section class="decision-panel" id="decision-panel" aria-labelledby="decision-copy">
         <p id="decision-copy">Choose who controls the next twelve slots.</p>
         <div class="decision-actions">
-          <button class="primary" id="player-next" type="button">I will demonstrate</button>
-          <button id="agent-next" type="button" disabled>Let Agent try</button>
+          <button class="primary" id="player-next" type="button">Human explores</button>
+          <button id="agent-next" type="button">Agent explores once</button>
+          <button id="agent-until-success" type="button" aria-pressed="false">
+            Agent until success
+          </button>
           <button class="quiet" id="reset-learning" type="button">Reset learning</button>
         </div>
       </section>

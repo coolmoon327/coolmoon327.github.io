@@ -46,6 +46,23 @@ async function openGame(browser, id, options = {}) {
     reducedMotion: options.reducedMotion ?? 'no-preference',
   });
   if (options.clock) await page.clock.install();
+  if (options.captureLearnerStateCount) {
+    await page.addInitScript((expectedStateCount) => {
+      let exposedAgent;
+      Object.defineProperty(window, 'PocketTabularAgent', {
+        configurable: true,
+        get: () => exposedAgent,
+        set: (BaseAgent) => {
+          exposedAgent = class TestVisibleTabularAgent extends BaseAgent {
+            constructor(...args) {
+              super(...args);
+              if (args[0] === expectedStateCount) window.__qaGameLearner = this;
+            }
+          };
+        },
+      });
+    }, options.captureLearnerStateCount);
+  }
   if (options.randomValues) {
     await page.addInitScript((values) => {
       let index = 0;
@@ -226,7 +243,11 @@ async function checkBandit(browser) {
 }
 
 async function checkQPath(browser) {
-  const page = await openGame(browser, 'qpath', { width: 280 });
+  const page = await openGame(browser, 'qpath', {
+    width: 280,
+    reducedMotion: 'reduce',
+    captureLearnerStateCount: 25,
+  });
 
   const readTopology = async () => {
     const topology = await page.locator('#board').evaluate((board) => ({
@@ -328,12 +349,74 @@ async function checkQPath(browser) {
   await target.click();
   assert.equal(await target.getAttribute('aria-pressed'), 'true');
   assert.equal(await page.locator('#game').getAttribute('data-phase'), 'decision');
+
+  const sharedLearnerChecks = await page.evaluate(() => {
+    const makeExperience = (source, action = 0, reward = 0.5) => ({
+      state: 0,
+      action,
+      reward,
+      nextState: 0,
+      nextAllowed: [0, 1],
+      done: true,
+      source,
+    });
+    const playerLearner = new window.PocketTabularAgent(1, 2, { alpha: 0.5, gamma: 0 });
+    const agentLearner = new window.PocketTabularAgent(1, 2, { alpha: 0.5, gamma: 0 });
+    playerLearner.observe(makeExperience('player'));
+    agentLearner.observe(makeExperience('agent'));
+    playerLearner.replay([makeExperience('player')], 3);
+    agentLearner.replay([makeExperience('agent')], 3);
+
+    const revisable = new window.PocketTabularAgent(1, 2, { alpha: 0.8, gamma: 0 });
+    revisable.observe(makeExperience('player', 0, 0.2));
+    const firstAction = revisable.greedyAction(0, [0, 1]);
+    revisable.observe(makeExperience('agent', 1, 1));
+    const revisedAction = revisable.greedyAction(0, [0, 1]);
+
+    return {
+      equalQ: JSON.stringify(playerLearner.q) === JSON.stringify(agentLearner.q),
+      playerCount: playerLearner.playerExperienceCount,
+      agentCount: agentLearner.agentExperienceCount,
+      firstAction,
+      revisedAction,
+    };
+  });
+  assert.equal(sharedLearnerChecks.equalQ, true, 'Player and Agent updates must be equal');
+  assert.equal(sharedLearnerChecks.playerCount, 1);
+  assert.equal(sharedLearnerChecks.agentCount, 1);
+  assert.equal(sharedLearnerChecks.firstAction, 0);
+  assert.equal(sharedLearnerChecks.revisedAction, 1, 'Later experience must revise the policy');
+
+  assert.equal(await page.locator('#agent-next').isDisabled(), false);
+  assert.equal(await page.locator('#agent-until-success').isDisabled(), false);
+  await page.locator('#agent-next').click();
+  assert.equal(await page.locator('#game').getAttribute('data-phase'), 'agent');
+  const firstAgentStart = Number(await page.locator('#board').getAttribute('data-start-state'));
+  await page.waitForFunction(
+    () =>
+      document.querySelector('#game').dataset.phase === 'decision' &&
+      document.querySelector('#game').dataset.agentEpisodes === '1',
+    undefined,
+    { timeout: 12_000 },
+  );
+  const experienceAfterFirstAgent = Number(
+    await page.locator('#game').getAttribute('data-experience-count'),
+  );
+  assert.ok(experienceAfterFirstAgent > 0);
+  assert.equal(await page.locator('#game').getAttribute('data-player-experience-count'), '0');
+  assert.equal(
+    Number(await page.locator('#game').getAttribute('data-agent-experience-count')),
+    experienceAfterFirstAgent,
+  );
+  assert.equal(await page.locator('#game').getAttribute('data-last-episode-controller'), 'agent');
+
   await page.locator('#player-next').click();
   assert.equal(await page.locator('#game').getAttribute('data-phase'), 'player');
   assert.equal(await page.locator('#game').getAttribute('data-controller'), 'player');
   const firstDemonstrationStart = Number(
     await page.locator('#board').getAttribute('data-start-state'),
   );
+  assert.notEqual(firstDemonstrationStart, firstAgentStart);
   await assertNoOverflow(page, 'qpath player episode');
 
   const demonstrateShortestRoute = async () => {
@@ -387,6 +470,59 @@ async function checkQPath(browser) {
     return route;
   };
 
+  const crashIntoObstacle = async () => {
+    const route = await page.locator('#board').evaluate((board) => {
+      const config = JSON.parse(board.dataset.config);
+      const start = Number(board.dataset.startState);
+      const goalId = board.dataset.selectedGoal;
+      const goal = config.goals.find((candidate) => candidate.id === goalId).state;
+      const walls = new Set(config.walls);
+      const actions = [
+        [-1, 0],
+        [0, 1],
+        [1, 0],
+        [0, -1],
+      ];
+      const queue = [start];
+      const previous = new Map([[start, null]]);
+      const previousAction = new Map();
+      let crash = null;
+
+      for (let index = 0; index < queue.length && !crash; index += 1) {
+        const state = queue[index];
+        const row = Math.floor(state / 5);
+        const column = state % 5;
+        for (let action = 0; action < actions.length; action += 1) {
+          const [rowStep, columnStep] = actions[action];
+          const nextRow = row + rowStep;
+          const nextColumn = column + columnStep;
+          if (nextRow < 0 || nextRow >= 5 || nextColumn < 0 || nextColumn >= 5) continue;
+          const nextState = nextRow * 5 + nextColumn;
+          if (walls.has(nextState)) {
+            crash = { state, action };
+            break;
+          }
+          if (nextState === goal || previous.has(nextState)) continue;
+          previous.set(nextState, state);
+          previousAction.set(nextState, action);
+          queue.push(nextState);
+        }
+      }
+
+      if (!crash) return [];
+      const path = [];
+      for (let state = crash.state; state !== start; state = previous.get(state)) {
+        path.push(previousAction.get(state));
+      }
+      path.reverse();
+      path.push(crash.action);
+      return path;
+    });
+    assert.ok(route.length > 0 && route.length <= 32, 'A reachable obstacle must exist');
+    for (const action of route) await page.locator(`[data-action="${action}"]`).click();
+    return route;
+  };
+
   const demonstration = await demonstrateShortestRoute();
 
   const game = page.locator('#game');
@@ -401,10 +537,14 @@ async function checkQPath(browser) {
   const experienceAfterDemo = Number(await game.getAttribute('data-experience-count'));
   const coverageAfterDemo = Number(await game.getAttribute('data-state-coverage'));
   const readinessAfterDemo = Number(await game.getAttribute('data-readiness'));
-  assert.ok(experienceAfterDemo >= demonstration.length);
+  const policyVersionAfterDemo = Number(await game.getAttribute('data-policy-version'));
+  assert.ok(experienceAfterDemo >= experienceAfterFirstAgent + demonstration.length);
+  assert.ok(
+    Number(await game.getAttribute('data-player-experience-count')) >= demonstration.length,
+  );
   assert.ok(coverageAfterDemo > 0 && coverageAfterDemo <= 25);
   assert.ok(readinessAfterDemo > 0);
-  assert.ok(Number(await game.getAttribute('data-policy-version')) > 0);
+  assert.ok(policyVersionAfterDemo > 0);
   assert.equal(await page.locator('#decision-panel').isVisible(), true);
   const qpathDecisionSizes = await page
     .locator('#decision-panel button')
@@ -431,39 +571,271 @@ async function checkQPath(browser) {
   const experienceAfterSecondDemo = Number(await game.getAttribute('data-experience-count'));
   const coverageAfterSecondDemo = Number(await game.getAttribute('data-state-coverage'));
   const readinessAfterSecondDemo = Number(await game.getAttribute('data-readiness'));
+  const policyVersionAfterSecondDemo = Number(await game.getAttribute('data-policy-version'));
   assert.ok(experienceAfterSecondDemo >= experienceAfterDemo + secondDemonstration.length);
   assert.ok(coverageAfterSecondDemo > coverageAfterDemo);
-  assert.ok(readinessAfterSecondDemo > readinessAfterDemo);
+  assert.ok(readinessAfterSecondDemo >= 0 && readinessAfterSecondDemo <= 100);
+  assert.ok(policyVersionAfterSecondDemo > policyVersionAfterDemo);
   await assertNoOverflow(page, 'qpath second demonstration');
 
+  await page.locator('#player-next').click();
+  const crashStart = Number(await page.locator('#board').getAttribute('data-start-state'));
+  assert.notEqual(crashStart, secondDemonstrationStart);
+  const experienceBeforeCrash = Number(await game.getAttribute('data-experience-count'));
+  const playerExperienceBeforeCrash = Number(
+    await game.getAttribute('data-player-experience-count'),
+  );
+  const agentExperienceBeforeCrash = Number(await game.getAttribute('data-agent-experience-count'));
+  const crashRoute = await crashIntoObstacle();
+  assert.equal(await game.getAttribute('data-phase'), 'decision');
+  assert.equal(await game.getAttribute('data-demo-episodes'), '3');
+  assert.equal(await game.getAttribute('data-last-episode-result'), 'failure');
+  assert.equal(await game.getAttribute('data-last-episode-cause'), 'obstacle');
+  assert.equal(await game.getAttribute('data-last-episode-reward'), '-1');
+  assert.ok(Number(await game.getAttribute('data-last-episode-return')) < 0);
+  assert.equal(await page.locator('.cell.is-crash').count(), 1);
+  assert.equal(await page.locator('.agent.is-crashed').count(), 1);
+  assert.equal(
+    Number(await game.getAttribute('data-experience-count')),
+    experienceBeforeCrash + crashRoute.length,
+  );
+  assert.equal(
+    Number(await game.getAttribute('data-player-experience-count')),
+    playerExperienceBeforeCrash + crashRoute.length,
+  );
+  assert.equal(
+    Number(await game.getAttribute('data-agent-experience-count')),
+    agentExperienceBeforeCrash,
+  );
+  await assertNoOverflow(page, 'qpath obstacle termination');
+
+  const agentEpisodesBeforeSingle = Number(await game.getAttribute('data-agent-episodes'));
+  const experienceBeforeSingleAgent = Number(await game.getAttribute('data-experience-count'));
+  const agentExperienceBeforeSingle = Number(
+    await game.getAttribute('data-agent-experience-count'),
+  );
   await page.locator('#agent-next').click();
   await page.waitForFunction(() => document.querySelector('#game').dataset.phase === 'agent');
-  assert.equal(
+  assert.notEqual(
     Number(await page.locator('#board').getAttribute('data-start-state')),
-    secondDemonstrationStart,
+    crashStart,
   );
   await assertNoOverflow(page, 'qpath agent episode');
   await page.waitForFunction(
-    () =>
+    (expectedEpisodes) =>
       document.querySelector('#game').dataset.phase === 'decision' &&
-      document.querySelector('#game').dataset.agentEpisodes === '1',
-    undefined,
+      Number(document.querySelector('#game').dataset.agentEpisodes) === expectedEpisodes,
+    agentEpisodesBeforeSingle + 1,
     { timeout: 12_000 },
   );
-  assert.equal(await game.getAttribute('data-last-episode-result'), 'success');
   assert.equal(await game.getAttribute('data-last-episode-controller'), 'agent');
-  assert.ok(Number(await game.getAttribute('data-experience-count')) > experienceAfterSecondDemo);
+  assert.ok(Number(await game.getAttribute('data-experience-count')) > experienceBeforeSingleAgent);
+  assert.ok(
+    Number(await game.getAttribute('data-agent-experience-count')) > agentExperienceBeforeSingle,
+  );
   assert.equal(await game.getAttribute('data-controller'), 'agent');
   await assertNoOverflow(page, 'qpath agent decision');
 
+  await page.locator('#agent-until-success').click();
+  await page.waitForFunction(() => document.querySelector('#game').dataset.phase === 'agent');
+  assert.equal(await game.getAttribute('data-agent-run-mode'), 'until-success');
+  assert.equal(await page.locator('#agent-until-success').isVisible(), true);
+  await assertNoOverflow(page, 'qpath continuous agent active');
+  await page.locator('#agent-until-success').click();
+  assert.equal(await game.getAttribute('data-agent-run-mode'), 'single');
+  const episodesBeforeStoppedRun = Number(await game.getAttribute('data-agent-episodes'));
+  await page.waitForFunction(
+    (expectedEpisodes) =>
+      document.querySelector('#game').dataset.phase === 'decision' &&
+      Number(document.querySelector('#game').dataset.agentEpisodes) === expectedEpisodes,
+    episodesBeforeStoppedRun + 1,
+    { timeout: 12_000 },
+  );
+  await page.waitForTimeout(500);
+  assert.equal(
+    Number(await game.getAttribute('data-agent-episodes')),
+    episodesBeforeStoppedRun + 1,
+  );
+
+  await page.clock.install();
+  await page.evaluate(() => {
+    const learner = window.__qaGameLearner;
+    const game = document.querySelector('#game');
+    const board = document.querySelector('#board');
+    const originalObserve = learner.observe.bind(learner);
+    window.__qaContinuousStarts = [];
+    window.__qaContinuousTerminals = [];
+
+    learner.observe = (experience) => {
+      originalObserve(experience);
+      if (experience.done) {
+        window.__qaContinuousTerminals.push({
+          attempt: Number(game.dataset.agentRunAttempts),
+          reward: experience.reward,
+          source: experience.source,
+        });
+      }
+    };
+
+    learner.selectAction = (state) => {
+      const attempt = Number(game.dataset.agentRunAttempts);
+      if (!window.__qaContinuousStarts.some((entry) => entry.attempt === attempt)) {
+        window.__qaContinuousStarts.push({
+          attempt,
+          start: Number(board.dataset.startState),
+        });
+      }
+
+      const config = JSON.parse(board.dataset.config);
+      const goal = config.goals.find(
+        (candidate) => candidate.id === board.dataset.selectedGoal,
+      ).state;
+      const walls = new Set(config.walls);
+      const actions = [
+        [-1, 0],
+        [0, 1],
+        [1, 0],
+        [0, -1],
+      ];
+      const queue = [state];
+      const previous = new Map([[state, null]]);
+      const previousAction = new Map();
+      let destination = null;
+      let terminalAction = null;
+
+      search: for (let index = 0; index < queue.length; index += 1) {
+        const current = queue[index];
+        const row = Math.floor(current / 5);
+        const column = current % 5;
+        for (let action = 0; action < actions.length; action += 1) {
+          const [rowStep, columnStep] = actions[action];
+          const nextRow = row + rowStep;
+          const nextColumn = column + columnStep;
+          if (nextRow < 0 || nextRow >= 5 || nextColumn < 0 || nextColumn >= 5) continue;
+          const next = nextRow * 5 + nextColumn;
+
+          if (attempt === 1 && walls.has(next)) {
+            destination = current;
+            terminalAction = action;
+            break search;
+          }
+          if (walls.has(next) || (attempt === 1 && next === goal) || previous.has(next)) continue;
+          previous.set(next, current);
+          previousAction.set(next, action);
+          if (attempt > 1 && next === goal) {
+            destination = next;
+            break search;
+          }
+          queue.push(next);
+        }
+      }
+
+      if (destination === state && terminalAction !== null) return terminalAction;
+      const route = [];
+      for (let cursor = destination; cursor !== state; cursor = previous.get(cursor)) {
+        route.push(previousAction.get(cursor));
+      }
+      route.reverse();
+      if (terminalAction !== null) route.push(terminalAction);
+      return route[0];
+    };
+  });
+  const agentEpisodesBeforeAuto = Number(await game.getAttribute('data-agent-episodes'));
+  const experienceBeforeAuto = Number(await game.getAttribute('data-experience-count'));
+  const agentExperienceBeforeAuto = Number(await game.getAttribute('data-agent-experience-count'));
+  await page.locator('#agent-until-success').click();
+  await page.clock.runFor(10_000);
+  await page.waitForFunction(
+    () =>
+      document.querySelector('#game').dataset.phase === 'decision' &&
+      document.querySelector('#game').dataset.agentRunMode === 'idle' &&
+      document.querySelector('#game').dataset.lastEpisodeResult === 'success',
+    undefined,
+    { timeout: 2_000 },
+  );
+  const autoAttempts = Number(await game.getAttribute('data-agent-run-attempts'));
+  assert.equal(autoAttempts, 2);
+  assert.equal(
+    Number(await game.getAttribute('data-agent-episodes')) - agentEpisodesBeforeAuto,
+    autoAttempts,
+  );
+  const continuousExperience =
+    Number(await game.getAttribute('data-experience-count')) - experienceBeforeAuto;
+  assert.ok(continuousExperience > 0);
+  assert.equal(
+    Number(await game.getAttribute('data-agent-experience-count')) - agentExperienceBeforeAuto,
+    continuousExperience,
+  );
+  assert.equal(await game.getAttribute('data-last-episode-cause'), 'goal');
+  const continuousTrace = await page.evaluate(() => ({
+    starts: window.__qaContinuousStarts,
+    terminals: window.__qaContinuousTerminals,
+  }));
+  assert.deepEqual(
+    continuousTrace.terminals.map(({ attempt, reward, source }) => ({ attempt, reward, source })),
+    [
+      { attempt: 1, reward: -1, source: 'agent' },
+      { attempt: 2, reward: 1, source: 'agent' },
+    ],
+  );
+  assert.equal(continuousTrace.starts.length, 2);
+  assert.notEqual(continuousTrace.starts[0].start, continuousTrace.starts[1].start);
+  await assertNoOverflow(page, 'qpath continuous agent success');
+
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
   assert.equal(await page.locator('h1').textContent(), '路由学徒');
-  assert.equal(await game.getAttribute('data-demo-episodes'), '2');
+  assert.equal(await game.getAttribute('data-demo-episodes'), '3');
   await assertNoOverflow(page, 'qpath Chinese decision');
   await page.locator('#reset-learning').click();
   assert.equal(await game.getAttribute('data-demo-episodes'), '0');
   assert.equal(await game.getAttribute('data-agent-episodes'), '0');
   assert.equal(await game.getAttribute('data-experience-count'), '0');
+  assert.equal(await game.getAttribute('data-player-experience-count'), '0');
+  assert.equal(await game.getAttribute('data-agent-experience-count'), '0');
+  assert.equal(await game.getAttribute('data-agent-run-mode'), 'idle');
+
+  const stateTwentyPolicy = page.locator('.cell[data-state="20"] .policy');
+  const primeRevisablePolicy = () =>
+    page.evaluate(() => {
+      const learner = window.__qaGameLearner;
+      learner.q[20] = [-0.5, -0.5, -0.5, 0.8];
+      learner.visits[20] = [1, 1, 1, 1];
+      window.PocketRuntime.apply({ lang: 'en', theme: 'light' });
+    });
+
+  await page.locator('#player-next').click();
+  assert.equal(await page.locator('#board').getAttribute('data-start-state'), '20');
+  await primeRevisablePolicy();
+  assert.equal(await stateTwentyPolicy.textContent(), '←');
+  for (let step = 0; step < 32; step += 1) {
+    await page.locator('[data-action="3"]').click();
+  }
+  assert.equal(await game.getAttribute('data-phase'), 'decision');
+  assert.equal(await game.getAttribute('data-last-episode-controller'), 'player');
+  assert.equal(await game.getAttribute('data-last-episode-cause'), 'timeout');
+  assert.equal(await game.getAttribute('data-player-experience-count'), '32');
+  assert.notEqual(await stateTwentyPolicy.textContent(), '←');
+
+  await page.locator('#reset-learning').click();
+  await page.evaluate(() => {
+    window.__qaGameLearner.selectAction = () => 3;
+  });
+  await page.locator('#agent-next').click();
+  assert.equal(await page.locator('#board').getAttribute('data-start-state'), '20');
+  await primeRevisablePolicy();
+  assert.equal(await stateTwentyPolicy.textContent(), '←');
+  await page.clock.runFor(5_000);
+  await page.waitForFunction(
+    () =>
+      document.querySelector('#game').dataset.phase === 'decision' &&
+      document.querySelector('#game').dataset.agentEpisodes === '1',
+    undefined,
+    { timeout: 2_000 },
+  );
+  assert.equal(await game.getAttribute('data-last-episode-controller'), 'agent');
+  assert.equal(await game.getAttribute('data-last-episode-cause'), 'timeout');
+  assert.equal(await game.getAttribute('data-agent-experience-count'), '32');
+  assert.notEqual(await stateTwentyPolicy.textContent(), '←');
   await page.close();
 }
 
@@ -1108,40 +1480,71 @@ async function checkSecrecy(browser) {
 }
 
 async function checkHopper(browser) {
-  const page = await openGame(browser, 'hopper', { width: 280, randomValues: [0.5] });
+  const page = await openGame(browser, 'hopper', {
+    width: 280,
+    reducedMotion: 'reduce',
+    randomValues: [0.5],
+    captureLearnerStateCount: 18,
+  });
   const game = page.locator('#game');
+
+  const playSafeHumanEpisode = async () => {
+    for (let slot = 0; slot < 12; slot += 1) {
+      const state = await game.evaluate((element) => ({
+        mode: element.dataset.jammerMode,
+        previousChannel: Number(element.dataset.previousChannel),
+        previousJammer: Number(element.dataset.previousJammer),
+      }));
+      const hiddenJammer =
+        state.mode === 'reactive' ? state.previousChannel : (state.previousJammer + 1) % 3;
+      await page.locator(`.channel[data-channel="${(hiddenJammer + 1) % 3}"]`).click();
+    }
+  };
 
   assert.equal(await page.locator('.channel[data-channel]').count(), 3);
   assert.equal(await game.getAttribute('data-state-count'), '18');
   assert.equal(await game.getAttribute('data-action-count'), '3');
   assert.equal(await game.getAttribute('data-total-slots'), '12');
+  assert.equal(await game.getAttribute('data-success-target'), '9');
   assert.equal(await game.getAttribute('data-safe-channel-count'), '2');
   assert.equal(await page.locator('.trail-cell').count(), 36);
   assert.equal(await game.getAttribute('data-phase'), 'decision');
+  assert.equal(await page.locator('#agent-next').isDisabled(), false);
+  assert.equal(await page.locator('#agent-until-success').isDisabled(), false);
+
+  await page.locator('#agent-next').click();
+  assert.equal(await game.getAttribute('data-phase'), 'agent');
+  const firstAgentSeed = Number(await game.getAttribute('data-episode-seed'));
+  await page.waitForFunction(
+    () =>
+      document.querySelector('#game').dataset.phase === 'decision' &&
+      document.querySelector('#game').dataset.agentEpisodes === '1',
+    undefined,
+    { timeout: 8_000 },
+  );
+  assert.equal(await game.getAttribute('data-experience-count'), '12');
+  assert.equal(await game.getAttribute('data-player-experience-count'), '0');
+  assert.equal(await game.getAttribute('data-agent-experience-count'), '12');
+  assert.equal(await game.getAttribute('data-last-episode-controller'), 'agent');
 
   await page.locator('#player-next').click();
   assert.equal(await game.getAttribute('data-phase'), 'player');
+  const firstHumanSeed = Number(await game.getAttribute('data-episode-seed'));
+  assert.notEqual(firstHumanSeed, firstAgentSeed);
   await assertNoOverflow(page, 'hopper player episode');
-  for (let slot = 0; slot < 12; slot += 1) {
-    const state = await game.evaluate((element) => ({
-      mode: element.dataset.jammerMode,
-      previousChannel: Number(element.dataset.previousChannel),
-      previousJammer: Number(element.dataset.previousJammer),
-    }));
-    const hiddenJammer =
-      state.mode === 'reactive' ? state.previousChannel : (state.previousJammer + 1) % 3;
-    const safeChannel = (hiddenJammer + 1) % 3;
-    await page.locator(`.channel[data-channel="${safeChannel}"]`).click();
-  }
+  await playSafeHumanEpisode();
 
   assert.equal(await game.getAttribute('data-phase'), 'decision');
   assert.equal(await game.getAttribute('data-demo-episodes'), '1');
-  assert.equal(await game.getAttribute('data-experience-count'), '12');
+  assert.equal(await game.getAttribute('data-experience-count'), '24');
+  assert.equal(await game.getAttribute('data-player-experience-count'), '12');
+  assert.equal(await game.getAttribute('data-agent-experience-count'), '12');
   assert.equal(await game.getAttribute('data-collisions'), '0');
   assert.equal(await game.getAttribute('data-throughput'), '100');
+  assert.equal(await game.getAttribute('data-last-episode-result'), 'success');
   assert.ok(Number(await game.getAttribute('data-state-coverage')) > 0);
   const readinessAfterFirstDemo = Number(await game.getAttribute('data-readiness'));
-  assert.ok(readinessAfterFirstDemo > 0);
+  assert.ok(readinessAfterFirstDemo >= 0 && readinessAfterFirstDemo <= 100);
   assert.equal(await page.locator('#decision-panel').isVisible(), true);
   const hopperDecisionSizes = await page
     .locator('#decision-panel button')
@@ -1150,36 +1553,140 @@ async function checkHopper(browser) {
   await assertNoOverflow(page, 'hopper decision');
 
   await page.locator('#player-next').click();
-  for (let slot = 0; slot < 12; slot += 1) {
-    const state = await game.evaluate((element) => ({
-      mode: element.dataset.jammerMode,
-      previousChannel: Number(element.dataset.previousChannel),
-      previousJammer: Number(element.dataset.previousJammer),
-    }));
-    const hiddenJammer =
-      state.mode === 'reactive' ? state.previousChannel : (state.previousJammer + 1) % 3;
-    await page.locator(`.channel[data-channel="${(hiddenJammer + 1) % 3}"]`).click();
-  }
+  const secondHumanSeed = Number(await game.getAttribute('data-episode-seed'));
+  assert.notEqual(secondHumanSeed, firstHumanSeed);
+  await playSafeHumanEpisode();
   assert.equal(await game.getAttribute('data-demo-episodes'), '2');
-  assert.equal(await game.getAttribute('data-experience-count'), '24');
-  assert.ok(Number(await game.getAttribute('data-readiness')) > readinessAfterFirstDemo);
+  assert.equal(await game.getAttribute('data-experience-count'), '36');
+  assert.equal(await game.getAttribute('data-player-experience-count'), '24');
+  assert.ok(
+    Number(await game.getAttribute('data-readiness')) >= 0 &&
+      Number(await game.getAttribute('data-readiness')) <= 100,
+  );
   await assertNoOverflow(page, 'hopper second demonstration');
 
+  const agentEpisodesBeforeSingle = Number(await game.getAttribute('data-agent-episodes'));
+  const experienceBeforeSingleAgent = Number(await game.getAttribute('data-experience-count'));
   await page.locator('#agent-next').click();
   await page.waitForFunction(() => document.querySelector('#game').dataset.phase === 'agent');
+  assert.notEqual(Number(await game.getAttribute('data-episode-seed')), secondHumanSeed);
   await assertNoOverflow(page, 'hopper agent episode');
   await page.waitForFunction(
-    () =>
+    (expectedEpisodes) =>
       document.querySelector('#game').dataset.phase === 'decision' &&
-      document.querySelector('#game').dataset.agentEpisodes === '1',
-    undefined,
+      Number(document.querySelector('#game').dataset.agentEpisodes) === expectedEpisodes,
+    agentEpisodesBeforeSingle + 1,
     { timeout: 8_000 },
   );
   assert.equal(await game.getAttribute('data-controller'), 'agent');
-  assert.equal(await game.getAttribute('data-experience-count'), '36');
-  assert.equal(await game.getAttribute('data-collisions'), '0');
-  assert.equal(await game.getAttribute('data-throughput'), '100');
+  assert.equal(
+    Number(await game.getAttribute('data-experience-count')),
+    experienceBeforeSingleAgent + 12,
+  );
+  assert.equal(
+    Number(await game.getAttribute('data-agent-experience-count')),
+    (agentEpisodesBeforeSingle + 1) * 12,
+  );
   await assertNoOverflow(page, 'hopper agent decision');
+
+  await page.locator('#agent-until-success').click();
+  await page.waitForFunction(() => document.querySelector('#game').dataset.phase === 'agent');
+  assert.equal(await game.getAttribute('data-agent-run-mode'), 'until-success');
+  assert.equal(await page.locator('#agent-until-success').isVisible(), true);
+  await assertNoOverflow(page, 'hopper continuous agent active');
+  await page.locator('#agent-until-success').click();
+  assert.equal(await game.getAttribute('data-agent-run-mode'), 'single');
+  const episodesBeforeStoppedRun = Number(await game.getAttribute('data-agent-episodes'));
+  await page.waitForFunction(
+    (expectedEpisodes) =>
+      document.querySelector('#game').dataset.phase === 'decision' &&
+      Number(document.querySelector('#game').dataset.agentEpisodes) === expectedEpisodes,
+    episodesBeforeStoppedRun + 1,
+    { timeout: 8_000 },
+  );
+  await page.waitForTimeout(500);
+  assert.equal(
+    Number(await game.getAttribute('data-agent-episodes')),
+    episodesBeforeStoppedRun + 1,
+  );
+
+  await page.clock.install();
+  await page.evaluate(() => {
+    const learner = window.__qaGameLearner;
+    const game = document.querySelector('#game');
+    const originalObserve = learner.observe.bind(learner);
+    window.__qaContinuousSeeds = [];
+    window.__qaContinuousTerminals = [];
+
+    learner.observe = (experience) => {
+      originalObserve(experience);
+      if (experience.done) {
+        window.__qaContinuousTerminals.push({
+          attempt: Number(game.dataset.agentRunAttempts),
+          reward: experience.reward,
+          source: experience.source,
+        });
+      }
+    };
+
+    learner.selectAction = (state) => {
+      const attempt = Number(game.dataset.agentRunAttempts);
+      if (!window.__qaContinuousSeeds.some((entry) => entry.attempt === attempt)) {
+        window.__qaContinuousSeeds.push({
+          attempt,
+          seed: Number(game.dataset.episodeSeed),
+        });
+      }
+      const reactive = state >= 9;
+      const localState = reactive ? state - 9 : state;
+      const previousJammer = Math.floor(localState / 3);
+      const previousChannel = localState % 3;
+      const jammer = reactive ? previousChannel : (previousJammer + 1) % 3;
+      return attempt === 1 ? jammer : (jammer + 1) % 3;
+    };
+  });
+  const agentEpisodesBeforeAuto = Number(await game.getAttribute('data-agent-episodes'));
+  const experienceBeforeAuto = Number(await game.getAttribute('data-experience-count'));
+  const agentExperienceBeforeAuto = Number(await game.getAttribute('data-agent-experience-count'));
+  await page.locator('#agent-until-success').click();
+  await page.clock.runFor(5_000);
+  await page.waitForFunction(
+    () =>
+      document.querySelector('#game').dataset.phase === 'decision' &&
+      document.querySelector('#game').dataset.agentRunMode === 'idle' &&
+      document.querySelector('#game').dataset.lastEpisodeResult === 'success',
+    undefined,
+    { timeout: 2_000 },
+  );
+  const autoAttempts = Number(await game.getAttribute('data-agent-run-attempts'));
+  assert.equal(autoAttempts, 2);
+  assert.equal(
+    Number(await game.getAttribute('data-agent-episodes')) - agentEpisodesBeforeAuto,
+    autoAttempts,
+  );
+  assert.equal(
+    Number(await game.getAttribute('data-experience-count')) - experienceBeforeAuto,
+    autoAttempts * 12,
+  );
+  assert.equal(
+    Number(await game.getAttribute('data-agent-experience-count')) - agentExperienceBeforeAuto,
+    autoAttempts * 12,
+  );
+  const continuousTrace = await page.evaluate(() => ({
+    seeds: window.__qaContinuousSeeds,
+    terminals: window.__qaContinuousTerminals,
+  }));
+  assert.deepEqual(
+    continuousTrace.terminals.map(({ attempt, reward, source }) => ({ attempt, reward, source })),
+    [
+      { attempt: 1, reward: -1, source: 'agent' },
+      { attempt: 2, reward: 1, source: 'agent' },
+    ],
+  );
+  assert.equal(continuousTrace.seeds.length, 2);
+  assert.notEqual(continuousTrace.seeds[0].seed, continuousTrace.seeds[1].seed);
+  assert.ok(Number(await game.getAttribute('data-multi-action-state-count')) > 0);
+  await assertNoOverflow(page, 'hopper continuous agent success');
 
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
   assert.equal(await page.locator('h1').textContent(), '跳频学徒');
@@ -1188,6 +1695,9 @@ async function checkHopper(browser) {
   assert.equal(await game.getAttribute('data-demo-episodes'), '0');
   assert.equal(await game.getAttribute('data-agent-episodes'), '0');
   assert.equal(await game.getAttribute('data-experience-count'), '0');
+  assert.equal(await game.getAttribute('data-player-experience-count'), '0');
+  assert.equal(await game.getAttribute('data-agent-experience-count'), '0');
+  assert.equal(await game.getAttribute('data-agent-run-mode'), 'idle');
   await page.close();
 }
 
