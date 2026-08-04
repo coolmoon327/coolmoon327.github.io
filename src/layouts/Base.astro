@@ -17,6 +17,10 @@ interface Props {
   robots?: string;
   /** Whether this is the homepage — injects Person JSON-LD when true */
   isHome?: boolean;
+  /** Disable Open Graph and Twitter metadata for non-public utility pages. */
+  socialMeta?: boolean;
+  /** Include this page in the Pagefind content index. */
+  pagefind?: boolean;
 }
 
 const {
@@ -26,6 +30,8 @@ const {
   noindex = false,
   robots,
   isHome = false,
+  socialMeta = true,
+  pagefind = true,
 } = Astro.props;
 
 const routePath = Astro.url.pathname.slice(site.base.length) || '/';
@@ -115,7 +121,7 @@ const personJsonLd = isHome ? JSON.stringify({
 
     <!-- Open Graph + Twitter Card -->
     {
-      site.og.enabled && (
+      socialMeta && site.og.enabled && (
         <>
           <meta property="og:title" content={pageTitle} />
           <meta property="og:description" content={description} />
@@ -256,7 +262,12 @@ const personJsonLd = isHome ? JSON.stringify({
     <!-- ⌘K Search (ninja-keys + Pagefind) — persisted across View Transitions -->
     {site.features.search && <SearchTrigger transition:persist />}
 
-    <main id="main-content" class="flex-1" data-pagefind-body>
+    <main
+      id="main-content"
+      class="flex-1"
+      data-pagefind-body={pagefind ? 'true' : undefined}
+      data-pagefind-ignore={pagefind ? undefined : 'all'}
+    >
       <slot />
     </main>
 

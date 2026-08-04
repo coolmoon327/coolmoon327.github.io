@@ -5,30 +5,13 @@ import {
   randomBytes,
 } from "node:crypto";
 import { PublisherError } from "./errors.mjs";
+import { validatePasswordSecret } from "./password-secret.mjs";
 import { validatePayload } from "./payload.mjs";
 import { assertExactKeys, decodeBase64Strict, parseBoundedInteger } from "./validation.mjs";
 
 export const DEFAULT_PBKDF2_ITERATIONS = 600000;
 export const MINIMUM_PBKDF2_ITERATIONS = 100000;
 export const MAXIMUM_PBKDF2_ITERATIONS = 2000000;
-
-function validatePassword(password) {
-  if (
-    typeof password !== "string" ||
-    password.includes("\0") ||
-    password.includes("\r") ||
-    password.includes("\n")
-  ) {
-    throw new PublisherError("INVALID_PASSWORD_SECRET", "Password secret is invalid.");
-  }
-  const size = Buffer.byteLength(password, "utf8");
-  if (size < 10 || size > 1024) {
-    throw new PublisherError(
-      "INVALID_PASSWORD_SECRET",
-      "Password secret must contain between 10 and 1024 UTF-8 bytes.",
-    );
-  }
-}
 
 export function validateEnvelope(value) {
   assertExactKeys(value, ["version", "kdf", "cipher", "ciphertext"], "Registry envelope");
@@ -70,7 +53,7 @@ export function encryptPayload(
   { iterations = DEFAULT_PBKDF2_ITERATIONS, randomBytesFunction = randomBytes } = {},
 ) {
   const validatedPayload = validatePayload(payload);
-  validatePassword(password);
+  validatePasswordSecret(password);
   const validatedIterations = parseBoundedInteger(
     iterations,
     "PBKDF2 iterations",
@@ -110,7 +93,7 @@ export function encryptPayload(
 }
 
 export function decryptEnvelope(envelope, password) {
-  validatePassword(password);
+  validatePasswordSecret(password);
   const { iterations, salt, iv, ciphertext } = validateEnvelope(envelope);
   const encrypted = ciphertext.subarray(0, -16);
   const authenticationTag = ciphertext.subarray(-16);

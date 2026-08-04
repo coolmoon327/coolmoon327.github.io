@@ -23,9 +23,7 @@ function toBashPath(path) {
 }
 
 function bashExecutable() {
-  return process.platform === "win32"
-    ? "C:\\Program Files\\Git\\bin\\bash.exe"
-    : "bash";
+  return process.platform === "win32" ? "C:\\Program Files\\Git\\bin\\bash.exe" : "bash";
 }
 
 async function createScenario(
@@ -36,6 +34,8 @@ async function createScenario(
     signal = false,
     hasPreviousPassword = true,
     running = true,
+    newPassword = NEW_PASSWORD,
+    trace = false,
   } = {},
 ) {
   const projectDirectory = await mkdtemp(join(tmpdir(), "endpoint-reset-"));
@@ -53,7 +53,7 @@ async function createScenario(
   if (hasPreviousPassword) {
     await writeFile(passwordFile, OLD_PASSWORD, { mode: 0o600 });
   }
-  await writeFile(inputFile, NEW_PASSWORD, { mode: 0o600 });
+  await writeFile(inputFile, newPassword, { mode: 0o600 });
 
   const logFile = join(projectDirectory, "docker.log");
   const countFile = join(projectDirectory, "run.count");
@@ -106,7 +106,7 @@ exit 0
 
   const result = spawnSync(
     bashExecutable(),
-    [toBashPath(resetScript), "--password-file", toBashPath(inputFile)],
+    [...(trace ? ["-x"] : []), toBashPath(resetScript), "--password-file", toBashPath(inputFile)],
     { encoding: "utf8", env: environment, timeout: 30000, windowsHide: true },
   );
   const log = await readFile(logFile, "utf8").catch(() => "");
@@ -125,6 +125,35 @@ test("password reset publishes once and commits the new secret", async (context)
   );
   assert.match(scenario.log, /compose up -d --force-recreate publisher/u);
   assert.deepEqual(scenario.secretEntries, ["home_access_password"]);
+});
+
+test("password reset rejects short and numeric-only replacement secrets", async (context) => {
+  for (const newPassword of ["short-pass", "密".repeat(15), "🔐".repeat(15), "1234567890123456"]) {
+    const scenario = await createScenario(context, { newPassword });
+    assert.equal(scenario.result.status, 1);
+    assert.equal(await readFile(scenario.passwordFile, "utf8"), OLD_PASSWORD);
+    assert.doesNotMatch(scenario.log, /compose stop publisher/u);
+    assert.match(
+      scenario.result.stderr,
+      /16-1024 Unicode characters and must not be numeric-only/u,
+    );
+  }
+});
+
+test("password reset counts multibyte input as Unicode characters", async (context) => {
+  for (const newPassword of ["密".repeat(16), "🔐".repeat(16)]) {
+    const scenario = await createScenario(context, { newPassword });
+    assert.equal(scenario.result.status, 0, scenario.result.stderr);
+    assert.equal(await readFile(scenario.passwordFile, "utf8"), newPassword);
+  }
+});
+
+test("password reset disables shell tracing before reading the secret", async (context) => {
+  const newPassword = "trace-safe-secret";
+  const scenario = await createScenario(context, { newPassword, trace: true });
+  assert.equal(scenario.result.status, 0, scenario.result.stderr);
+  assert.doesNotMatch(scenario.result.stdout, new RegExp(newPassword, "u"));
+  assert.doesNotMatch(scenario.result.stderr, new RegExp(newPassword, "u"));
 });
 
 test("failed new publication restores and republishes the old secret", async (context) => {

@@ -3,7 +3,16 @@ import { describe, expect, it, vi } from 'vitest';
 // Mock astro:content so the module resolves in unit tests
 vi.mock('astro:content', () => ({ getCollection: vi.fn() }));
 
-import { allCategories, allTags, relatedPosts, sortPosts, visiblePosts } from './posts';
+import {
+  allCategories,
+  allTags,
+  assertBilingualPostPairs,
+  postRoute,
+  relatedPosts,
+  sortPosts,
+  translatedPost,
+  visiblePosts,
+} from './posts';
 
 // Minimal post factory — only the fields used by utils/posts.ts
 function makePost(
@@ -13,7 +22,13 @@ function makePost(
     tags?: string[];
     categories?: string[];
     hidden?: boolean;
+    draft?: boolean;
     pinned?: boolean;
+    locale?: 'en' | 'zh';
+    slug?: string;
+    sourceId?: string;
+    translationKey?: string;
+    generated?: boolean;
   } = {},
 ) {
   return {
@@ -24,7 +39,13 @@ function makePost(
       tags: opts.tags ?? [],
       categories: opts.categories ?? [],
       hidden: opts.hidden ?? false,
+      draft: opts.draft ?? false,
       pinned: opts.pinned ?? false,
+      locale: opts.locale ?? 'en',
+      slug: opts.slug ?? id,
+      sourceId: opts.sourceId ?? id,
+      translationKey: opts.translationKey ?? id,
+      generated: opts.generated ?? true,
     },
   } as any;
 }
@@ -52,10 +73,80 @@ describe('sortPosts', () => {
 });
 
 describe('visiblePosts', () => {
-  it('filters out hidden posts', () => {
+  it('filters out hidden and draft posts', () => {
     const visible = makePost('v');
     const hidden = makePost('h', { hidden: true });
-    expect(visiblePosts([visible, hidden])).toEqual([visible]);
+    const draft = makePost('d', { draft: true });
+    expect(visiblePosts([visible, hidden, draft])).toEqual([visible]);
+  });
+
+  it('filters by locale', () => {
+    const en = makePost('en', { locale: 'en' });
+    const zh = makePost('zh', { locale: 'zh' });
+    expect(visiblePosts([en, zh], 'zh')).toEqual([zh]);
+  });
+});
+
+describe('bilingual post routing', () => {
+  const en = makePost('generated/en/hello', {
+    locale: 'en',
+    slug: 'hello',
+    sourceId: 'source-1',
+    translationKey: 'hello-pair',
+  });
+  const zh = makePost('generated/zh/hello', {
+    locale: 'zh',
+    slug: 'hello',
+    sourceId: 'source-1',
+    translationKey: 'hello-pair',
+  });
+
+  it('uses the stable frontmatter slug for locale-aware routes', () => {
+    expect(postRoute(en)).toBe('/blog/hello/');
+    expect(postRoute(zh)).toBe('/zh/blog/hello/');
+  });
+
+  it('resolves the paired translation', () => {
+    expect(translatedPost(en, [en, zh])).toBe(zh);
+  });
+
+  it('accepts exactly one English and one Chinese translation', () => {
+    expect(() => assertBilingualPostPairs([en, zh])).not.toThrow();
+  });
+
+  it('rejects a missing translation', () => {
+    expect(() => assertBilingualPostPairs([en])).toThrow(/exactly one English and one Chinese/);
+  });
+
+  it('rejects mismatched slugs', () => {
+    const mismatchedZh = makePost('generated/zh/other', {
+      locale: 'zh',
+      slug: 'other',
+      sourceId: 'source-1',
+      translationKey: 'hello-pair',
+    });
+    expect(() => assertBilingualPostPairs([en, mismatchedZh])).toThrow(/share one public slug/);
+  });
+
+  it('rejects mismatched publication states', () => {
+    const hiddenZh = makePost('generated/zh/hello', {
+      locale: 'zh',
+      slug: 'hello',
+      sourceId: 'source-1',
+      translationKey: 'hello-pair',
+      hidden: true,
+    });
+    expect(() => assertBilingualPostPairs([en, hiddenZh])).toThrow(/share one publication state/);
+  });
+
+  it('rejects duplicate public routes', () => {
+    const duplicateEn = makePost('generated/en/duplicate', {
+      locale: 'en',
+      slug: 'hello',
+      sourceId: 'source-2',
+      translationKey: 'other-pair',
+    });
+    expect(() => assertBilingualPostPairs([en, zh, duplicateEn])).toThrow(/is claimed by both/);
   });
 });
 
@@ -96,6 +187,14 @@ describe('relatedPosts', () => {
     const current = makePost('a', { tags: ['x'] });
     const unrelated = makePost('b', { tags: ['q'] });
     expect(relatedPosts(current, [current, unrelated])).toHaveLength(0);
+  });
+
+  it('excludes draft, hidden, and other-locale posts', () => {
+    const current = makePost('a', { tags: ['x'], locale: 'en' });
+    const draft = makePost('draft', { tags: ['x'], draft: true });
+    const hidden = makePost('hidden', { tags: ['x'], hidden: true });
+    const chinese = makePost('zh', { tags: ['x'], locale: 'zh' });
+    expect(relatedPosts(current, [current, draft, hidden, chinese])).toEqual([]);
   });
 
   it('respects the limit parameter', () => {

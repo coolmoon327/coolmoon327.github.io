@@ -8,8 +8,9 @@
     "node": ">=20.12"
   },
   "scripts": {
-    "check": "node --check src/cli.mjs && node --check src/healthcheck.mjs",
+    "check": "node --check src/cli.mjs && node --check src/healthcheck.mjs && node --check src/validate-services.mjs",
     "test": "node --test",
+    "validate-services": "node src/validate-services.mjs",
     "once": "node src/cli.mjs once",
     "daemon": "node src/cli.mjs daemon"
   }

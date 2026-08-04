@@ -1,12 +1,14 @@
 ---
 import Distill from '@layouts/Distill.astro';
 import PostLayout from '@layouts/Post.astro';
+import { assertBilingualPostPairs, visiblePosts } from '@utils/posts';
 import { getCollection, render } from 'astro:content';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
-  return posts.map((post) => ({
-    params: { slug: post.id },
+  assertBilingualPostPairs(posts);
+  return visiblePosts(posts, 'en').map((post) => ({
+    params: { slug: post.data.slug },
     props: { post },
   }));
 }

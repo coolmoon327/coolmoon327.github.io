@@ -1,14 +1,13 @@
 ---
 import { site } from '@config/site';
 import { withBase } from '@utils/base';
+import { type PostLocale, postRoute } from '@utils/posts';
 import { readingTime } from '@utils/reading-time';
 import type { CollectionEntry } from 'astro:content';
 import { Icon } from 'astro-icon/components';
 
-/** A local post from the 'posts' collection. */
 type LocalPost = CollectionEntry<'posts'>;
 
-/** A synthetic external post object (constructed in blog listing pages). */
 interface ExternalPost {
   external: true;
   id: string;
@@ -28,135 +27,197 @@ type PostEntry = LocalPost | ExternalPost;
 
 interface Props {
   post: PostEntry;
+  locale?: PostLocale;
 }
 
 const { post } = Astro.props;
-
 const isExternal = 'external' in post && post.external === true;
+const localPost = isExternal ? undefined : (post as LocalPost);
+const locale = Astro.props.locale ?? localPost?.data.locale ?? 'en';
+const languageTag = locale === 'zh' ? 'zh-CN' : 'en-US';
 
-const title = post.data.title;
-const date = post.data.date;
-const description = post.data.description;
-const tags = post.data.tags ?? [];
-const categories = post.data.categories ?? [];
-// Use `image` field as thumbnail (matches schema field name)
-const thumbnail = (post.data as { image?: string }).image;
+const { title, date, description, tags = [], categories = [] } = post.data;
+const thumbnail = post.data.image;
 const thumbnailSrc = thumbnail ? withBase(thumbnail) : undefined;
+const href = isExternal ? (post as ExternalPost).url : `${site.base}${postRoute(localPost!)}`;
+const minutes = localPost?.body ? readingTime(localPost.body) : undefined;
+const readingLabel = minutes
+  ? new Intl.NumberFormat(languageTag, {
+      style: 'unit',
+      unit: 'minute',
+      unitDisplay: 'short',
+    }).format(minutes)
+  : undefined;
 
-const href = isExternal ? (post as ExternalPost).url : `${site.base}/blog/${post.id}/`;
-
-const minutes =
-  !isExternal && (post as LocalPost).body ? readingTime((post as LocalPost).body!) : undefined;
-
-const d = date instanceof Date ? date : new Date(date);
-const formattedDate = d.toLocaleDateString('en-US', {
+const published = date instanceof Date ? date : new Date(date);
+const formattedDate = published.toLocaleDateString(languageTag, {
   year: 'numeric',
   month: 'long',
   day: 'numeric',
 });
-const year = d.getFullYear();
+const blogRoot = locale === 'zh' ? '/zh/blog/' : '/blog/';
 ---
 
-{
-  thumbnail ? (
-    <div class="row">
-      <div class="col-sm-9">
-        <h3>
-          <a
-            class="post-title"
-            href={href}
-            {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-          >
-            {title}
-            {isExternal && (
-              <span style="font-size: 0.7em; opacity: 0.6; margin-left: 0.25em;">&#x2197;</span>
-            )}
-          </a>
-        </h3>
-        {description && <p>{description}</p>}
-        <p class="post-meta">
-          {minutes && <>{minutes} min read &nbsp;&middot;&nbsp; </>}
-          <time datetime={d.toISOString()}>{formattedDate}</time>
-        </p>
+<article class:list={['post-card', { 'has-image': Boolean(thumbnailSrc) }]}>
+  <div class="post-card-content">
+    <h2>
+      <a
+        class="post-title"
+        href={href}
+        {...isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {}}
+      >
+        {title}
+        {
+          isExternal && (
+            <span class="external-mark" aria-hidden="true">
+              ↗
+            </span>
+          )
+        }
+      </a>
+    </h2>
+
+    {description && <p class="post-description">{description}</p>}
+
+    <p class="post-meta">
+      <time datetime={published.toISOString()}>{formattedDate}</time>
+      {
+        readingLabel && (
+          <>
+            <>
+              <span aria-hidden="true">·</span>
+              <span>{readingLabel}</span>
+            </>
+          </>
+        )
+      }
+    </p>
+
+    {
+      (tags.length > 0 || categories.length > 0) && (
         <p class="post-tags">
-          <a href={`${site.base}/blog/`}>
-            <Icon name="fa-solid:calendar" />
-            &nbsp;{year}
+          <a href={`${site.base}${blogRoot}`} aria-label={formattedDate}>
+            <Icon name="fa-solid:calendar" aria-hidden="true" />
+            <span>{published.getFullYear()}</span>
           </a>
           {tags.map((tag) => (
-            <>
-              &nbsp;&middot;&nbsp;
-              <a href={`${site.base}/blog/tag/${tag}/`}>
-                <Icon name="fa-solid:hashtag" />
-                &nbsp;{tag}
-              </a>
-            </>
+            <span class="post-taxonomy">
+              <Icon name="fa-solid:hashtag" aria-hidden="true" />
+              {tag}
+            </span>
           ))}
-          {categories.map((cat) => (
-            <>
-              &nbsp;&middot;&nbsp;
-              <a href={`${site.base}/blog/category/${cat}/`}>
-                <Icon name="fa-solid:tag" />
-                &nbsp;{cat}
-              </a>
-            </>
+          {categories.map((category) => (
+            <span class="post-taxonomy">
+              <Icon name="fa-solid:tag" aria-hidden="true" />
+              {category}
+            </span>
           ))}
         </p>
-      </div>
-      <div class="col-sm-3">
-        <img
-          class="img-fluid z-depth-1 rounded"
-          src={thumbnailSrc}
-          alt=""
-          loading="lazy"
-          width="150"
-          height="120"
-        />
-      </div>
-    </div>
-  ) : (
-    <>
-      <h3>
-        <a
-          class="post-title"
-          href={href}
-          {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-        >
-          {title}
-          {isExternal && (
-            <span style="font-size: 0.7em; opacity: 0.6; margin-left: 0.25em;">&#x2197;</span>
-          )}
-        </a>
-      </h3>
-      {description && <p>{description}</p>}
-      <p class="post-meta">
-        {minutes && <>{minutes} min read &nbsp;&middot;&nbsp; </>}
-        <time datetime={d.toISOString()}>{formattedDate}</time>
-      </p>
-      <p class="post-tags">
-        <a href={`${site.base}/blog/`}>
-          <Icon name="fa-solid:calendar" />
-          &nbsp;{year}
-        </a>
-        {tags.map((tag) => (
-          <>
-            &nbsp;&middot;&nbsp;
-            <a href={`${site.base}/blog/tag/${tag}/`}>
-              <Icon name="fa-solid:hashtag" />
-              &nbsp;{tag}
-            </a>
-          </>
-        ))}
-        {categories.map((cat) => (
-          <>
-            &nbsp;&middot;&nbsp;
-            <a href={`${site.base}/blog/category/${cat}/`}>
-              <Icon name="fa-solid:tag" />
-              &nbsp;{cat}
-            </a>
-          </>
-        ))}
-      </p>
-    </>
-  )
-}
+      )
+    }
+  </div>
+
+  {
+    thumbnailSrc && (
+      <img
+        class="post-thumbnail"
+        src={thumbnailSrc}
+        alt=""
+        loading="lazy"
+        width="180"
+        height="128"
+      />
+    )
+  }
+</article>
+
+<style>
+  .post-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .post-card.has-image {
+    grid-template-columns: minmax(0, 1fr) minmax(8rem, 11.25rem);
+  }
+
+  h2 {
+    margin: 0;
+    font-family: var(--font-condensed);
+    font-size: clamp(1.45rem, 4vw, 2rem);
+    line-height: 1.18;
+    overflow-wrap: anywhere;
+  }
+
+  .post-title {
+    color: var(--global-text-color);
+    text-decoration: none;
+  }
+
+  .post-title:hover {
+    color: var(--global-theme-color);
+  }
+
+  .external-mark {
+    margin-left: 0.3em;
+    font-size: 0.65em;
+    opacity: 0.6;
+  }
+
+  .post-description {
+    max-width: 46rem;
+    margin: 0.75rem 0 0;
+    color: var(--global-text-color-light);
+    line-height: 1.65;
+  }
+
+  .post-meta,
+  .post-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0.8rem 0 0;
+    color: var(--global-text-color-light);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+  }
+
+  .post-tags {
+    gap: 0.65rem;
+  }
+
+  .post-tags a,
+  .post-taxonomy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--global-text-color-light);
+    text-decoration: none;
+  }
+
+  .post-tags a:hover {
+    color: var(--global-theme-color);
+  }
+
+  .post-thumbnail {
+    width: 100%;
+    aspect-ratio: 1.4;
+    object-fit: cover;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 0.45rem;
+  }
+
+  @media (max-width: 560px) {
+    .post-card.has-image {
+      grid-template-columns: 1fr;
+    }
+
+    .post-thumbnail {
+      order: -1;
+      max-height: 12rem;
+    }
+  }
+</style>

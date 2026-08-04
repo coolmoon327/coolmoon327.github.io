@@ -3,6 +3,8 @@ const previewUrl = new URL(baseUrl);
 const basePath = previewUrl.pathname.replace(/\/$/, '');
 const routeUrl = (path) => new URL(`${basePath}${path}`, previewUrl.origin);
 const routeHref = (path) => `${basePath}${path}` || '/';
+const attributeValue = (tag, name) =>
+  tag.match(new RegExp(`\\b${name}=["']([^"']*)["']`, 'i'))?.[1];
 const paschalisProfileUrl = 'https://www.ku.ac.ae/college-people/paschalis-sofotasios';
 const gameIds = [
   'runner',
@@ -83,10 +85,18 @@ const coreRoutes = [
   {
     path: '/blog/',
     lang: 'en',
-    marker: 'Writing will live here.',
+    marker: 'A home for research notes, engineering notebooks, and reading notes.',
     switchHref: '/zh/blog/',
-    requiredMarkers: ['A home for research notes, engineering notebooks, and reading notes.'],
+    requiredMarkers: ['Protected notes'],
     forbiddenMarkers: ['after the site structure is approved'],
+    blogLocale: 'en',
+  },
+  {
+    path: '/blog/protected/',
+    lang: 'en',
+    marker: 'Protected notes',
+    switchHref: '/zh/blog/protected/',
+    protectedBlog: true,
   },
   {
     path: '/games/',
@@ -165,10 +175,18 @@ const coreRoutes = [
   {
     path: '/zh/blog/',
     lang: 'zh-CN',
-    marker: '文章将在这里陆续发布',
+    marker: '博客用于整理研究笔记、工程记录与阅读笔记，文章会在这里陆续发布。',
     switchHref: '/blog/',
-    requiredMarkers: ['整理研究笔记、工程记录与阅读笔记'],
+    requiredMarkers: ['受保护笔记'],
     forbiddenMarkers: ['待网站结构稳定后'],
+    blogLocale: 'zh',
+  },
+  {
+    path: '/zh/blog/protected/',
+    lang: 'zh-CN',
+    marker: '受保护笔记',
+    switchHref: '/blog/protected/',
+    protectedBlog: true,
   },
   {
     path: '/zh/games/',
@@ -206,6 +224,7 @@ const removedDemoRoutes = [
 ];
 
 const failures = [];
+const blogIndexLinks = new Map();
 
 for (const route of coreRoutes) {
   const response = await fetch(routeUrl(route.path), { redirect: 'manual' });
@@ -297,10 +316,79 @@ for (const route of coreRoutes) {
   if (route.owner && (!html.includes('data-home-access') || !html.includes('type="password"'))) {
     failures.push(`${route.path}: missing the encrypted owner gateway shell`);
   }
+  if (route.protectedBlog && !html.includes('noindex, nofollow, noarchive')) {
+    failures.push(`${route.path}: missing protected-blog noindex policy`);
+  }
+  if (
+    route.protectedBlog &&
+    (!html.includes('data-protected-blog') || !html.includes('type="password"'))
+  ) {
+    failures.push(`${route.path}: missing the protected-blog decryption shell`);
+  }
+  if (route.blogLocale) {
+    const expectedPrefix = routeHref(route.blogLocale === 'zh' ? '/zh/blog/' : '/blog/');
+    const links = [...html.matchAll(/<a\b[^>]*>/gi)]
+      .map((match) => match[0])
+      .filter((tag) => (attributeValue(tag, 'class') ?? '').split(/\s+/).includes('post-title'))
+      .map((tag) => attributeValue(tag, 'href'))
+      .filter((href) => typeof href === 'string' && href.startsWith(expectedPrefix));
+    blogIndexLinks.set(route.blogLocale, [...new Set(links)]);
+  }
   if (/Albert Einstein|Linus Torvalds|Dadang NH/.test(html)) {
     failures.push(`${route.path}: contains an upstream demo identity`);
   }
   console.log(`core ${response.status} ${route.lang.padEnd(5)} ${route.path}`);
+}
+
+const enBlogLinks = blogIndexLinks.get('en') ?? [];
+const zhBlogLinks = blogIndexLinks.get('zh') ?? [];
+const slugFromBlogHref = (href, locale) => {
+  const prefix = routeHref(locale === 'zh' ? '/zh/blog/' : '/blog/');
+  return href.startsWith(prefix) ? href.slice(prefix.length).replace(/\/$/, '') : '';
+};
+const enBlogSlugs = new Set(
+  enBlogLinks.map((href) => slugFromBlogHref(href, 'en')).filter(Boolean),
+);
+const zhBlogSlugs = new Set(
+  zhBlogLinks.map((href) => slugFromBlogHref(href, 'zh')).filter(Boolean),
+);
+
+if (enBlogLinks.length === 0 || zhBlogLinks.length === 0) {
+  failures.push('blog indexes: expected at least one public post in each locale');
+}
+if (enBlogLinks.length !== zhBlogLinks.length) {
+  failures.push(
+    `blog indexes: English has ${enBlogLinks.length} posts but Chinese has ${zhBlogLinks.length}`,
+  );
+}
+for (const slug of new Set([...enBlogSlugs, ...zhBlogSlugs])) {
+  if (!enBlogSlugs.has(slug) || !zhBlogSlugs.has(slug)) {
+    failures.push(`blog indexes: bilingual route pair is incomplete for ${slug}`);
+    continue;
+  }
+
+  const pairs = [
+    { locale: 'en', lang: 'en', path: `/blog/${slug}/`, alternate: `/zh/blog/${slug}/` },
+    { locale: 'zh', lang: 'zh-CN', path: `/zh/blog/${slug}/`, alternate: `/blog/${slug}/` },
+  ];
+  const responses = await Promise.all(
+    pairs.map(async (pair) => {
+      const response = await fetch(routeUrl(pair.path), { redirect: 'manual' });
+      return { pair, response, html: await response.text() };
+    }),
+  );
+  for (const { pair, response, html } of responses) {
+    if (response.status !== 200) {
+      failures.push(`${pair.path}: expected 200, received ${response.status}`);
+    }
+    if (!new RegExp(`<html[^>]+lang=["']?${pair.lang}`, 'i').test(html)) {
+      failures.push(`${pair.path}: missing html lang=${pair.lang}`);
+    }
+    if (!html.includes(`href="${routeHref(pair.alternate)}"`)) {
+      failures.push(`${pair.path}: missing paired-language article link`);
+    }
+    console.log(`post ${response.status} ${pair.locale.padEnd(2)}    ${pair.path}`);
+  }
 }
 
 for (const path of removedDemoRoutes) {

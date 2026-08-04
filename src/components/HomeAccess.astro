@@ -26,6 +26,10 @@ const inputId = `home-access-password-${locale}`;
     updatedLabel: copy.updatedLabel,
     expiresLabel: copy.expiresLabel,
     openAction: copy.openAction,
+    internetGroup: copy.internetGroup,
+    homeGroup: copy.homeGroup,
+    internetBadge: copy.internetBadge,
+    homeBadge: copy.homeBadge,
   })}
 >
   <div class="unlock-panel">
@@ -42,7 +46,7 @@ const inputId = `home-access-password-${locale}`;
           id={inputId}
           type="password"
           placeholder={copy.passwordPlaceholder}
-          maxlength="1024"
+          maxlength="2048"
           autocapitalize="none"
           autocomplete="off"
           spellcheck="false"
@@ -95,6 +99,10 @@ const inputId = `home-access-password-${locale}`;
     updatedLabel: string;
     expiresLabel: string;
     openAction: string;
+    internetGroup: string;
+    homeGroup: string;
+    internetBadge: string;
+    homeBadge: string;
   }
 
   const MAX_REGISTRY_RESPONSE_LENGTH = 384 * 1024;
@@ -167,15 +175,50 @@ const inputId = `home-access-password-${locale}`;
         card.target = '_blank';
         card.rel = 'noopener noreferrer';
 
+        const cardHeader = document.createElement('div');
+        cardHeader.className = 'service-card-header';
         const title = document.createElement('h3');
         title.textContent = service.label[locale];
+        const badge = document.createElement('span');
+        badge.className = `service-access-badge service-access-badge--${service.access}`;
+        badge.textContent =
+          service.access === 'home-or-tailnet' ? copy.homeBadge : copy.internetBadge;
+        cardHeader.append(title, badge);
+
         const description = document.createElement('p');
+        description.className = 'service-description';
         description.textContent = service.description[locale];
         const action = document.createElement('span');
+        action.className = 'service-action';
         action.textContent = `${copy.openAction} ↗`;
 
-        card.append(title, description, action);
+        card.append(cardHeader, description);
+        if (service.notice[locale].length > 0) {
+          const notice = document.createElement('p');
+          notice.className = 'service-notice';
+          notice.textContent = service.notice[locale];
+          card.append(notice);
+        }
+        card.append(action);
         return card;
+      };
+
+      const createServiceGroup = (
+        access: 'internet' | 'home-or-tailnet',
+        cards: HTMLAnchorElement[],
+      ): HTMLElement => {
+        const group = document.createElement('section');
+        group.className = 'service-group';
+
+        const heading = document.createElement('h3');
+        heading.className = 'service-group-heading';
+        heading.textContent = access === 'home-or-tailnet' ? copy.homeGroup : copy.internetGroup;
+
+        const grid = document.createElement('div');
+        grid.className = 'service-group-grid';
+        grid.append(...cards);
+        group.append(heading, grid);
+        return group;
       };
 
       form.addEventListener('submit', async (event) => {
@@ -214,10 +257,18 @@ const inputId = `home-access-password-${locale}`;
           password = '';
 
           const contentLocale = document.documentElement.lang === 'zh-CN' ? 'zh' : 'en';
-          const cards = payload.services.map((service) =>
-            createServiceCard(service, contentLocale),
-          );
-          serviceList.replaceChildren(...cards);
+          const cardEntries = payload.services.map((service) => ({
+            access: service.access,
+            card: createServiceCard(service, contentLocale),
+          }));
+          const cards = cardEntries.map(({ card }) => card);
+          const groups = (['internet', 'home-or-tailnet'] as const).flatMap((access) => {
+            const groupCards = cardEntries
+              .filter((entry) => entry.access === access)
+              .map(({ card }) => card);
+            return groupCards.length === 0 ? [] : [createServiceGroup(access, groupCards)];
+          });
+          serviceList.replaceChildren(...groups);
 
           const locale = document.documentElement.lang === 'zh-CN' ? 'zh-CN' : 'en';
           const formattedDate = new Intl.DateTimeFormat(locale, {
@@ -256,11 +307,11 @@ const inputId = `home-access-password-${locale}`;
       document.addEventListener(
         'astro:before-swap',
         () => {
-          requestController?.abort();
-          requestController = null;
+          clearDirectory();
         },
         { once: true },
       );
+      window.addEventListener('pagehide', clearDirectory, { once: true });
 
       clearDirectory();
       setBusy(false);
@@ -414,13 +465,33 @@ const inputId = `home-access-password-${locale}`;
 
   .service-grid {
     display: grid;
+    gap: 1.35rem;
+  }
+
+  :global(.service-group) {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  :global(.service-group-heading) {
+    margin: 0;
+    color: var(--global-text-color-light);
+    font-family: var(--font-mono);
+    font-size: 0.73rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  :global(.service-group-grid) {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
   }
 
   :global(.service-card) {
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    align-content: start;
     min-height: 175px;
     padding: 1.15rem;
     border: 1px solid var(--global-divider-color);
@@ -438,20 +509,58 @@ const inputId = `home-access-password-${locale}`;
     transform: translateY(-2px);
   }
 
-  :global(.service-card h3) {
+  :global(.service-card-header) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  :global(.service-card-header h3) {
     margin: 0;
     color: var(--global-text-color);
     font-size: 1rem;
   }
 
-  :global(.service-card p) {
+  :global(.service-description) {
     margin: 0.55rem 0 1.25rem;
     color: var(--global-text-color-light);
     font-size: 0.84rem;
     line-height: 1.6;
   }
 
-  :global(.service-card span) {
+  :global(.service-access-badge) {
+    flex: 0 0 auto;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 999px;
+    color: var(--global-text-color-light);
+    font-family: var(--font-mono);
+    font-size: 0.63rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-align: center;
+    text-transform: capitalize;
+  }
+
+  :global(.service-access-badge--home-or-tailnet) {
+    border-color: color-mix(in srgb, var(--global-theme-color) 45%, var(--global-divider-color));
+    color: var(--global-theme-color);
+  }
+
+  :global(.service-notice) {
+    margin: 0 0 1rem;
+    padding: 0.65rem 0.75rem;
+    border-left: 3px solid var(--global-theme-color);
+    color: var(--global-text-color-light);
+    background: color-mix(in srgb, var(--global-theme-color) 7%, transparent);
+    font-size: 0.78rem;
+    line-height: 1.55;
+  }
+
+  :global(.service-action) {
+    align-self: end;
+    margin-top: auto;
     color: var(--global-theme-color);
     font-size: 0.78rem;
     font-weight: 700;
@@ -490,7 +599,7 @@ const inputId = `home-access-password-${locale}`;
       grid-template-columns: minmax(0, 1fr);
     }
 
-    .service-grid {
+    :global(.service-group-grid) {
       grid-template-columns: minmax(0, 1fr);
     }
 
@@ -501,7 +610,8 @@ const inputId = `home-access-password-${locale}`;
 
     .unlock-panel > *,
     .security-note > *,
-    .service-grid > * {
+    .service-grid > *,
+    :global(.service-group-grid > *) {
       min-width: 0;
     }
 

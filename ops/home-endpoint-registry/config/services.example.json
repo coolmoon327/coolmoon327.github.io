@@ -11,7 +11,8 @@
       "description": {
         "en": "Private home-service entry point.",
         "zh": "家庭服务的私有入口。"
-      }
+      },
+      "access": "internet"
     },
     {
       "id": "storage",
@@ -23,6 +24,11 @@
       "description": {
         "en": "Personal storage management entry point.",
         "zh": "个人存储管理入口。"
+      },
+      "access": "internet",
+      "notice": {
+        "en": "Keep service authentication enabled.",
+        "zh": "请保留服务自身的身份验证。"
       },
       "enabled": false
     }

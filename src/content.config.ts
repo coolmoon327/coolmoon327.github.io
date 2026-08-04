@@ -4,9 +4,35 @@ import { defineCollection, z } from 'astro:content';
 // ─── Posts ─────────────────────────────────────────────────────────────────
 
 const posts = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/posts' }),
+  loader: glob({
+    pattern: '**/*.{md,mdx}',
+    base: './src/content/posts',
+    // Both translations intentionally share one public `slug`. Astro otherwise
+    // uses that frontmatter field as the collection ID and silently overwrites
+    // one locale. Keep routing on data.slug while namespacing the internal ID.
+    generateId: ({ data, entry }) => {
+      const { locale, slug } = data;
+      if ((locale !== 'en' && locale !== 'zh') || typeof slug !== 'string') {
+        throw new Error(`Cannot generate post ID for ${entry}: expected locale and slug.`);
+      }
+      return `${locale}/${slug}`;
+    },
+  }),
   schema: z.object({
     title: z.string(),
+    /** Public locale. Every post must have exactly one paired translation. */
+    locale: z.enum(['en', 'zh']),
+    /** Stable public URL segment shared by both language versions. */
+    slug: z
+      .string()
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Use a lowercase ASCII kebab-case slug.')
+      .refine((slug) => slug !== 'protected', 'The slug "protected" is reserved.'),
+    /** Stable source identity emitted by the blog publishing pipeline. */
+    sourceId: z.string().min(1),
+    /** Stable bilingual pairing key emitted by the blog publishing pipeline. */
+    translationKey: z.string().min(1),
+    /** True when the file is managed by the blog publishing pipeline. */
+    generated: z.boolean(),
     date: z.coerce.date(),
     description: z.string().optional(),
     tags: z.array(z.string()).optional().default([]),
@@ -19,11 +45,11 @@ const posts = defineCollection({
     relatedPosts: z.boolean().optional().default(false),
     /** Pin to top of blog listing. */
     pinned: z.boolean().optional().default(false),
-    /** Hide from blog listing (but accessible via direct URL). */
+    /** Hide from blog listings and static detail routes. */
     hidden: z.boolean().optional().default(false),
     /** Draft post — hidden from all listings and the search index until published. */
     draft: z.boolean().optional().default(false),
-    /** Override the robots meta tag (e.g. 'noindex, nofollow'). Useful for sensitive posts. */
+    /** Override the robots meta tag for a published public post. */
     robots: z.string().optional(),
     /** Last modified date — displayed in the post header and used in JSON-LD dateModified. */
     lastmod: z.coerce.date().optional(),

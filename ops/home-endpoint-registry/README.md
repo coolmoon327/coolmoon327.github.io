@@ -7,7 +7,7 @@ The publisher is intentionally small: it uses Node.js built-ins for HTTP, PBKDF2
 ## Security boundary
 
 - Git is an address registry, not a reverse proxy, firewall, or authentication service.
-- The public artifact exposes only a versioned KDF/cipher envelope and ciphertext. Service IDs, bilingual labels and descriptions, addresses, ports, paths, publication time, and expiry are encrypted.
+- The public artifact exposes only a versioned KDF/cipher envelope and ciphertext. Service IDs, bilingual labels, descriptions and access notices, access classifications, addresses, ports, paths, publication time, and expiry are encrypted.
 - The browser password is never sent to GitHub or the publisher. The publisher reads it from a mode-`0600`, read-only bind mount.
 - AES-256-GCM detects both a wrong password and artifact tampering. A fresh 16-byte salt and 12-byte IV are generated for every publication.
 - Public ciphertext permits offline password guessing. Prefer a long, unique password and keep authentication enabled on every home service. Do not reuse an appliance or administrator password.
@@ -25,13 +25,17 @@ The plaintext is validated before encryption:
   "services": [
     {
       "id": "private-service-id",
-      "url": "rendered HTTPS URL",
+      "url": "rendered HTTPS URL or restricted legacy private HTTP URL",
       "label": { "en": "English label", "zh": "中文标签" },
-      "description": { "en": "English description", "zh": "中文说明" }
+      "description": { "en": "English description", "zh": "中文说明" },
+      "access": "internet | home-or-tailnet",
+      "notice": { "en": "English access note", "zh": "中文访问提示" }
     }
   ]
 }
 ```
+
+`access` and `notice` are optional version 1 fields. A legacy payload without them remains valid and is interpreted by the website as `internet` access with no notice. New publisher output includes the access classification, and includes `notice` only when the private configuration defines one. The website groups services and renders badges and notices only after successful decryption.
 
 The public envelope is:
 
@@ -53,7 +57,7 @@ The public envelope is:
 }
 ```
 
-Unknown fields, duplicate service IDs, plain HTTP or other unsafe URL schemes, URLs containing credentials, non-public discovery results, invalid bilingual text, excessive lifetimes, and weak KDF parameters are rejected. The default authenticated lifetime is 24 hours and may never exceed 48 hours.
+Unknown fields, duplicate service IDs, unsafe URL schemes, URLs containing credentials, invalid fixed-address ranges, non-public discovery results, invalid bilingual text, excessive lifetimes, and weak KDF parameters are rejected. Plain HTTP is rejected except for the narrowly scoped legacy-private exception below. The default authenticated lifetime is 24 hours and may never exceed 48 hours.
 
 ## Private configuration
 
@@ -66,9 +70,57 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-Edit `secrets/services.json`. Each enabled service carries its private ID, bilingual label and description, plus an explicit URL template containing exactly one `{publicIPv4}` placeholder. Ports and paths belong only in this private file. A rendered URL must point directly to the discovered address over HTTPS; templates cannot redirect the address into another host, username, or password field. Metadata is bounded, control-character-free plain text and the owner page must insert it with text-only DOM APIs.
+Edit `secrets/services.json`. Each enabled service carries its private ID, bilingual label and description, plus exactly one URL locator:
+
+- `urlTemplate` is the existing dynamic-public-address form. It contains exactly one `{publicIPv4}` placeholder and defaults to `access: "internet"`.
+- `fixedUrl` is for a private-network or Tailnet entry. It must contain no username or password, use a canonical literal IPv4 address in RFC1918 or the CGNAT/Tailscale `100.64.0.0/10` range, and explicitly set `access: "home-or-tailnet"`. HTTPS is the default and strongly preferred. Loopback, hostnames, public addresses, and ambiguous numeric forms are rejected.
+- A legacy `http://` `fixedUrl` is accepted only when the bilingual `notice` explicitly says both that access is restricted to the home network or Tailscale and that legacy HTTP is unencrypted or carries interception risk. Both language variants are validated. This exception never applies to `urlTemplate`; dynamic public entries remain HTTPS-only.
+
+The fixed form is schematically:
+
+```json
+{
+  "id": "private-service",
+  "fixedUrl": "https://<private-or-tailnet-ip>/<optional-path>",
+  "label": { "en": "Private service", "zh": "私有服务" },
+  "description": { "en": "Private entry point.", "zh": "私有入口。" },
+  "access": "home-or-tailnet",
+  "notice": {
+    "en": "Private access instructions stored only inside ciphertext.",
+    "zh": "仅保存在密文中的私有访问说明。"
+  }
+}
+```
+
+Replace the angle-bracket placeholders in the private file; the schematic block is not a directly valid service entry. Ports, paths, account-specific access instructions, and any private endpoint details belong only in `secrets/services.json`. `notice` is optional, but when present must contain both English and Chinese text. Metadata is bounded, control-character-free plain text and the owner page inserts every decrypted field with text-only DOM APIs.
+
+A legacy HTTP entry follows the same private-address rules and must carry the explicit warning:
+
+```json
+{
+  "id": "legacy-private-service",
+  "fixedUrl": "http://<private-or-tailnet-ip>/<optional-path>",
+  "label": { "en": "Legacy service", "zh": "旧版服务" },
+  "description": { "en": "Legacy private entry.", "zh": "旧版私有入口。" },
+  "access": "home-or-tailnet",
+  "notice": {
+    "en": "Use only on the home network or through Tailscale. Legacy HTTP is unencrypted and carries interception risk.",
+    "zh": "仅可在家中网络内或通过 Tailscale 访问。旧版 HTTP 未加密，存在被窃听的风险。"
+  }
+}
+```
+
+This exception hides the endpoint and warning inside authenticated ciphertext, but it does not encrypt traffic between the browser and the legacy service. Keep the service's own authentication enabled and migrate it behind private HTTPS when practical.
 
 The committed example deliberately contains no real endpoint. Disabled entries are validated but not published.
+
+Validate a private service catalog with the exact publisher release before installing it:
+
+```bash
+node src/validate-services.mjs /path/to/services.json
+```
+
+The command prints only a generic result and the service count; it never prints endpoint details.
 
 ## Deploy key and host verification
 
@@ -99,7 +151,7 @@ chmod +x scripts/reset-password.sh
 ./scripts/reset-password.sh
 ```
 
-The script hides both entries, requires confirmation, stops a running publisher, saves the previous secret in a private same-directory backup, atomically installs the new mode-`0600` file, and performs a forced one-shot publication. It uses `shred` when available (with removal fallback), recreates the daemon so its file bind mount sees the new inode, and restores the previous running state only after success. On failure it atomically restores the old secret, forces a rollback publication, and restarts the prior daemon; a durable retry flag covers an interrupted rollback. The password is never passed as an argument or environment variable.
+The script hides both entries, requires confirmation, and accepts only a password containing 16-1024 Unicode characters that is not numeric-only. It requires the standard `iconv` command so it can validate UTF-8 and count Unicode code points consistently across Linux and Git Bash. It stops a running publisher, saves the previous secret in a private same-directory backup, atomically installs the new mode-`0600` file, and performs a forced one-shot publication. It uses `shred` when available (with removal fallback), recreates the daemon so its file bind mount sees the new inode, and restores the previous running state only after success. On failure it atomically restores the old secret, forces a rollback publication, and restarts the prior daemon; a durable retry flag covers an interrupted rollback. The password is never passed as an argument or environment variable. A legacy password already mounted by an older deployment remains readable for continuity, but the next reset upgrades the shared Owner Access/private-blog secret to this stronger policy. Password length is measured as Unicode code points rather than UTF-8 bytes, so multibyte characters do not receive extra length credit.
 
 For a controlled bootstrap, `--password-file /path/to/mode-0600-input` reads a single-line secret from a private regular file; only the file path appears in the process arguments. Securely remove that input file after the transaction. Interactive use remains the normal reset path.
 

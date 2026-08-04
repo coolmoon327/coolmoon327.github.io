@@ -7,7 +7,12 @@ import Newsletter from '@components/Newsletter.astro';
 import ReadingProgress from '@components/ReadingProgress.astro';
 import TOC from '@components/TOC.astro';
 import { site } from '@config/site';
-import { relatedPosts } from '@utils/posts';
+import {
+  assertBilingualPostPairs,
+  postRoute,
+  relatedPosts,
+  translatedPost,
+} from '@utils/posts';
 import { readingTime as calcReadingTime } from '@utils/reading-time';
 import type { MarkdownHeading } from 'astro';
 import type { CollectionEntry } from 'astro:content';
@@ -22,32 +27,41 @@ interface Props {
 
 const { post, headings = [] } = Astro.props;
 const {
-  title, description, date, lastmod, tags = [], categories = [],
+  title, description, date, lastmod, locale, tags = [], categories = [],
   robots, draft = false,
   mermaid = false, chart_js = false, echarts = false, vega = false, plotly = false,
   pseudocode = false, typograms = false, tikzjax = false, map = false,
   img_comparison = false, code_diff = false, gallery = false, disqus = false,
 } = post.data;
+const languageTag = locale === 'zh' ? 'zh-CN' : 'en-US';
+const page = site.pages.localized[locale].blog;
+const localeConfig = site.i18n.locales[locale];
 
 const effectiveRobots = draft ? 'noindex, nofollow' : robots;
 
 const lastmodFormatted = lastmod
-  ? lastmod.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  ? lastmod.toLocaleDateString(languageTag, { year: 'numeric', month: 'long', day: 'numeric' })
   : null;
 
 const rt = post.body ? calcReadingTime(post.body, site.blog.wordsPerMinute) : 1;
 
 // Related posts (if post has tags)
 const allPosts = await getCollection('posts');
+assertBilingualPostPairs(allPosts);
 const related = post.data.relatedPosts ? relatedPosts(post, allPosts) : [];
+const translation = translatedPost(post, allPosts);
 
 // JSON-LD BlogPosting schema
-const canonicalURL = new URL(`${site.base}/blog/${post.id}/`, site.url).toString();
+const route = postRoute(post);
+const blogRoute = locale === 'zh' ? '/zh/blog/' : '/blog/';
+const canonicalURL = new URL(`${site.base}${route}`, site.url).toString();
 
 // Generated OG image (falls back to static og.image if post has its own cover)
 const ogImagePath = post.data.image
   ? new URL(post.data.image, site.url).toString()
-  : new URL(`${site.base}/og/blog/${post.id}.png`, site.url).toString();
+  : locale === 'en'
+    ? new URL(`${site.base}/og/blog/${post.data.slug}.png`, site.url).toString()
+    : undefined;
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -62,7 +76,7 @@ const jsonLd = {
     name: site.author.name,
     url: site.url,
   },
-  image: ogImagePath,
+  ...(ogImagePath ? { image: ogImagePath } : {}),
 };
 ---
 
@@ -78,8 +92,8 @@ const jsonLd = {
           {
             '@type': 'ListItem',
             position: 1,
-            name: 'Blog',
-            item: new URL(`${site.base}/blog/`, site.url).toString(),
+            name: page.title,
+            item: new URL(`${site.base}${blogRoute}`, site.url).toString(),
           },
           { '@type': 'ListItem', position: 2, name: title, item: canonicalURL },
         ],
@@ -149,10 +163,20 @@ const jsonLd = {
       <article class="flex-1 min-w-0">
         <!-- Hidden metadata for pagefind structured search -->
         <span data-pagefind-meta="date" style="display:none">{date.toISOString().slice(0, 10)}</span>
+        <span data-pagefind-meta="locale" style="display:none">{locale}</span>
 
         <!-- Breadcrumb -->
-        <nav aria-label="Breadcrumb" class="breadcrumb-nav">
-          <a href={`${site.base}/blog/`} class="breadcrumb-link">← Blog</a>
+        <nav aria-label={page.title} class="breadcrumb-nav post-navigation">
+          <a href={`${site.base}${blogRoute}`} class="breadcrumb-link">← {page.title}</a>
+          {translation && (
+            <a
+              href={`${site.base}${postRoute(translation)}`}
+              class="translation-link"
+              hreflang={translation.data.locale === 'zh' ? 'zh-CN' : 'en'}
+            >
+              {localeConfig.switchLabel}
+            </a>
+          )}
         </nav>
 
         <!-- Header -->
@@ -161,10 +185,10 @@ const jsonLd = {
             {title}
           </h1>
 
-          <PostMeta date={date} tags={tags} categories={categories} readingTime={rt} />
+          <PostMeta date={date} tags={tags} categories={categories} readingTime={rt} locale={locale} />
           {lastmodFormatted && (
             <p class="post-lastmod" style="font-size: 0.8rem; color: var(--global-text-color-light); margin-top: 0.25rem;">
-              Updated <time datetime={lastmod!.toISOString()}>{lastmodFormatted}</time>
+              <span aria-hidden="true">↻</span> <time datetime={lastmod!.toISOString()}>{lastmodFormatted}</time>
             </p>
           )}
         </header>
@@ -180,12 +204,17 @@ const jsonLd = {
         <!-- Social sharing links -->
         {
           site.features.socialShare && (
-            <SocialShare title={title} url={canonicalURL} description={description} />
+            <SocialShare
+              title={title}
+              url={canonicalURL}
+              description={description}
+              label={page.eyebrow}
+            />
           )
         }
 
         <!-- Related posts -->
-        {related.length > 0 && <RelatedPosts posts={related} />}
+        {related.length > 0 && <RelatedPosts posts={related} locale={locale} heading={page.eyebrow} />}
 
         <!-- Comments -->
         {site.giscus.enabled && <Giscus />}
@@ -193,6 +222,28 @@ const jsonLd = {
     </div>
   </div>
 </Base>
+
+<style>
+  .post-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .translation-link {
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .translation-link:hover {
+    color: var(--global-hover-color);
+  }
+</style>
 
 <!-- Code copy button (text-label approach, no innerHTML) -->
 <script>

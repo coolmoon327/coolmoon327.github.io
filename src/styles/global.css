@@ -1120,8 +1120,10 @@
 
 @layer base {
   .prose {
+    min-width: 0;
     color: var(--global-text-color);
     line-height: 1.7;
+    overflow-wrap: anywhere;
   }
 
   .prose a {
@@ -1133,6 +1135,8 @@
   }
 
   .prose img {
+    max-width: 100%;
+    height: auto;
     border-radius: 4px;
   }
 
@@ -1161,9 +1165,20 @@
     font-weight: 600;
   }
 
-  /* KaTeX display math */
+  /* KaTeX output can be wider than the article column, including legacy
+     inline expressions that were not authored as display math. Keep the
+     formula itself horizontally scrollable instead of widening the page. */
+  .prose .katex,
   .prose .math-display {
+    display: inline-block;
+    max-width: 100%;
     overflow-x: auto;
+    overflow-y: hidden;
+    vertical-align: middle;
+  }
+
+  .prose .math-display {
+    display: block;
     padding: 0.5rem 0;
   }
 }

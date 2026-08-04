@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+set +x
 
 project_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 secret_directory="${project_directory}/secrets"
@@ -106,10 +107,26 @@ if [[ "${first_password}" != "${second_password}" ]]; then
   exit 1
 fi
 
-password_size="$(LC_ALL=C printf '%s' "${first_password}" | wc -c | tr -d '[:space:]')"
-if (( password_size < 10 || password_size > 1024 )); then
+if ! command -v iconv >/dev/null 2>&1; then
   unset first_password second_password
-  printf '%s\n' 'Password must contain between 10 and 1024 UTF-8 bytes.' >&2
+  printf '%s\n' 'The iconv command is required to validate the password safely.' >&2
+  exit 1
+fi
+if ! password_utf32_bytes="$(printf '%s' "${first_password}" | iconv -f UTF-8 -t UTF-32LE | wc -c | tr -d '[:space:]')"; then
+  unset first_password second_password
+  printf '%s\n' 'Password must be valid UTF-8.' >&2
+  exit 1
+fi
+if (( password_utf32_bytes % 4 != 0 )); then
+  unset first_password second_password password_utf32_bytes
+  printf '%s\n' 'Password must be valid UTF-8.' >&2
+  exit 1
+fi
+password_size=$((password_utf32_bytes / 4))
+unset password_utf32_bytes
+if (( password_size < 16 || password_size > 1024 )) || [[ "${first_password}" =~ ^[0-9]+$ ]]; then
+  unset first_password second_password
+  printf '%s\n' 'Password must contain 16-1024 Unicode characters and must not be numeric-only.' >&2
   exit 1
 fi
 

@@ -3,7 +3,7 @@
  * and project at build time using Satori (SVG → rsvg → PNG).
  *
  * Generated URLs:
- *   /og/blog/<post-id>.png    (linked from Post.astro og:image)
+ *   /og/blog/<post-slug>.png  (English posts; linked from Post.astro og:image)
  *   /og/project/<slug>.png   (linked from [slug].astro og:image)
  */
 
@@ -12,6 +12,7 @@ import { resolve } from 'node:path';
 
 import { site } from '@config/site';
 import { Resvg } from '@resvg/resvg-js';
+import { assertBilingualPostPairs, visiblePosts } from '@utils/posts';
 import type { APIContext, GetStaticPathsResult } from 'astro';
 import { getCollection } from 'astro:content';
 import React from 'react';
@@ -180,12 +181,14 @@ function ogCard(title: string, description: string | undefined, type: string) {
 }
 
 export async function getStaticPaths(): Promise<GetStaticPathsResult> {
-  const posts = await getCollection('posts', (p) => !p.data.hidden && !p.data.draft);
+  const allPosts = await getCollection('posts');
+  assertBilingualPostPairs(allPosts);
+  const posts = visiblePosts(allPosts, 'en');
   const projects = await getCollection('projects');
 
   return [
     ...posts.map((post) => ({
-      params: { path: `blog/${post.id}` },
+      params: { path: `blog/${post.data.slug}` },
       props: {
         title: post.data.title,
         description: post.data.description,

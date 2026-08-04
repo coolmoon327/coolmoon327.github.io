@@ -1,5 +1,7 @@
 import { site } from '@config/site';
+import { assertBilingualPostPairs, postRoute, visiblePosts } from '@utils/posts';
 import type { APIContext } from 'astro';
+import { getCollection } from 'astro:content';
 
 const routes = [
   '/',
@@ -29,10 +31,13 @@ function escapeXml(value: string): string {
     .replaceAll("'", '&apos;');
 }
 
-export function GET(_context: APIContext): Response {
+export async function GET(_context: APIContext): Promise<Response> {
   const origin = site.url.replace(/\/$/, '');
   const base = site.base.replace(/\/$/, '');
-  const entries = routes
+  const allPosts = await getCollection('posts');
+  assertBilingualPostPairs(allPosts);
+  const postRoutes = visiblePosts(allPosts).map(postRoute).sort();
+  const entries = [...routes, ...postRoutes]
     .map((route) => `  <url><loc>${escapeXml(`${origin}${base}${route}`)}</loc></url>`)
     .join('\n');
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

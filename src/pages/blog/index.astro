@@ -1,5 +1,11 @@
 ---
-import InteriorPage from '@components/InteriorPage.astro';
+import BlogIndex from '@components/blog/BlogIndex.astro';
+import { assertBilingualPostPairs, sortPosts, visiblePosts } from '@utils/posts';
+import { getCollection } from 'astro:content';
+
+const allPosts = await getCollection('posts');
+assertBilingualPostPairs(allPosts);
+const posts = sortPosts(visiblePosts(allPosts, 'en'));
 ---
 
-<InteriorPage locale="en" kind="blog" />
+<BlogIndex locale="en" posts={posts} />

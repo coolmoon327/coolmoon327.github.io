@@ -1,0 +1,417 @@
+---
+import { site } from '@config/site';
+import Base from '@layouts/Base.astro';
+import { withBase } from '@utils/base';
+import type { ProtectedBlogLocale } from '@utils/protected-blog';
+
+interface Props {
+  locale: ProtectedBlogLocale;
+}
+
+const { locale } = Astro.props;
+const blogRoute = locale === 'zh' ? '/zh/blog/' : '/blog/';
+const catalogUrl = withBase('/private-blog/v1/catalog.enc.json');
+const copy = site.pages.localized[locale].blog.protected;
+---
+
+<Base
+  title={copy.title}
+  description={copy.intro}
+  robots="noindex, nofollow, noarchive"
+  socialMeta={false}
+  pagefind={false}
+>
+  <div class="protected-blog page-container" data-pagefind-ignore="all">
+    <nav aria-label={copy.backAction} class="breadcrumb-nav">
+      <a href={`${site.base}${blogRoute}`} class="breadcrumb-link">← {copy.backAction}</a>
+    </nav>
+
+    <header class="protected-header">
+      <p class="eyebrow">{copy.eyebrow}</p>
+      <h1>{copy.title}</h1>
+      <p>{copy.intro}</p>
+    </header>
+
+    <section
+      class="unlock-panel"
+      aria-labelledby="protected-unlock-title"
+      data-protected-blog
+      data-locale={locale}
+      data-catalog-url={catalogUrl}
+      data-unlocking={copy.unlockPending}
+      data-unlock={copy.unlockAction}
+      data-unavailable={copy.unavailableStatus}
+      data-failure={copy.errorStatus}
+    >
+      <h2 id="protected-unlock-title" class="sr-only">{copy.title}</h2>
+      <div class="locked-controls" data-locked-controls>
+        <form data-protected-form autocomplete="off">
+          <label for={`protected-password-${locale}`}>{copy.passwordLabel}</label>
+          <div class="unlock-row">
+            <input
+              id={`protected-password-${locale}`}
+              type="password"
+              autocomplete="off"
+              maxlength="2048"
+              spellcheck="false"
+              required
+              data-protected-password
+            />
+            <button type="submit" data-protected-unlock>{copy.unlockAction}</button>
+          </div>
+        </form>
+      </div>
+
+      <button type="button" class="lock-button" data-protected-lock hidden>
+        {copy.lockAction}
+      </button>
+      <p class="unlock-status" role="status" aria-live="polite" data-protected-status></p>
+    </section>
+
+    <section class="protected-content" data-protected-render hidden></section>
+  </div>
+</Base>
+
+<script>
+  import {
+    decryptProtectedBlogCatalog,
+    PROTECTED_BLOG_MAX_ENVELOPE_CHARACTERS,
+    renderProtectedBlogCatalog,
+    type ProtectedBlogLocale,
+  } from '@utils/protected-blog';
+
+  function clearProtectedContent(scope: ParentNode = document) {
+    scope.querySelectorAll<HTMLElement>('[data-protected-render]').forEach((element) => {
+      element.replaceChildren();
+      element.hidden = true;
+    });
+    scope.querySelectorAll<HTMLInputElement>('[data-protected-password]').forEach((input) => {
+      input.value = '';
+    });
+  }
+
+  function resetProtectedPages() {
+    clearProtectedContent();
+    document.querySelectorAll<HTMLElement>('[data-protected-blog]').forEach((root) => {
+      const controls = root.querySelector<HTMLElement>('[data-locked-controls]');
+      const lockButton = root.querySelector<HTMLButtonElement>('[data-protected-lock]');
+      const status = root.querySelector<HTMLElement>('[data-protected-status]');
+      if (controls) controls.hidden = false;
+      if (lockButton) lockButton.hidden = true;
+      if (status) status.textContent = '';
+    });
+  }
+
+  function initialiseProtectedBlog() {
+    const root = document.querySelector<HTMLElement>('[data-protected-blog]');
+    if (!root || root.dataset.initialised === 'true') return;
+    root.dataset.initialised = 'true';
+
+    const form = root.querySelector<HTMLFormElement>('[data-protected-form]');
+    const controls = root.querySelector<HTMLElement>('[data-locked-controls]');
+    const passwordInput = root.querySelector<HTMLInputElement>('[data-protected-password]');
+    const unlockButton = root.querySelector<HTMLButtonElement>('[data-protected-unlock]');
+    const lockButton = root.querySelector<HTMLButtonElement>('[data-protected-lock]');
+    const status = root.querySelector<HTMLElement>('[data-protected-status]');
+    const renderTarget = document.querySelector<HTMLElement>('[data-protected-render]');
+    const locale = root.dataset.locale as ProtectedBlogLocale | undefined;
+    const catalogUrl = root.dataset.catalogUrl;
+
+    if (
+      !form ||
+      !controls ||
+      !passwordInput ||
+      !unlockButton ||
+      !lockButton ||
+      !status ||
+      !renderTarget ||
+      (locale !== 'en' && locale !== 'zh') ||
+      !catalogUrl
+    ) {
+      return;
+    }
+
+    const unlockLabel = root.dataset.unlock ?? '';
+    const unlockingLabel = root.dataset.unlocking ?? unlockLabel;
+    const unavailableLabel = root.dataset.unavailable ?? '';
+    const failureLabel = root.dataset.failure ?? '';
+    let permanentlyClosed = false;
+
+    function closeUnavailable() {
+      permanentlyClosed = true;
+      clearProtectedContent();
+      controls!.hidden = true;
+      lockButton!.hidden = true;
+      status!.textContent = unavailableLabel;
+    }
+
+    function lock() {
+      clearProtectedContent();
+      controls!.hidden = false;
+      lockButton!.hidden = true;
+      status!.textContent = '';
+      passwordInput!.focus();
+    }
+
+    lockButton.addEventListener('click', lock);
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (permanentlyClosed || unlockButton.disabled) return;
+
+      let password = passwordInput.value;
+      passwordInput.value = '';
+      clearProtectedContent();
+      status.textContent = '';
+      unlockButton.disabled = true;
+      unlockButton.textContent = unlockingLabel;
+
+      try {
+        const response = await fetch(catalogUrl, {
+          method: 'GET',
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+        });
+        if (response.status === 404) {
+          closeUnavailable();
+          return;
+        }
+        if (!response.ok) {
+          closeUnavailable();
+          return;
+        }
+
+        const contentLength = Number(response.headers.get('content-length'));
+        if (
+          Number.isFinite(contentLength) &&
+          contentLength > PROTECTED_BLOG_MAX_ENVELOPE_CHARACTERS
+        ) {
+          closeUnavailable();
+          return;
+        }
+
+        const envelopeText = await response.text();
+        if (envelopeText.length > PROTECTED_BLOG_MAX_ENVELOPE_CHARACTERS) {
+          closeUnavailable();
+          return;
+        }
+
+        const envelope = JSON.parse(envelopeText) as unknown;
+        const catalog = await decryptProtectedBlogCatalog(envelope, password);
+        const fragment = renderProtectedBlogCatalog(document, catalog, locale);
+        renderTarget.replaceChildren(fragment);
+        renderTarget.hidden = false;
+        controls.hidden = true;
+        lockButton.hidden = false;
+        status.textContent = '';
+      } catch {
+        clearProtectedContent();
+        status.textContent = failureLabel;
+        passwordInput.focus();
+      } finally {
+        password = '';
+        if (!permanentlyClosed) {
+          unlockButton.disabled = false;
+          unlockButton.textContent = unlockLabel;
+        }
+      }
+    });
+  }
+
+  initialiseProtectedBlog();
+  document.addEventListener('astro:page-load', initialiseProtectedBlog);
+  document.addEventListener('astro:before-swap', resetProtectedPages);
+  window.addEventListener('pagehide', resetProtectedPages);
+</script>
+
+<style>
+  .protected-blog {
+    max-width: 900px;
+    min-height: calc(100vh - 57px);
+    padding: clamp(2.5rem, 7vw, 5.5rem) 1.25rem 5rem;
+  }
+
+  .protected-header {
+    max-width: 48rem;
+    margin: clamp(2rem, 6vw, 4rem) 0 2rem;
+  }
+
+  .eyebrow {
+    margin: 0 0 0.75rem;
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    margin: 0;
+    font-family: var(--font-condensed);
+    font-size: clamp(2.6rem, 8vw, 5rem);
+    line-height: 0.95;
+  }
+
+  .protected-header > p:last-child {
+    margin: 1.25rem 0 0;
+    color: var(--global-text-color-light);
+    font-size: clamp(1rem, 2.2vw, 1.15rem);
+    line-height: 1.7;
+  }
+
+  .unlock-panel {
+    max-width: 42rem;
+    padding: clamp(1.25rem, 4vw, 2rem);
+    border: 1px solid var(--global-divider-color);
+    border-radius: 0.7rem;
+    background: var(--global-card-bg-color);
+  }
+
+  label {
+    display: block;
+    margin-bottom: 0.55rem;
+    color: var(--global-text-color);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .unlock-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+  }
+
+  input {
+    min-width: 0;
+    padding: 0.72rem 0.85rem;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 0.35rem;
+    background: var(--global-bg-color);
+    color: var(--global-text-color);
+    font: inherit;
+  }
+
+  button {
+    min-height: 44px;
+    padding: 0.65rem 1rem;
+    border: 1px solid var(--global-theme-color);
+    border-radius: 0.35rem;
+    background: var(--global-theme-color);
+    color: var(--global-hover-text-color);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+  }
+
+  .lock-button {
+    background: transparent;
+    color: var(--global-theme-color);
+  }
+
+  .unlock-status {
+    min-height: 1.35rem;
+    margin: 0.8rem 0 0;
+    color: var(--global-text-color-light);
+    font-size: 0.86rem;
+  }
+
+  .protected-content {
+    margin-top: clamp(2.5rem, 7vw, 5rem);
+  }
+
+  :global([data-protected-render] .protected-post) {
+    padding: clamp(1.5rem, 4vw, 2.5rem) 0;
+    border-top: 1px solid var(--global-divider-color);
+  }
+
+  :global([data-protected-render] .protected-post-header h2) {
+    margin: 0;
+    font-family: var(--font-condensed);
+    font-size: clamp(1.8rem, 5vw, 2.75rem);
+    line-height: 1.12;
+    overflow-wrap: anywhere;
+  }
+
+  :global([data-protected-render] .protected-post-header time) {
+    display: block;
+    margin-top: 0.65rem;
+    color: var(--global-text-color-light);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+  }
+
+  :global([data-protected-render] .protected-post-description) {
+    max-width: 46rem;
+    margin: 0.8rem 0 0;
+    color: var(--global-text-color-light);
+    line-height: 1.65;
+  }
+
+  :global([data-protected-render] .protected-post-body) {
+    max-width: 48rem;
+    margin-top: 1.75rem;
+    color: var(--global-text-color);
+    line-height: 1.75;
+  }
+
+  :global([data-protected-render] .protected-post-heading) {
+    margin: 2rem 0 0.75rem;
+    color: var(--global-text-color);
+    font-family: var(--font-condensed);
+  }
+
+  :global([data-protected-render] .protected-post-body p),
+  :global([data-protected-render] .protected-post-body blockquote),
+  :global([data-protected-render] .protected-post-body ul),
+  :global([data-protected-render] .protected-post-body ol),
+  :global([data-protected-render] .protected-post-body pre) {
+    margin: 1rem 0;
+  }
+
+  :global([data-protected-render] .protected-post-body blockquote) {
+    padding: 0.75rem 1rem;
+    border-left: 3px solid var(--global-theme-color);
+    background: var(--global-card-bg-color);
+    color: var(--global-text-color-light);
+  }
+
+  :global([data-protected-render] .protected-post-body ul),
+  :global([data-protected-render] .protected-post-body ol) {
+    padding-left: 1.5rem;
+  }
+
+  :global([data-protected-render] .protected-post-body pre) {
+    overflow-x: auto;
+    padding: 1rem;
+    border-radius: 0.45rem;
+    background: var(--global-code-bg-color);
+  }
+
+  :global([data-protected-render] .protected-post-body code) {
+    white-space: pre;
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+  }
+
+  :global([data-protected-render] .protected-post-body a) {
+    color: var(--global-theme-color);
+  }
+
+  @media (max-width: 520px) {
+    .unlock-row {
+      grid-template-columns: 1fr;
+    }
+
+    .unlock-row button {
+      width: 100%;
+    }
+  }
+</style>

@@ -5,6 +5,7 @@ const MAX_SERVICE_COUNT = 32;
 const MAX_URL_LENGTH = 2048;
 const MAX_LABEL_LENGTH = 96;
 const MAX_DESCRIPTION_LENGTH = 320;
+const MAX_NOTICE_LENGTH = 480;
 const MAX_FUTURE_CLOCK_SKEW_MS = 10 * 60 * 1000;
 const MAX_DIRECTORY_LIFETIME_MS = 48 * 60 * 60 * 1000;
 const SERVICE_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
@@ -17,7 +18,11 @@ export interface HomeAccessService {
   url: string;
   label: LocalizedText;
   description: LocalizedText;
+  access: HomeAccessServiceAccess;
+  notice: LocalizedText;
 }
+
+export type HomeAccessServiceAccess = 'internet' | 'home-or-tailnet';
 
 export interface LocalizedText {
   en: string;
@@ -139,6 +144,49 @@ function parseLocalizedText(value: unknown, maxLength: number, allowEmpty = fals
   return { en: parse(value.en), zh: parse(value.zh) };
 }
 
+function isPrivateOrTailnetIPv4(hostname: string): boolean {
+  const octets = hostname.split('.');
+  if (
+    octets.length !== 4 ||
+    octets.some((octet) => !/^(?:0|[1-9][0-9]{0,2})$/.test(octet) || Number(octet) > 255)
+  ) {
+    return false;
+  }
+
+  const [first, second] = octets.map(Number);
+  return (
+    first === 10 ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168) ||
+    (first === 100 && second >= 64 && second <= 127)
+  );
+}
+
+function isCanonicalPrivateHttpUrl(rawUrl: string, url: URL): boolean {
+  if (url.protocol !== 'http:' || !rawUrl.startsWith('http://')) return false;
+  const authority = rawUrl.slice('http://'.length).split(/[/?#]/, 1)[0];
+  const portSeparator = authority.lastIndexOf(':');
+  const rawHostname = portSeparator === -1 ? authority : authority.slice(0, portSeparator);
+  return rawHostname === url.hostname && isPrivateOrTailnetIPv4(rawHostname);
+}
+
+function legacyHttpNoticeIsExplicit(notice: LocalizedText): boolean {
+  const english = notice.en.toLowerCase();
+  const chinese = notice.zh;
+  return (
+    /\b(?:only|must|required|requires)\b/.test(english) &&
+    /\b(?:home|private network)\b/.test(english) &&
+    /\b(?:tailscale|tailnet)\b/.test(english) &&
+    /\bhttp\b/.test(english) &&
+    /\b(?:legacy|unencrypted|plaintext|cleartext|risk)\b/.test(english) &&
+    /(?:仅|只能|必须)/.test(chinese) &&
+    /(?:家庭|家中|内网|私有网络)/.test(chinese) &&
+    /(?:tailscale|tailnet)/i.test(chinese) &&
+    /http/i.test(chinese) &&
+    /(?:未加密|明文|风险|不安全)/.test(chinese)
+  );
+}
+
 function parsePayload(value: unknown, nowMs: number): HomeAccessPayload {
   if (
     !isRecord(value) ||
@@ -188,7 +236,24 @@ function parsePayload(value: unknown, nowMs: number): HomeAccessPayload {
       fail();
     }
 
-    if (url.protocol !== 'https:' || url.username.length > 0 || url.password.length > 0) {
+    let access: HomeAccessServiceAccess = 'internet';
+    if (candidate.access !== undefined) {
+      if (candidate.access !== 'internet' && candidate.access !== 'home-or-tailnet') fail();
+      access = candidate.access;
+    }
+    const notice =
+      candidate.notice === undefined
+        ? { en: '', zh: '' }
+        : parseLocalizedText(candidate.notice, MAX_NOTICE_LENGTH, true);
+    if ((notice.en.trim().length === 0) !== (notice.zh.trim().length === 0)) fail();
+
+    const isLegacyPrivateHttp = isCanonicalPrivateHttpUrl(candidate.url, url);
+    if (
+      url.username.length > 0 ||
+      url.password.length > 0 ||
+      (url.protocol !== 'https:' && !isLegacyPrivateHttp) ||
+      (isLegacyPrivateHttp && (access !== 'home-or-tailnet' || !legacyHttpNoticeIsExplicit(notice)))
+    ) {
       fail();
     }
 
@@ -198,6 +263,8 @@ function parsePayload(value: unknown, nowMs: number): HomeAccessPayload {
       url: url.href,
       label: parseLocalizedText(candidate.label, MAX_LABEL_LENGTH),
       description: parseLocalizedText(candidate.description, MAX_DESCRIPTION_LENGTH, true),
+      access,
+      notice,
     });
   }
 
@@ -214,10 +281,12 @@ export async function decryptHomeAccess(
   password: string,
   nowMs = Date.now(),
 ): Promise<HomeAccessPayload> {
+  const passwordCharacters =
+    typeof password === 'string' && password.length <= 2048 ? Array.from(password).length : 0;
   try {
     if (
-      password.length === 0 ||
-      password.length > 1024 ||
+      passwordCharacters === 0 ||
+      passwordCharacters > 1024 ||
       !Number.isFinite(nowMs) ||
       globalThis.crypto?.subtle === undefined
     ) {

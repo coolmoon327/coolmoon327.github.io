@@ -8,6 +8,10 @@ import { decryptHomeAccess, HomeAccessError, type HomeAccessPayload } from './ho
 const TEST_PASSWORD = 'local-test-passphrase';
 const TEST_ITERATIONS = 100_000;
 const NOW_MS = Date.parse('2026-07-31T12:00:00.000Z');
+const LEGACY_HTTP_NOTICE = {
+  en: 'Only use this legacy HTTP service at home or through Tailscale; traffic is unencrypted.',
+  zh: '此旧版 HTTP 服务仅限家庭内网或 Tailscale 使用；流量未加密。',
+};
 
 function encodeBase64(value: Uint8Array): string {
   return btoa(String.fromCharCode(...value));
@@ -67,12 +71,19 @@ const payload: HomeAccessPayload = {
       url: 'https://example.test/router',
       label: { en: 'Router', zh: '路由器' },
       description: { en: 'Network administration.', zh: '网络管理。' },
+      access: 'internet',
+      notice: { en: '', zh: '' },
     },
     {
       id: 'future-service',
       url: 'https://example.test:8443/',
       label: { en: 'Future service', zh: '后续服务' },
       description: { en: '', zh: '' },
+      access: 'home-or-tailnet',
+      notice: {
+        en: 'Connect through the private network before opening this service.',
+        zh: '请先连接私有网络，再打开此服务。',
+      },
     },
   ],
 };
@@ -105,6 +116,8 @@ describe('decryptHomeAccess', () => {
           url: 'https://example.invalid/owner',
           label: { en: 'Interop service', zh: '互操作服务' },
           description: { en: 'Synthetic encrypted fixture.', zh: '合成加密测试数据。' },
+          access: 'internet',
+          notice: { en: '', zh: '' },
         },
       ],
     });
@@ -114,6 +127,50 @@ describe('decryptHomeAccess', () => {
     const envelope = await encryptPayload(payload);
 
     await expect(decryptHomeAccess(envelope, TEST_PASSWORD, NOW_MS)).resolves.toEqual(payload);
+  });
+
+  it('counts non-BMP password bounds as Unicode characters', async () => {
+    const maximumPassword = '🔐'.repeat(1024);
+    const envelope = await encryptPayload(payload, maximumPassword);
+
+    await expect(decryptHomeAccess(envelope, maximumPassword, NOW_MS)).resolves.toEqual(payload);
+    await expect(decryptHomeAccess(envelope, '🔐'.repeat(1025), NOW_MS)).rejects.toBeInstanceOf(
+      HomeAccessError,
+    );
+  });
+
+  it('rejects a directory larger than the shared 32-service contract', async () => {
+    const oversized = {
+      ...payload,
+      services: Array.from({ length: 33 }, (_, index) => ({
+        ...payload.services[0],
+        id: `service-${index}`,
+        url: `https://example.test/service-${index}`,
+      })),
+    };
+    const envelope = await encryptPayload(oversized);
+
+    await expect(decryptHomeAccess(envelope, TEST_PASSWORD, NOW_MS)).rejects.toBeInstanceOf(
+      HomeAccessError,
+    );
+  });
+
+  it('accepts legacy HTTP only for a warned private or Tailnet service', async () => {
+    const legacyPayload: HomeAccessPayload = {
+      ...payload,
+      services: [
+        {
+          ...payload.services[1],
+          url: 'http://192.168.1.20:8080/',
+          notice: LEGACY_HTTP_NOTICE,
+        },
+      ],
+    };
+    const envelope = await encryptPayload(legacyPayload);
+
+    await expect(decryptHomeAccess(envelope, TEST_PASSWORD, NOW_MS)).resolves.toEqual(
+      legacyPayload,
+    );
   });
 
   it('uses the same generic error for a wrong password and tampered ciphertext', async () => {
@@ -171,6 +228,36 @@ describe('decryptHomeAccess', () => {
       ...payload,
       services: [{ ...payload.services[0], url: 'http://example.test/router' }],
     });
+    const publicHttpEnvelope = await encryptPayload({
+      ...payload,
+      services: [
+        {
+          ...payload.services[1],
+          url: 'http://203.0.113.9/',
+          notice: LEGACY_HTTP_NOTICE,
+        },
+      ],
+    });
+    const unwarntPrivateHttpEnvelope = await encryptPayload({
+      ...payload,
+      services: [
+        {
+          ...payload.services[1],
+          url: 'http://192.168.1.20/',
+          notice: { en: '', zh: '' },
+        },
+      ],
+    });
+    const noncanonicalPrivateHttpEnvelope = await encryptPayload({
+      ...payload,
+      services: [
+        {
+          ...payload.services[1],
+          url: 'http://0300.0250.0001.0024/',
+          notice: LEGACY_HTTP_NOTICE,
+        },
+      ],
+    });
 
     await expect(decryptHomeAccess(unsafeEnvelope, TEST_PASSWORD, NOW_MS)).rejects.toBeInstanceOf(
       HomeAccessError,
@@ -181,6 +268,15 @@ describe('decryptHomeAccess', () => {
     await expect(decryptHomeAccess(insecureEnvelope, TEST_PASSWORD, NOW_MS)).rejects.toBeInstanceOf(
       HomeAccessError,
     );
+    await expect(
+      decryptHomeAccess(publicHttpEnvelope, TEST_PASSWORD, NOW_MS),
+    ).rejects.toBeInstanceOf(HomeAccessError);
+    await expect(
+      decryptHomeAccess(unwarntPrivateHttpEnvelope, TEST_PASSWORD, NOW_MS),
+    ).rejects.toBeInstanceOf(HomeAccessError);
+    await expect(
+      decryptHomeAccess(noncanonicalPrivateHttpEnvelope, TEST_PASSWORD, NOW_MS),
+    ).rejects.toBeInstanceOf(HomeAccessError);
   });
 
   it('rejects expired, future-dated, reversed, and overlong directory lifetimes', async () => {
@@ -218,6 +314,9 @@ describe('decryptHomeAccess', () => {
       { ...payload.services[0], label: { en: '', zh: '路由器' } },
       { ...payload.services[0], label: { en: 'Router' } },
       { ...payload.services[0], description: { en: 'Line\nbreak', zh: '网络管理。' } },
+      { ...payload.services[0], access: 'private' },
+      { ...payload.services[0], notice: { en: '', zh: '仅限内部访问' } },
+      { ...payload.services[0], notice: { en: 'Missing Chinese notice' } },
     ];
 
     for (const service of cases) {

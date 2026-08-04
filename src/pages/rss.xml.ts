@@ -1,12 +1,13 @@
 import rss from '@astrojs/rss';
 import { site } from '@config/site';
+import { assertBilingualPostPairs, postRoute, sortPosts, visiblePosts } from '@utils/posts';
 import type { APIContext } from 'astro';
 import { getCollection } from 'astro:content';
 
 export async function GET(context: APIContext) {
-  const posts = (await getCollection('posts'))
-    .filter((p) => !p.data.hidden && !p.data.draft)
-    .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+  const allPosts = await getCollection('posts');
+  assertBilingualPostPairs(allPosts);
+  const posts = sortPosts(visiblePosts(allPosts, 'en'));
 
   return rss({
     title: site.blog?.name || site.title,
@@ -16,7 +17,7 @@ export async function GET(context: APIContext) {
       title: post.data.title,
       description: post.data.description ?? '',
       pubDate: post.data.date,
-      link: `${site.base}/blog/${post.id}/`,
+      link: `${site.base}${postRoute(post)}`,
       categories: [...(post.data.tags ?? []), ...(post.data.categories ?? [])],
       author: site.author.email ? `${site.author.email} (${site.author.name})` : site.author.name,
     })),

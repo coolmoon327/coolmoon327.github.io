@@ -15,8 +15,19 @@ interface Props {
 }
 
 const { post, headings = [] } = Astro.props;
-const { title, description, date, tags = [], categories = [], robots, draft = false } = post.data;
+const {
+  title,
+  description,
+  date,
+  locale,
+  tags = [],
+  categories = [],
+  robots,
+  draft = false,
+} = post.data;
 const effectiveRobots = draft ? 'noindex, nofollow' : robots;
+const page = site.pages.localized[locale].blog;
+const blogRoute = locale === 'zh' ? '/zh/blog/' : '/blog/';
 
 // Access distill-specific fields via type cast (added to schema in content.config.ts)
 const postData = post.data as typeof post.data & {
@@ -49,8 +60,8 @@ const rt = post.body ? calcReadingTime(post.body) : 1;
       <!-- Main distill article -->
       <article class="distill-article min-w-0 flex-1">
         <!-- Breadcrumb -->
-        <nav aria-label="Breadcrumb" class="breadcrumb-nav">
-          <a href={`${site.base}/blog/`} class="breadcrumb-link">← Blog</a>
+        <nav aria-label={page.title} class="breadcrumb-nav">
+          <a href={`${site.base}${blogRoute}`} class="breadcrumb-link">← {page.title}</a>
         </nav>
 
         <!-- Distill-style header -->
@@ -88,7 +99,13 @@ const rt = post.body ? calcReadingTime(post.body) : 1;
             )
           }
 
-          <PostMeta date={date} tags={tags} categories={categories} readingTime={rt} />
+          <PostMeta
+            date={date}
+            tags={tags}
+            categories={categories}
+            readingTime={rt}
+            locale={locale}
+          />
         </header>
 
         <!-- Article body — Distill-styled prose -->
