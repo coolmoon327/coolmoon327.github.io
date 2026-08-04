@@ -324,13 +324,12 @@ function rebuildPropagationCache() {
 
 function paletteColor(amount) {
   const dark = document.documentElement.dataset.theme === 'dark';
-  const colors = dark
-    ? [[8, 11, 17], [41, 36, 79], [102, 80, 135], [175, 128, 111], [230, 204, 123], [255, 243, 176]]
-    : [[16, 20, 29], [52, 45, 98], [105, 80, 140], [176, 131, 121], [234, 210, 135], [255, 244, 189]];
-  const scaled = clamp(amount) * (colors.length - 1);
-  const lower = Math.min(Math.floor(scaled), colors.length - 2);
-  const mix = scaled - lower;
-  return colors[lower].map((value, index) => Math.round(value + (colors[lower + 1][index] - value) * mix));
+  const background = dark ? [23, 27, 29] : [255, 255, 255];
+  const blue = dark ? [96, 165, 250] : [37, 99, 235];
+  const opacity = 0.26 * clamp(amount) ** 1.35;
+  return background.map((value, index) =>
+    Math.round(value + (blue[index] - value) * opacity),
+  );
 }
 
 function renderHeatmap() {

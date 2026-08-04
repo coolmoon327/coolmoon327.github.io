@@ -2,34 +2,34 @@
 
 :root {
   --bob: #2563eb;
-  --bob-soft: rgba(37, 99, 235, 0.15);
+  --bob-soft: rgba(37, 99, 235, 0.08);
   --eve: #c2413b;
-  --eve-soft: rgba(194, 65, 59, 0.14);
+  --eve-soft: rgba(194, 65, 59, 0.07);
   --beam-color: #0f766e;
-  --reflection: #b45309;
-  --field-bg: #f5f8f7;
-  --heatmap-low: #10141d;
-  --heatmap-low-mid: #342d62;
-  --heatmap-mid: #69508c;
-  --heatmap-high-mid: #b08379;
-  --heatmap-high: #ead287;
-  --heatmap-peak: #fff4bd;
+  --reflection: #64748b;
+  --field-bg: #ffffff;
+  --heatmap-low: #ffffff;
+  --heatmap-low-mid: #f8fafe;
+  --heatmap-mid: #ecf1fd;
+  --heatmap-high-mid: #dde7fc;
+  --heatmap-high: #d2dffb;
+  --heatmap-peak: #c6d6fa;
 }
 
 html[data-theme='dark'] {
   --bob: #60a5fa;
-  --bob-soft: rgba(96, 165, 250, 0.16);
+  --bob-soft: rgba(96, 165, 250, 0.1);
   --eve: #fca5a5;
-  --eve-soft: rgba(252, 165, 165, 0.13);
+  --eve-soft: rgba(252, 165, 165, 0.08);
   --beam-color: #5eead4;
-  --reflection: #fbbf24;
+  --reflection: #94a3b8;
   --field-bg: #171b1d;
-  --heatmap-low: #080b11;
-  --heatmap-low-mid: #29244f;
-  --heatmap-mid: #665087;
-  --heatmap-high-mid: #af806f;
-  --heatmap-high: #e6cc7b;
-  --heatmap-peak: #fff3b0;
+  --heatmap-low: #171b1d;
+  --heatmap-low-mid: #192024;
+  --heatmap-mid: #1d2731;
+  --heatmap-high-mid: #22303f;
+  --heatmap-high: #26374a;
+  --heatmap-peak: #2a3f56;
 }
 
 * {
@@ -43,8 +43,7 @@ body {
   margin: 0;
   place-items: stretch center;
   color: var(--game-text);
-  background:
-    radial-gradient(circle at 12% 0%, var(--game-accent-soft), transparent 13rem), var(--game-bg);
+  background: var(--game-bg);
   font-family: var(--game-font);
 }
 

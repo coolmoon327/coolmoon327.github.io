@@ -1438,6 +1438,14 @@ async function checkSecrecy(browser) {
       let minimumLuminance = 255;
       let maximumLuminance = 0;
       let paintedPixels = 0;
+      let pureWhitePixels = 0;
+      let offBlueScalePixels = 0;
+      let minimumRed = 255;
+      let minimumGreen = 255;
+      let minimumBlue = 255;
+      let maximumRed = 0;
+      let maximumGreen = 0;
+      let maximumBlue = 0;
       let hash = 2166136261;
       for (let index = 0; index < pixels.length; index += 4) {
         const red = pixels[index];
@@ -1450,6 +1458,14 @@ async function checkSecrecy(browser) {
         hash = Math.imul(hash ^ alpha, 16777619);
         if (alpha === 0) continue;
         paintedPixels += 1;
+        if (red === 255 && green === 255 && blue === 255) pureWhitePixels += 1;
+        if (red > green || green > blue) offBlueScalePixels += 1;
+        minimumRed = Math.min(minimumRed, red);
+        minimumGreen = Math.min(minimumGreen, green);
+        minimumBlue = Math.min(minimumBlue, blue);
+        maximumRed = Math.max(maximumRed, red);
+        maximumGreen = Math.max(maximumGreen, green);
+        maximumBlue = Math.max(maximumBlue, blue);
         const luminance = Math.round(0.2126 * red + 0.7152 * green + 0.0722 * blue);
         minimumLuminance = Math.min(minimumLuminance, luminance);
         maximumLuminance = Math.max(maximumLuminance, luminance);
@@ -1459,11 +1475,46 @@ async function checkSecrecy(browser) {
         width: canvas.width,
         height: canvas.height,
         paintedPixels,
+        pureWhitePixels,
+        offBlueScalePixels,
+        minimumRed,
+        minimumGreen,
+        minimumBlue,
+        maximumRed,
+        maximumGreen,
+        maximumBlue,
         uniqueColors: colors.size,
         luminanceRange: maximumLuminance - minimumLuminance,
         hash: hash >>> 0,
       };
     });
+
+  const assertCoolHeatmapPalette = (snapshot, theme) => {
+    assert.equal(
+      snapshot.offBlueScalePixels,
+      0,
+      `${theme} energy heatmap must stay on a neutral-to-blue scale: ${JSON.stringify(snapshot)}`,
+    );
+    if (theme === 'light') {
+      assert.ok(snapshot.pureWhitePixels > 0, 'Uncovered light-theme cells must be pure white');
+      assert.ok(
+        snapshot.minimumRed >= 198 &&
+          snapshot.minimumGreen >= 214 &&
+          snapshot.minimumBlue >= 250,
+        `Even peak light-theme coverage must remain pale blue: ${JSON.stringify(snapshot)}`,
+      );
+      return;
+    }
+    assert.ok(
+      snapshot.minimumRed >= 23 &&
+        snapshot.minimumGreen >= 27 &&
+        snapshot.minimumBlue >= 29 &&
+        snapshot.maximumRed <= 42 &&
+        snapshot.maximumGreen <= 63 &&
+        snapshot.maximumBlue <= 86,
+      `Dark-theme coverage must remain a restrained cool blue: ${JSON.stringify(snapshot)}`,
+    );
+  };
 
   const readScenario = async () =>
     page.evaluate(() => {
@@ -1618,6 +1669,22 @@ async function checkSecrecy(browser) {
     initialHeatmap.uniqueColors >= 4 && initialHeatmap.luminanceRange >= 10,
     `Energy heatmap must have visible intensity variation: ${JSON.stringify(initialHeatmap)}`,
   );
+  assertCoolHeatmapPalette(initialHeatmap, 'light');
+  const initialPalette = await page.evaluate(() => {
+    const rootStyle = getComputedStyle(document.documentElement);
+    return {
+      low: rootStyle.getPropertyValue('--heatmap-low').trim(),
+      peak: rootStyle.getPropertyValue('--heatmap-peak').trim(),
+      reflection: rootStyle.getPropertyValue('--reflection').trim(),
+      bodyImage: getComputedStyle(document.body).backgroundImage,
+    };
+  });
+  assert.deepEqual(initialPalette, {
+    low: '#ffffff',
+    peak: '#c6d6fa',
+    reflection: '#64748b',
+    bodyImage: 'none',
+  });
 
   const assertSecrecyRateIdentity = async () => {
     const metrics = await field.evaluate((element) => ({
@@ -1880,7 +1947,10 @@ async function checkSecrecy(browser) {
   assert.match(await page.locator('#control-help').textContent(), /energy/i);
   assert.doesNotMatch(await page.locator('#control-help').textContent(), /dashed|ray paths?/i);
   await assertNoOverflow(page, 'secrecy three-bounce English state');
+  const revisionBeforeDarkTheme = Number(await field.getAttribute('data-heatmap-revision'));
   await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
+  await waitForHeatmapRevision(revisionBeforeDarkTheme);
+  assertCoolHeatmapPalette(await readHeatmap(), 'dark');
   assert.equal(await page.locator('h1').textContent(), '保密波束实验');
   assert.equal(await page.locator('.score-card-label').textContent(), '保密速率');
   assert.match(await page.locator('.wall-toggle-text').textContent(), /墙/);
