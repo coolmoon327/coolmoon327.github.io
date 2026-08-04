@@ -14,10 +14,14 @@ const gameIds = [
   'bandit',
   'qpath',
   'return',
+  'world',
+  'stl',
   'movable',
   'pinching',
   'secrecy',
   'hopper',
+  'backscatter',
+  'resilience',
   'orbit',
   'signature',
   'echo',
@@ -30,10 +34,14 @@ const chineseTitles = {
   bandit: '探索与利用',
   qpath: '路由学徒',
   return: '折扣回报',
+  world: '潜空间预演',
+  stl: '时序语义哨兵',
   movable: '可移动天线实验',
   pinching: '夹持天线实验',
   secrecy: '保密波束实验',
   hopper: '跳频学徒',
+  backscatter: '借波突围',
+  resilience: '断链续航',
   orbit: '链路捕获',
   signature: '灵感星图',
   echo: '信号回放',
@@ -203,7 +211,7 @@ try {
   assert.deepEqual(
     [...renderedGameIds].sort(),
     [...gameIds].sort(),
-    'English Playground must render all fourteen games once',
+    'English Playground must render all eighteen games once',
   );
 
   await loadAllGames(page);
@@ -362,7 +370,7 @@ try {
     assert.deepEqual(
       [...standaloneGames].sort(),
       [...gameIds].sort(),
-      'Standalone lab must render all fourteen games once',
+      'Standalone lab must render all eighteen games once',
     );
 
     await auditCollectionPacking(standalonePage, 'Standalone lab');

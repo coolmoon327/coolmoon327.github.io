@@ -11,10 +11,14 @@ const games = {
   bandit: 430,
   qpath: 620,
   return: 430,
+  world: 600,
+  stl: 600,
   movable: 720,
   pinching: 680,
   secrecy: 600,
   hopper: 600,
+  backscatter: 620,
+  resilience: 600,
   orbit: 360,
   signature: 260,
   echo: 430,
@@ -41,6 +45,7 @@ async function openGame(browser, id, options = {}) {
     viewport: { width: options.width ?? 420, height: options.height ?? games[id] },
     reducedMotion: options.reducedMotion ?? 'no-preference',
   });
+  if (options.clock) await page.clock.install();
   if (options.randomValues) {
     await page.addInitScript((values) => {
       let index = 0;
@@ -486,6 +491,219 @@ async function checkReturn(browser) {
   await page.locator('#next').click();
   assert.equal(await game.getAttribute('data-round'), '1');
   assert.equal(await game.getAttribute('data-score'), '0');
+  await page.close();
+}
+
+async function checkWorld(browser) {
+  const page = await openGame(browser, 'world', { width: 280, reducedMotion: 'reduce' });
+  const field = page.locator('#field');
+  const actionButtons = page.locator('[data-action]');
+
+  assert.equal(await field.getAttribute('data-phase'), 'ready');
+  assert.equal(await page.locator('#user-layer > *').count(), 9);
+  assert.equal(await page.locator('#round').textContent(), '0');
+
+  const forecastState = await page.locator('[data-action="0"]').evaluate((button) => {
+    button.click();
+    return {
+      phase: document.querySelector('#field')?.dataset.phase,
+      action: document.querySelector('#field')?.dataset.action,
+      ghosts: document.querySelector('#ghost-layer')?.childElementCount,
+      disabled: [...document.querySelectorAll('button[data-action]')].every(
+        (actionButton) => actionButton.disabled,
+      ),
+    };
+  });
+  assert.deepEqual(forecastState, {
+    phase: 'forecast',
+    action: '0',
+    ghosts: 27,
+    disabled: true,
+  });
+
+  await page.waitForFunction(() => document.querySelector('#field')?.dataset.phase === 'observed');
+  assert.equal(await page.locator('#ghost-layer > *').count(), 0);
+  assert.equal(await page.locator('#round').textContent(), '1');
+  assert.match(await page.locator('#prediction-error').textContent(), /^\d+\.\d{2}$/);
+  assert.match(await page.locator('#service-rate').textContent(), /^\d+%$/);
+  assert.equal(await actionButtons.first().isEnabled(), true);
+  const coverageAlignment = await page.evaluate(() => {
+    const ellipse = document.querySelector('#coverage');
+    const centerX = Number(ellipse.getAttribute('cx'));
+    const centerY = Number(ellipse.getAttribute('cy'));
+    const radiusX = Number(ellipse.getAttribute('rx'));
+    const radiusY = Number(ellipse.getAttribute('ry'));
+    return [...document.querySelectorAll('#user-layer > g')].map((user) => {
+      const matrix = user.transform.baseVal.consolidate().matrix;
+      const visuallyInside =
+        ((matrix.e - centerX) / radiusX) ** 2 + ((matrix.f - centerY) / radiusY) ** 2 <= 1.0001;
+      return visuallyInside === user.classList.contains('is-served');
+    });
+  });
+  assert.equal(coverageAlignment.every(Boolean), true, 'World-model coverage must match service');
+  await assertNoOverflow(page, 'world observed');
+
+  const error = await page.locator('#prediction-error').textContent();
+  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
+  assert.equal(await page.locator('h1').textContent(), '潜空间预演');
+  assert.equal(await page.locator('#prediction-error').textContent(), error);
+
+  await page.locator('#reset').click();
+  assert.equal(await field.getAttribute('data-phase'), 'ready');
+  assert.equal(await page.locator('#round').textContent(), '0');
+  await page.locator('[data-action="0"]').focus();
+  await page.keyboard.press('ArrowUp');
+  await page.waitForFunction(() => document.querySelector('#field')?.dataset.phase === 'observed');
+  assert.equal(await field.getAttribute('data-action'), '1');
+  await page.close();
+}
+
+async function checkStl(browser) {
+  const page = await openGame(browser, 'stl', { width: 280, reducedMotion: 'reduce' });
+  const game = page.locator('#game');
+
+  assert.equal(await game.getAttribute('data-monitor-only'), 'true');
+  assert.equal(await game.getAttribute('data-phase'), 'ready');
+  assert.equal(await game.getAttribute('data-total-slots'), '12');
+
+  await page.locator('#start-button').click();
+  for (let checkpoint = 1; checkpoint <= 3; checkpoint += 1) {
+    await page.waitForFunction((expectedCheckpoint) => {
+      const root = document.querySelector('#game');
+      return (
+        root?.dataset.phase === 'decision' && Number(root.dataset.checkpoint) === expectedCheckpoint
+      );
+    }, checkpoint);
+    const recommended = await game.getAttribute('data-recommended');
+    assert.ok(['hold', 'repair', 'probe'].includes(recommended));
+    const margin = Number(await game.getAttribute('data-semantic-margin'));
+    if (margin < 0) assert.notEqual(recommended, 'hold');
+    if (checkpoint === 1) {
+      await page.keyboard.press(String(['hold', 'repair', 'probe'].indexOf(recommended) + 1));
+    } else {
+      await page.locator(`button[data-response="${recommended}"]`).click();
+    }
+  }
+
+  await page.waitForFunction(() => document.querySelector('#game')?.dataset.phase === 'complete');
+  assert.equal(await game.getAttribute('data-slot'), '12');
+  assert.match(await game.getAttribute('data-score'), /^\d+$/);
+  assert.match(await game.getAttribute('data-violation-rate'), /^\d+\.\d{3}$/);
+  await assertNoOverflow(page, 'stl complete');
+
+  const score = await game.getAttribute('data-score');
+  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
+  assert.equal(await page.locator('h1').textContent(), '时序语义哨兵');
+  assert.equal(await game.getAttribute('data-score'), score);
+
+  await page.locator('#reset-button').click();
+  assert.equal(await game.getAttribute('data-phase'), 'ready');
+  assert.equal(await game.getAttribute('data-slot'), '0');
+  await page.close();
+}
+
+async function checkBackscatter(browser) {
+  const page = await openGame(browser, 'backscatter', { width: 280, reducedMotion: 'reduce' });
+  const game = page.locator('.game[data-game="backscatter"]');
+  const arena = page.locator('#arena');
+
+  assert.equal(await game.getAttribute('data-phase'), 'primary');
+  assert.equal(await game.getAttribute('data-slot'), '1');
+  assert.equal(await game.getAttribute('data-complete'), 'false');
+  assert.equal(await page.locator('#follow-actions').isHidden(), true);
+
+  const batteryBeforeProbe = Number.parseInt(await page.locator('#battery').textContent(), 10);
+  await page.locator('#primary-actions [data-action="probe"]').click();
+  assert.equal(await game.getAttribute('data-phase'), 'follow');
+  assert.equal(
+    Number.parseInt(await page.locator('#battery').textContent(), 10),
+    batteryBeforeProbe - 1,
+  );
+  assert.match(await arena.getAttribute('data-carrier'), /^(quiet|weak|steady|broken)$/);
+  assert.match(await page.locator('#status').textContent(), /Probe complete/);
+  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
+  assert.doesNotMatch(await page.locator('#status').textContent(), /Probe complete/);
+  assert.match(await page.locator('#status').textContent(), /探测完成/);
+  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'en', theme: 'light' }));
+  await page.locator('#follow-actions [data-action="harvest"]').click();
+  assert.equal(await game.getAttribute('data-phase'), 'primary');
+  assert.equal(await game.getAttribute('data-slot'), '2');
+  assert.equal(await page.locator('#history li').count(), 1);
+
+  let sawDrift = false;
+  for (
+    let action = 0;
+    action < 10 && (await game.getAttribute('data-complete')) !== 'true';
+    action += 1
+  ) {
+    const previousSlot = Number(await game.getAttribute('data-slot'));
+    await page.locator('#primary-actions [data-action="wait"]').focus();
+    await page.keyboard.press('3');
+    const nextSlot = Number(await game.getAttribute('data-slot'));
+    assert.ok(nextSlot > previousSlot || (await game.getAttribute('data-complete')) === 'true');
+    sawDrift ||= (await arena.getAttribute('data-drift')) === 'true';
+  }
+  assert.equal(await game.getAttribute('data-complete'), 'true');
+  assert.equal(sawDrift, true, 'Signal Judo must surface the hidden rhythm shift');
+  assert.equal(await game.getAttribute('data-phase'), 'complete');
+  assert.equal(await page.locator('#results').isVisible(), true);
+  assert.equal(await page.locator('#history li').count(), 4);
+  assert.match(await page.locator('#result-recovery').textContent(), /^0 \/ 100/);
+  await assertNoOverflow(page, 'backscatter complete');
+
+  const delivered = Number.parseInt(await page.locator('#result-delivered').textContent(), 10);
+  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
+  assert.equal(await page.locator('h1').textContent(), '借波突围');
+  assert.equal(
+    Number.parseInt(await page.locator('#result-delivered').textContent(), 10),
+    delivered,
+  );
+  assert.match(await page.locator('#result-delivered').textContent(), /个数据包/);
+  await page.locator('#restart').click();
+  assert.equal(await game.getAttribute('data-slot'), '1');
+  assert.equal(await game.getAttribute('data-complete'), 'false');
+  await page.close();
+}
+
+async function checkResilience(browser) {
+  const page = await openGame(browser, 'resilience', { width: 280, clock: true });
+  const field = page.locator('#field');
+
+  await page.locator('[data-payload="heavy"]').click();
+  assert.equal(await page.locator('[data-payload="heavy"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('[data-payload="medium"]').getAttribute('aria-pressed'), 'false');
+  await page.keyboard.press('1');
+  assert.equal(await page.locator('[data-payload="light"]').getAttribute('aria-pressed'), 'true');
+
+  await page.locator('#episode-control').click();
+  await page.clock.runFor(1700);
+  assert.equal(await page.locator('#slot').textContent(), '1 / 24');
+  assert.match(await field.getAttribute('data-source'), /^(fresh|predicted|hold)$/);
+  assert.ok(
+    (await page.locator('#history > .fresh, #history > .predicted, #history > .hold').count()) >= 1,
+  );
+
+  await page.locator('#episode-control').click();
+  const pausedSlot = await page.locator('#slot').textContent();
+  await page.clock.runFor(5100);
+  assert.equal(await page.locator('#slot').textContent(), pausedSlot);
+  await page.locator('#episode-control').click();
+  await page.clock.runFor(23 * 1700);
+  assert.equal(await page.locator('#slot').textContent(), '24 / 24');
+  assert.equal(
+    await page.locator('#history > .fresh, #history > .predicted, #history > .hold').count(),
+    24,
+  );
+  assert.match(await page.locator('#service').textContent(), /^\d+%$/);
+  assert.match(await page.locator('#service-gap').textContent(), /^\d+\.\d$/);
+  assert.match(await field.getAttribute('data-mean-service'), /^\d+\.\d{2}$/);
+  await assertNoOverflow(page, 'resilience complete');
+
+  const serviceGap = await page.locator('#service-gap').textContent();
+  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
+  assert.equal(await page.locator('h1').textContent(), '断链续航');
+  assert.equal(await page.locator('#service-gap').textContent(), serviceGap);
+  assert.equal(await page.locator('#episode-control').textContent(), '再来一局');
   await page.close();
 }
 
@@ -1283,10 +1501,14 @@ try {
   await checkBandit(browser);
   await checkQPath(browser);
   await checkReturn(browser);
+  await checkWorld(browser);
+  await checkStl(browser);
   await checkMovable(browser);
   await checkPinching(browser);
   await checkSecrecy(browser);
   await checkHopper(browser);
+  await checkBackscatter(browser);
+  await checkResilience(browser);
   await checkOrbit(browser);
   await checkOrbit(browser, 'reduce');
   await checkSignature(browser);

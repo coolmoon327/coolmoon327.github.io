@@ -988,6 +988,36 @@ export const site = {
         },
       },
       {
+        id: 'world',
+        category: 'learning',
+        height: 600,
+        title: { en: 'Latent Look-Ahead', zh: '潜空间预演' },
+        meta: { en: 'Conceptual world model · 30–90 sec', zh: '概念世界模型 · 30–90 秒' },
+        description: {
+          en: 'Guide a mobile relay while a compact action-conditioned model predicts the next latent state. Compare its forecast with the revealed outcome and let each step refine the model online.',
+          zh: '操控移动中继，并让一个紧凑的动作条件模型在潜空间中预测下一状态；将预测与随后揭示的真实结果对照，每一步都会继续修正模型。',
+        },
+        tags: {
+          en: ['Latent rollout', 'Prediction error', 'Online update'],
+          zh: ['潜状态滚动预测', '预测误差', '在线更新'],
+        },
+      },
+      {
+        id: 'stl',
+        category: 'learning',
+        height: 600,
+        title: { en: 'Semantic Sentinel', zh: '时序语义哨兵' },
+        meta: { en: 'Temporal-logic monitor · 30–90 sec', zh: '时序逻辑监测 · 30–90 秒' },
+        description: {
+          en: 'Read a short observation–action–outcome stream, interpret a sliding-window report, and choose whether to hold, repair locally, or probe longer before service degrades.',
+          zh: '观察一段“观测—动作—结果”序列，解读滑动窗口报告，并在服务明显下降前选择保持、局部修复或延长探测。',
+        },
+        tags: {
+          en: ['Sliding window', 'Semantic margin', 'False-alarm tradeoff'],
+          zh: ['滑动窗口', '语义裕度', '误报权衡'],
+        },
+      },
+      {
         id: 'movable',
         category: 'wireless',
         height: 720,
@@ -1045,6 +1075,36 @@ export const site = {
         tags: {
           en: ['18-state table', 'Player demonstrations', 'Live throughput'],
           zh: ['18 状态表格学习', '玩家示范', '实时吞吐率'],
+        },
+      },
+      {
+        id: 'backscatter',
+        category: 'wireless',
+        height: 620,
+        title: { en: 'Signal Judo', zh: '借波突围' },
+        meta: { en: 'Adversarial backscatter · 1–3 min', zh: '对抗式反向散射 · 1–3 分钟' },
+        description: {
+          en: 'Manage a finite queue and battery across ten slots. Probe an opponent whose rhythm can shift, then decide when its signal is a threat, an energy source, or a carrier worth backscattering.',
+          zh: '在十个时隙中管理有限的数据队列与电量。先试探会改变节奏的对手，再判断它的信号此刻是威胁、能量来源，还是可借用的反向散射载波。',
+        },
+        tags: {
+          en: ['Queue + battery', 'Two-stage decisions', 'Hidden rhythm'],
+          zh: ['队列与电量', '两阶段决策', '隐藏节奏'],
+        },
+      },
+      {
+        id: 'resilience',
+        category: 'wireless',
+        height: 600,
+        title: { en: 'Predict Through the Outage', zh: '断链续航' },
+        meta: { en: 'Semantic-link recovery · 30–90 sec', zh: '语义链路恢复 · 30–90 秒' },
+        description: {
+          en: 'Choose how much semantic telemetry to send through a fragile link, fall back to predicted state when packets vanish, and recover service without overreacting to every brief outage.',
+          zh: '选择遥测语义信息的发送粒度；链路丢包时依靠预测状态维持服务，并在短暂中断与持续失效之间作出不过度反应的恢复决策。',
+        },
+        tags: {
+          en: ['Cached prediction', 'Recovery time', 'Service gap'],
+          zh: ['预测缓存', '恢复时间', '服务缺口'],
         },
       },
       {
@@ -1143,7 +1203,7 @@ export const site = {
         eyebrow: 'Motion · Learning · Wireless systems · A small pause',
         title: 'Playground',
         intro:
-          'Fourteen small, dependency-free games live inside the site rather than taking it over. Two compact Agents learn directly from your episodes, while the other games turn wireless systems, AI, and research routines into quick interactions.',
+          'Eighteen small, dependency-free games live inside the site rather than taking it over. Compact learners, conceptual research models, and quick puzzles turn wireless systems, AI, and research routines into hands-on interactions.',
         badges: ['Card sized', 'Bilingual', 'Theme aware', 'Static hosting'],
         openLabel: 'Open standalone',
         miniGameLabel: 'mini game',
@@ -1153,14 +1213,14 @@ export const site = {
             number: '01',
             title: 'Research ideas you can play',
             intro:
-              'Fast feedback first, terminology second: demonstrate a route, hand control to an Agent, and watch a small policy improve.',
+              'Demonstrate a route, inspect a latent forecast, or interpret a temporal monitor: each interaction makes a compact learning idea visible before introducing the terminology.',
           },
           {
             id: 'wireless',
             number: '02',
             title: 'Wireless systems you can steer',
             intro:
-              'Simplified geometric models make coverage, interference, reflection, and secure beam steering visible and playable.',
+              'Simplified conceptual models make coverage, interference, backscatter, resilient telemetry, reflection, and secure beam steering visible and playable.',
           },
           {
             id: 'micro',
@@ -1182,7 +1242,7 @@ export const site = {
         eyebrow: '动态交互 · 强化学习 · 无线通信 · 轻松一下',
         title: '小游戏实验室',
         intro:
-          '这里有 14 款无需额外依赖的轻量小游戏，嵌在页面里随手就能玩，也不会喧宾夺主。其中两款会直接从你的回合中学习，其余游戏则把无线通信、人工智能与科研日常做成直观互动。',
+          '这里有 18 款无需额外依赖的轻量小游戏，嵌在页面里随手就能玩，也不会喧宾夺主。它们既有会从操作中学习的小型 Agent，也有取材于无线通信、人工智能与科研日常的概念模型和轻量谜题。',
         badges: ['卡片内游玩', '中英双语', '自动适配主题', '支持静态托管'],
         openLabel: '单独打开',
         miniGameLabel: '小游戏',
@@ -1192,13 +1252,14 @@ export const site = {
             number: '01',
             title: '把强化学习玩明白',
             intro:
-              '先亲自示范，再把控制权交给 Agent；状态空间刻意做得很小，几局之内就能看到策略如何从你的操作中学出来。',
+              '你可以亲自示范并把控制权交给 Agent，也可以查看潜空间预测、解读时序逻辑监测报告，让抽象的学习机制先变得可见、可操作。',
           },
           {
             id: 'wireless',
             number: '02',
             title: '动手调一套无线系统',
-            intro: '通过简化模型直观看到覆盖、干扰、反射、跳频和安全波束成形，并亲手调整系统参数。',
+            intro:
+              '通过简化的概念模型直观看到覆盖、干扰、反向散射、语义链路恢复、反射、跳频和安全波束指向，并亲手调整系统参数。',
           },
           {
             id: 'micro',

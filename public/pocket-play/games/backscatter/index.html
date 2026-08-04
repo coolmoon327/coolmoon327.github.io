@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title data-en="Signal Judo" data-zh="借波突围">Signal Judo</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script src="../shared/runtime.js" defer></script>
+    <script src="./game.js" defer></script>
+  </head>
+  <body>
+    <main class="game" aria-labelledby="game-title" data-game="backscatter">
+      <header class="game-header">
+        <div>
+          <p
+            class="eyebrow"
+            data-en="ADVERSARIAL WIRELESS · 10 SLOTS"
+            data-zh="对抗无线 · 10 个时隙"
+          >
+            ADVERSARIAL WIRELESS · 10 SLOTS
+          </p>
+          <h1 id="game-title" data-en="Signal Judo" data-zh="借波突围">Signal Judo</h1>
+        </div>
+        <p class="slot-badge">
+          <span data-en="Slot" data-zh="时隙">Slot</span>
+          <output id="slot">1 / 10</output>
+        </p>
+      </header>
+
+      <p
+        class="intro"
+        data-en="Interference can be a threat, a carrier, or an energy source. Read the rhythm before you commit."
+        data-zh="干扰既可能是威胁，也可能成为载波或能量来源。先观察节奏，再决定如何出手。"
+      >
+        Interference can be a threat, a carrier, or an energy source. Read the rhythm before you
+        commit.
+      </p>
+
+      <dl
+        class="metrics"
+        data-aria-en="Live link resources"
+        data-aria-zh="链路实时资源"
+        aria-label="Live link resources"
+      >
+        <div>
+          <dt data-en="Queue" data-zh="数据队列">Queue</dt>
+          <dd><output id="queue">5 pkt</output></dd>
+        </div>
+        <div>
+          <dt data-en="Battery" data-zh="电池">Battery</dt>
+          <dd><output id="battery">5 EU</output></dd>
+        </div>
+        <div>
+          <dt data-en="Delivered" data-zh="已交付">Delivered</dt>
+          <dd><output id="delivered">0 pkt</output></dd>
+        </div>
+      </dl>
+
+      <section class="arena" id="arena" aria-labelledby="arena-title" data-carrier="idle">
+        <h2 class="sr-only" id="arena-title" data-en="Wireless link" data-zh="无线链路">
+          Wireless link
+        </h2>
+        <div class="scene" aria-hidden="true">
+          <span class="node terminal"><span>TX</span></span>
+          <span class="channel">
+            <i class="wave wave-one"></i>
+            <i class="wave wave-two"></i>
+            <i class="wave wave-three"></i>
+            <i class="return-wave"></i>
+            <i class="packet packet-one"></i>
+            <i class="packet packet-two"></i>
+          </span>
+          <span class="node gateway"><span>RX</span></span>
+          <span class="opponent"><i></i><span>?</span></span>
+        </div>
+        <div class="observation-strip">
+          <span data-en="Coarse observation" data-zh="粗粒度观测">Coarse observation</span>
+          <strong id="observation">—</strong>
+        </div>
+        <ol
+          class="history"
+          id="history"
+          data-aria-en="Recent channel observations"
+          data-aria-zh="近期信道观测"
+          aria-label="Recent channel observations"
+        ></ol>
+      </section>
+
+      <section class="decision" aria-labelledby="decision-title">
+        <h2 id="decision-title" data-en="Choose the first move" data-zh="选择第一步">
+          Choose the first move
+        </h2>
+        <div
+          class="action-grid"
+          id="primary-actions"
+          data-aria-en="First-stage actions"
+          data-aria-zh="第一阶段操作"
+          aria-label="First-stage actions"
+        >
+          <button type="button" data-action="direct" aria-keyshortcuts="1">
+            <span data-en="Direct" data-zh="直接发送">Direct</span>
+            <small data-en="fast · costs energy" data-zh="更快 · 消耗能量"
+              >fast · costs energy</small
+            >
+          </button>
+          <button type="button" data-action="probe" aria-keyshortcuts="2">
+            <span data-en="Probe" data-zh="探测">Probe</span>
+            <small data-en="observe · costs 1 EU" data-zh="观测 · 消耗 1 能量单位"
+              >observe · costs 1 EU</small
+            >
+          </button>
+          <button type="button" data-action="wait" aria-keyshortcuts="3">
+            <span data-en="Wait" data-zh="等待">Wait</span>
+            <small data-en="listen · save resources" data-zh="监听 · 保存资源"
+              >listen · save resources</small
+            >
+          </button>
+        </div>
+
+        <div
+          class="action-grid"
+          id="follow-actions"
+          data-aria-en="Second-stage actions"
+          data-aria-zh="第二阶段操作"
+          aria-label="Second-stage actions"
+          hidden
+        >
+          <button type="button" data-action="reflect" aria-keyshortcuts="1">
+            <span data-en="Reflect" data-zh="借波反射">Reflect</span>
+            <small data-en="needs a steady carrier" data-zh="需要连续载波"
+              >needs a steady carrier</small
+            >
+          </button>
+          <button type="button" data-action="harvest" aria-keyshortcuts="2">
+            <span data-en="Harvest" data-zh="射频采能">Harvest</span>
+            <small data-en="no payload now" data-zh="本时隙不传数据">no payload now</small>
+          </button>
+          <button type="button" data-action="cautious" aria-keyshortcuts="3">
+            <span data-en="Guarded" data-zh="保守传输">Guarded</span>
+            <small data-en="one low-rate packet" data-zh="尝试发送 1 个包"
+              >one low-rate packet</small
+            >
+          </button>
+        </div>
+      </section>
+
+      <p class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <p
+        class="keyboard-help"
+        data-en="Use the buttons or press 1–3. Game units are illustrative, not measured radio values."
+        data-zh="可点击按钮或按 1–3。所有数值均为游戏化单位，并非实测无线参数。"
+      >
+        Use the buttons or press 1–3. Game units are illustrative, not measured radio values.
+      </p>
+
+      <section class="results" id="results" aria-labelledby="results-title" hidden>
+        <div class="results-heading">
+          <div>
+            <p class="eyebrow" data-en="RUN COMPLETE" data-zh="本轮结束">RUN COMPLETE</p>
+            <h2 id="results-title" data-en="Link report" data-zh="链路报告">Link report</h2>
+          </div>
+          <span class="grade" id="grade">—</span>
+        </div>
+        <dl class="result-grid">
+          <div>
+            <dt data-en="Delivered" data-zh="成功交付">Delivered</dt>
+            <dd><output id="result-delivered">0 packets</output></dd>
+          </div>
+          <div>
+            <dt data-en="Lost" data-zh="丢失">Lost</dt>
+            <dd><output id="result-lost">0 packets</output></dd>
+          </div>
+          <div>
+            <dt data-en="Energy left" data-zh="剩余能量">Energy left</dt>
+            <dd><output id="result-energy">0 EU</output></dd>
+          </div>
+          <div>
+            <dt data-en="Evidence-led recovery" data-zh="探测后恢复">Evidence-led recovery</dt>
+            <dd><output id="result-recovery">0 / 100 game pts</output></dd>
+          </div>
+        </dl>
+        <p id="result-note"></p>
+        <button class="restart" id="restart" type="button" data-en="New run" data-zh="再来一局">
+          New run
+        </button>
+      </section>
+    </main>
+  </body>
+</html>

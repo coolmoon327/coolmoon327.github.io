@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <title data-en="Latent Look-Ahead" data-zh="潜空间预演">Latent Look-Ahead</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script src="../shared/runtime.js" defer></script>
+    <script src="./game.js" defer></script>
+  </head>
+  <body>
+    <main class="game" aria-labelledby="game-title">
+      <header class="game-header">
+        <div>
+          <p class="eyebrow" data-en="ACTION-CONDITIONED WORLD MODEL" data-zh="动作条件世界模型">
+            ACTION-CONDITIONED WORLD MODEL
+          </p>
+          <h1 id="game-title" data-en="Latent Look-Ahead" data-zh="潜空间预演">
+            Latent Look-Ahead
+          </h1>
+        </div>
+        <div class="round-card">
+          <span data-en="Round" data-zh="轮次">Round</span>
+          <output id="round">0</output>
+        </div>
+      </header>
+
+      <section
+        class="metrics"
+        aria-label="World-model metrics"
+        data-aria-en="World-model metrics"
+        data-aria-zh="世界模型指标"
+      >
+        <div>
+          <span data-en="Prediction error" data-zh="预测误差">Prediction error</span>
+          <output id="prediction-error">—</output>
+        </div>
+        <div>
+          <span data-en="All-user service score" data-zh="全用户服务得分"
+            >All-user service score</span
+          >
+          <output id="service-rate">—</output>
+        </div>
+      </section>
+
+      <div
+        class="field"
+        id="field"
+        role="img"
+        aria-label="Maritime users, a UAV coverage area, and latent forecasts"
+        data-aria-en="Maritime users, a UAV coverage area, and latent forecasts"
+        data-aria-zh="海上用户、无人机覆盖范围与潜状态预测"
+      >
+        <svg id="scene" viewBox="0 0 360 220" aria-hidden="true">
+          <defs>
+            <pattern id="water-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+              <path d="M 0 12 Q 6 8 12 12 T 24 12" class="water-line"></path>
+            </pattern>
+          </defs>
+          <rect class="water" x="0" y="0" width="360" height="220"></rect>
+          <rect class="water-grid" x="0" y="0" width="360" height="220"></rect>
+          <g id="ghost-layer"></g>
+          <ellipse
+            id="predicted-coverage"
+            class="predicted-coverage"
+            cx="180"
+            cy="110"
+            rx="68"
+            ry="46"
+          ></ellipse>
+          <ellipse id="coverage" class="coverage" cx="180" cy="110" rx="68" ry="46"></ellipse>
+          <g id="user-layer"></g>
+          <g class="uav" transform="translate(180 110)">
+            <circle class="uav-halo" r="17"></circle>
+            <path
+              d="M -12 0 H 12 M 0 -12 V 12 M -16 -8 H -8 V 0 M 16 -8 H 8 V 0 M -16 8 H -8 V 0 M 16 8 H 8 V 0"
+            ></path>
+            <circle r="4"></circle>
+          </g>
+        </svg>
+
+        <div class="field-chip phase-chip">
+          <span data-en="Model" data-zh="模型">Model</span>
+          <output id="phase">Ready</output>
+        </div>
+        <div class="field-chip height-chip">
+          <span data-en="UAV" data-zh="高度">UAV</span>
+          <output id="height">Mid</output>
+        </div>
+      </div>
+
+      <div
+        class="actions"
+        role="group"
+        aria-label="Choose the next UAV action"
+        data-aria-en="Choose the next UAV action"
+        data-aria-zh="选择下一步无人机动作"
+      >
+        <button type="button" data-action="-1" aria-keyshortcuts="ArrowDown">
+          <span aria-hidden="true">↓</span>
+          <strong data-en="Descend" data-zh="下降">Descend</strong>
+        </button>
+        <button type="button" data-action="0" aria-keyshortcuts="Space">
+          <span aria-hidden="true">•</span>
+          <strong data-en="Hold" data-zh="保持">Hold</strong>
+        </button>
+        <button type="button" data-action="1" aria-keyshortcuts="ArrowUp">
+          <span aria-hidden="true">↑</span>
+          <strong data-en="Climb" data-zh="上升">Climb</strong>
+        </button>
+      </div>
+
+      <div class="utility-row">
+        <button class="reset" id="reset" type="button" data-en="New current" data-zh="更换海流">
+          New current
+        </button>
+        <div class="legend" aria-hidden="true">
+          <span><i class="actual-dot"></i><b data-en="Observed" data-zh="实测">Observed</b></span>
+          <span><i class="ghost-dot"></i><b data-en="Forecast" data-zh="预测">Forecast</b></span>
+        </div>
+      </div>
+
+      <p class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <p
+        class="note"
+        data-en="A conceptual model: each action produces three translucent latent forecasts before the next observation arrives. It is not a paper reproduction."
+        data-zh="这是一个概念模型：每次操作后先生成三步半透明潜状态预测，再揭示下一次观测；它并非论文复现实验。"
+      >
+        A conceptual model: each action produces three translucent latent forecasts before the next
+        observation arrives. It is not a paper reproduction.
+      </p>
+    </main>
+  </body>
+</html>

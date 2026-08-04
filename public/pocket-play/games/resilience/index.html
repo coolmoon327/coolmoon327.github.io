@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <title data-en="Predict Through the Outage" data-zh="断链续航">
+      Predict Through the Outage
+    </title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script src="../shared/runtime.js" defer></script>
+    <script src="./game.js" defer></script>
+  </head>
+  <body>
+    <main class="game" aria-labelledby="game-title">
+      <header class="game-header">
+        <div>
+          <p class="eyebrow" data-en="SEMANTIC LINK RESILIENCE" data-zh="语义链路韧性">
+            SEMANTIC LINK RESILIENCE
+          </p>
+          <h1 id="game-title" data-en="Predict Through the Outage" data-zh="断链续航">
+            Predict Through the Outage
+          </h1>
+        </div>
+        <div class="slot-card">
+          <span data-en="Slot" data-zh="时隙">Slot</span>
+          <output id="slot">0 / 24</output>
+        </div>
+      </header>
+
+      <section
+        class="metrics"
+        aria-label="Resilience metrics"
+        data-aria-en="Resilience metrics"
+        data-aria-zh="韧性指标"
+      >
+        <div>
+          <span data-en="Mean service" data-zh="平均服务率">Mean service</span>
+          <output id="service">—</output>
+        </div>
+        <div>
+          <span data-en="Cache age" data-zh="缓存时龄">Cache age</span>
+          <output id="cache-age">—</output>
+        </div>
+        <div>
+          <span data-en="Recovery" data-zh="恢复用时">Recovery</span>
+          <output id="recovery">—</output>
+        </div>
+        <div>
+          <span data-en="Service gap" data-zh="累计缺口">Service gap</span>
+          <output id="service-gap">0.0</output>
+        </div>
+      </section>
+
+      <div class="field" id="field" data-source="idle">
+        <svg
+          id="scene"
+          viewBox="0 0 360 182"
+          role="img"
+          aria-label="A UAV semantic link to a digital twin"
+          data-aria-en="A UAV semantic link to a digital twin"
+          data-aria-zh="无人机与数字孪生之间的语义链路"
+        >
+          <defs>
+            <linearGradient id="sky-gradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" class="sky-stop-one"></stop>
+              <stop offset="1" class="sky-stop-two"></stop>
+            </linearGradient>
+          </defs>
+          <rect class="sky" x="0" y="0" width="360" height="182"></rect>
+          <path class="horizon" d="M 0 136 Q 80 125 150 137 T 290 134 T 360 138"></path>
+          <g id="user-layer"></g>
+
+          <line class="semantic-link" id="semantic-link" x1="102" y1="77" x2="286" y2="77"></line>
+          <g id="packet-layer"></g>
+
+          <g class="uav" transform="translate(94 77)">
+            <circle class="node-halo" r="18"></circle>
+            <path
+              d="M -12 0 H 12 M 0 -12 V 12 M -16 -8 H -8 V 0 M 16 -8 H 8 V 0 M -16 8 H -8 V 0 M 16 8 H 8 V 0"
+            ></path>
+            <circle r="4"></circle>
+            <text y="31">UAV</text>
+          </g>
+
+          <g class="digital-twin" transform="translate(294 77)">
+            <circle class="cache-echo echo-two" r="25"></circle>
+            <circle class="cache-echo echo-one" r="20"></circle>
+            <rect x="-13" y="-12" width="26" height="24" rx="4"></rect>
+            <path d="M -7 -4 H 7 M -7 2 H 4 M -7 8 H 1"></path>
+            <text y="31">DT</text>
+          </g>
+        </svg>
+
+        <div class="source-chip">
+          <span data-en="Control source" data-zh="控制来源">Control source</span>
+          <output id="source">Standby</output>
+        </div>
+      </div>
+
+      <div
+        class="history"
+        id="history"
+        role="img"
+        aria-label="Recent control-source history"
+        data-aria-en="Recent control-source history"
+        data-aria-zh="近期控制来源记录"
+      ></div>
+
+      <div
+        class="payloads"
+        role="group"
+        aria-label="Choose semantic payload"
+        data-aria-en="Choose semantic payload"
+        data-aria-zh="选择语义载荷"
+      >
+        <button type="button" data-payload="light" aria-keyshortcuts="1" aria-pressed="false">
+          <strong data-en="Light" data-zh="轻载">Light</strong>
+          <small data-en="robust · coarse" data-zh="稳健 · 粗略">robust · coarse</small>
+        </button>
+        <button type="button" data-payload="medium" aria-keyshortcuts="2" aria-pressed="true">
+          <strong data-en="Medium" data-zh="中载">Medium</strong>
+          <small data-en="balanced" data-zh="均衡">balanced</small>
+        </button>
+        <button type="button" data-payload="heavy" aria-keyshortcuts="3" aria-pressed="false">
+          <strong data-en="Heavy" data-zh="重载">Heavy</strong>
+          <small data-en="rich · fragile" data-zh="丰富 · 脆弱">rich · fragile</small>
+        </button>
+      </div>
+
+      <button class="episode-control" id="episode-control" type="button" aria-keyshortcuts="Space">
+        Start episode
+      </button>
+
+      <p class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <p
+        class="note"
+        data-en="The disturbance stays hidden. Choose from link outcomes alone; fresh state degrades to prediction cache, then safe hold. This is a conceptual model, not a paper reproduction."
+        data-zh="扰动真值始终隐藏，请只根据链路结果决策；新鲜状态失联后依次降级为预测缓存与安全保持。这是概念模型，并非论文复现实验。"
+      >
+        The disturbance stays hidden. Choose from link outcomes alone; fresh state degrades to
+        prediction cache, then safe hold. This is a conceptual model, not a paper reproduction.
+      </p>
+    </main>
+  </body>
+</html>

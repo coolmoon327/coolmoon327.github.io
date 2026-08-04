@@ -44,6 +44,28 @@
     "inputs": ["pointer", "keyboard"]
   },
   {
+    "id": "world",
+    "title": "潜空间预演",
+    "title_en": "Latent Look-Ahead",
+    "kind": "research",
+    "session": "30–90 秒",
+    "session_en": "30–90 sec",
+    "preferred_height": 600,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "stl",
+    "title": "时序语义哨兵",
+    "title_en": "Semantic Sentinel",
+    "kind": "research",
+    "session": "30–90 秒",
+    "session_en": "30–90 sec",
+    "preferred_height": 600,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
     "id": "movable",
     "title": "可移动天线实验",
     "title_en": "Movable Antenna Lab",
@@ -83,6 +105,28 @@
     "kind": "research",
     "session": "30 秒–3 分钟",
     "session_en": "30 sec–3 min",
+    "preferred_height": 600,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "backscatter",
+    "title": "借波突围",
+    "title_en": "Signal Judo",
+    "kind": "research",
+    "session": "1–3 分钟",
+    "session_en": "1–3 min",
+    "preferred_height": 620,
+    "min_width": 280,
+    "inputs": ["pointer", "keyboard"]
+  },
+  {
+    "id": "resilience",
+    "title": "断链续航",
+    "title_en": "Predict Through the Outage",
+    "kind": "research",
+    "session": "30–90 秒",
+    "session_en": "30–90 sec",
     "preferred_height": 600,
     "min_width": 280,
     "inputs": ["pointer", "keyboard"]

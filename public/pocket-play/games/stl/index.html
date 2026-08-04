@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      id="page-description"
+      name="description"
+      content="Watch a twelve-slot semantic trace and decide when a wireless controller should hold, repair locally, or probe longer."
+    />
+    <title data-en="Semantic Sentinel" data-zh="时序语义哨兵">Semantic Sentinel</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main
+      class="game"
+      id="game"
+      tabindex="0"
+      aria-labelledby="game-title"
+      aria-describedby="prompt keyboard-help"
+      data-phase="ready"
+      data-total-slots="12"
+      data-slot="0"
+      data-checkpoint="0"
+      data-response="hold"
+      data-monitor-only="true"
+      data-violation-rate="0.000"
+      data-semantic-margin="1.000"
+      data-delivered="0"
+      data-cost="0"
+    >
+      <header class="topline">
+        <div>
+          <p class="kicker" data-en="SIGNAL TEMPORAL LOGIC" data-zh="信号时序逻辑">
+            SIGNAL TEMPORAL LOGIC
+          </p>
+          <h1 id="game-title" data-en="Semantic Sentinel" data-zh="时序语义哨兵">
+            Semantic Sentinel
+          </h1>
+        </div>
+        <button
+          class="reset-button"
+          id="reset-button"
+          type="button"
+          data-en="Reset"
+          data-zh="重置"
+          data-aria-en="Reset the semantic trace"
+          data-aria-zh="重置语义轨迹"
+          aria-keyshortcuts="R"
+        >
+          Reset
+        </button>
+      </header>
+
+      <section
+        class="metrics"
+        aria-label="Episode metrics"
+        data-aria-en="Episode metrics"
+        data-aria-zh="本局指标"
+      >
+        <div class="metric">
+          <span data-en="Delivered" data-zh="成功传输">Delivered</span>
+          <output id="delivered">0 / 12</output>
+        </div>
+        <div class="metric">
+          <span data-en="Violation rate" data-zh="近期违例率">Violation rate</span>
+          <output id="violation-rate">0%</output>
+        </div>
+        <div class="metric">
+          <span data-en="Semantic margin" data-zh="语义裕度">Semantic margin</span>
+          <output id="semantic-margin">+1.00</output>
+        </div>
+        <div class="metric">
+          <span data-en="Response cost" data-zh="响应成本">Response cost</span>
+          <output id="response-cost">0</output>
+        </div>
+      </section>
+
+      <section class="monitor" id="monitor" aria-labelledby="monitor-title">
+        <div class="monitor-heading">
+          <div>
+            <h2 id="monitor-title" data-en="STL semantic monitor" data-zh="STL 语义监测器">
+              STL semantic monitor
+            </h2>
+            <p
+              data-en="The window and threshold are game-only. This conceptual monitor reports persistent mismatch; it never changes reward or policy."
+              data-zh="窗口长度与阈值仅用于游戏化演示。这个概念监测器只报告持续的不一致，不直接修改奖励或策略。"
+            >
+              The window and threshold are game-only. This conceptual monitor reports persistent
+              mismatch; it never changes reward or policy.
+            </p>
+          </div>
+          <span class="monitor-chip" data-en="MONITOR ONLY" data-zh="仅监测">MONITOR ONLY</span>
+        </div>
+        <div class="rate-track" aria-hidden="true"><span id="rate-fill"></span></div>
+        <div class="monitor-scale" aria-hidden="true">
+          <span data-en="consistent" data-zh="一致">consistent</span>
+          <span data-en="drifting" data-zh="漂移">drifting</span>
+        </div>
+      </section>
+
+      <section class="trace-panel" aria-labelledby="trace-title">
+        <div class="trace-heading">
+          <div>
+            <h2 id="trace-title" data-en="Twelve-slot semantic trace" data-zh="12 时隙语义轨迹">
+              Twelve-slot semantic trace
+            </h2>
+            <p
+              data-en="An observation creates an expectation; the result confirms or violates it."
+              data-zh="观测会产生语义预期，结果则验证或违背这一预期。"
+            >
+              An observation creates an expectation; the result confirms or violates it.
+            </p>
+          </div>
+          <output class="checkpoint" id="checkpoint">0 / 3</output>
+        </div>
+        <div
+          class="timeline"
+          id="timeline"
+          role="img"
+          aria-label="Empty twelve-slot observation, action, and result timeline"
+        ></div>
+        <div class="legend" aria-hidden="true">
+          <span><i class="legend-clear"></i><b data-en="clear" data-zh="空闲">clear</b></span>
+          <span><i class="legend-carrier"></i><b data-en="carrier" data-zh="载波">carrier</b></span>
+          <span><i class="legend-ok"></i><b data-en="matched" data-zh="相符">matched</b></span>
+          <span><i class="legend-bad"></i><b data-en="violation" data-zh="违例">violation</b></span>
+        </div>
+      </section>
+
+      <p class="prompt" id="prompt">
+        Start the trace. Isolated failures are noise; persistent mismatch calls for a response.
+      </p>
+
+      <section class="response-panel" aria-labelledby="response-title">
+        <div class="response-heading">
+          <div>
+            <h2 id="response-title" data-en="Independent response layer" data-zh="独立响应层">
+              Independent response layer
+            </h2>
+            <p id="response-copy">Choose only when the trace pauses at a checkpoint.</p>
+          </div>
+          <span class="key-hint" aria-hidden="true">1 · 2 · 3</span>
+        </div>
+        <div
+          class="response-actions"
+          id="response-actions"
+          role="group"
+          aria-label="Controller response"
+          data-aria-en="Choose a controller response"
+          data-aria-zh="选择控制器响应"
+        >
+          <button type="button" data-response="hold" aria-keyshortcuts="1">
+            <span data-en="Hold" data-zh="保持">Hold</span>
+            <small data-en="No added cost" data-zh="不增加成本">No added cost</small>
+          </button>
+          <button type="button" data-response="repair" aria-keyshortcuts="2">
+            <span data-en="Local repair" data-zh="局部修复">Local repair</span>
+            <small data-en="Targeted cost" data-zh="付出少量成本">Targeted cost</small>
+          </button>
+          <button type="button" data-response="probe" aria-keyshortcuts="3">
+            <span data-en="Probe longer" data-zh="延长探测">Probe longer</span>
+            <small data-en="Strong but costly" data-zh="效果强但成本高">Strong but costly</small>
+          </button>
+        </div>
+      </section>
+
+      <button class="start-button" id="start-button" type="button" aria-keyshortcuts="Enter Space">
+        Start trace
+      </button>
+
+      <p
+        class="sr-only"
+        id="keyboard-help"
+        data-en="Press Enter or Space to start. At a checkpoint, press 1 to hold, 2 for local repair, or 3 to probe longer. Press R to reset."
+        data-zh="按回车或空格开始；到达检查点后，按 1 保持、按 2 局部修复、按 3 延长探测；按 R 重置。"
+      >
+        Press Enter or Space to start. At a checkpoint, press 1 to hold, 2 for local repair, or 3 to
+        probe longer. Press R to reset.
+      </p>
+      <output class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></output>
+    </main>
+
+    <script src="../shared/runtime.js"></script>
+    <script src="./game.js"></script>
+  </body>
+</html>
