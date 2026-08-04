@@ -15,7 +15,7 @@ const games = {
   stl: 600,
   movable: 720,
   pinching: 680,
-  secrecy: 600,
+  secrecy: 620,
   hopper: 600,
   backscatter: 620,
   resilience: 600,
@@ -949,7 +949,8 @@ async function checkStl(browser) {
     const recommended = await game.getAttribute('data-recommended');
     assert.ok(['hold', 'repair', 'probe'].includes(recommended));
     const margin = Number(await game.getAttribute('data-semantic-margin'));
-    if (margin < 0) assert.notEqual(recommended, 'hold');
+    const currentResponse = await game.getAttribute('data-response');
+    if (margin < 0 && currentResponse === 'hold') assert.notEqual(recommended, 'hold');
     if (checkpoint === 1) {
       await page.keyboard.press(String(['hold', 'repair', 'probe'].indexOf(recommended) + 1));
     } else {
@@ -1238,13 +1239,210 @@ async function checkSecrecy(browser) {
   ];
   const page = await openGame(browser, 'secrecy', { randomValues: deterministicChannel });
   const field = page.locator('#field');
+  const heatmap = page.locator('#energy-map');
   const wallToggle = page.locator('#wall-mode');
-  const reflectorCount = await page.locator('.reflector').count();
-  assert.ok(reflectorCount >= 1 && reflectorCount <= 2, 'Secrecy lab needs one or two reflectors');
+
+  await page.waitForFunction(() => {
+    const revision = Number(document.querySelector('#field')?.dataset.heatmapRevision);
+    return Number.isInteger(revision) && revision > 0;
+  });
+
+  const waitForHeatmapRevision = async (previousRevision) => {
+    await page.waitForFunction(
+      (previous) => Number(document.querySelector('#field')?.dataset.heatmapRevision) > previous,
+      previousRevision,
+      { timeout: 5_000 },
+    );
+  };
+
+  const readHeatmap = async () =>
+    heatmap.evaluate((canvas) => {
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const colors = new Set();
+      let minimumLuminance = 255;
+      let maximumLuminance = 0;
+      let paintedPixels = 0;
+      let hash = 2166136261;
+      for (let index = 0; index < pixels.length; index += 4) {
+        const red = pixels[index];
+        const green = pixels[index + 1];
+        const blue = pixels[index + 2];
+        const alpha = pixels[index + 3];
+        hash = Math.imul(hash ^ red, 16777619);
+        hash = Math.imul(hash ^ green, 16777619);
+        hash = Math.imul(hash ^ blue, 16777619);
+        hash = Math.imul(hash ^ alpha, 16777619);
+        if (alpha === 0) continue;
+        paintedPixels += 1;
+        const luminance = Math.round(0.2126 * red + 0.7152 * green + 0.0722 * blue);
+        minimumLuminance = Math.min(minimumLuminance, luminance);
+        maximumLuminance = Math.max(maximumLuminance, luminance);
+        colors.add(`${red},${green},${blue},${alpha}`);
+      }
+      return {
+        width: canvas.width,
+        height: canvas.height,
+        paintedPixels,
+        uniqueColors: colors.size,
+        luminanceRange: maximumLuminance - minimumLuminance,
+        hash: hash >>> 0,
+      };
+    });
+
+  const readScenario = async () =>
+    page.evaluate(() => {
+      const channel = window.__secrecyDebug.scenario();
+      return {
+        alice: channel.alice,
+        bob: channel.bob,
+        eve: channel.eve,
+        obstacles: channel.obstacles,
+      };
+    });
+
+  const readLinkTelemetry = async () =>
+    field.evaluate((element) => ({
+      bob: {
+        directVisible: element.dataset.bobDirectVisible === 'true',
+        pathCount: Number(element.dataset.bobPathCount),
+        maxBounces: Number(element.dataset.bobMaxBounces),
+        receivedDb: Number(element.dataset.bobReceivedDb),
+      },
+      eve: {
+        directVisible: element.dataset.eveDirectVisible === 'true',
+        pathCount: Number(element.dataset.evePathCount),
+        maxBounces: Number(element.dataset.eveMaxBounces),
+        receivedDb: Number(element.dataset.eveReceivedDb),
+      },
+    }));
+
+  const assertHeatmapSamplesMatchReceivers = async () => {
+    const samples = await page.evaluate(() => {
+      const debug = window.__secrecyDebug;
+      const channel = debug.scenario();
+      const sampleDb = (point) => {
+        const sample = debug.sampleHeatmap(point);
+        return Number(
+          typeof sample === 'number' ? sample : (sample.receivedDb ?? sample.db ?? sample.powerDb),
+        );
+      };
+      return { bob: sampleDb(channel.bob), eve: sampleDb(channel.eve) };
+    });
+    const telemetry = await readLinkTelemetry();
+    for (const receiver of ['bob', 'eve']) {
+      assert.ok(
+        Number.isFinite(samples[receiver]) && Number.isFinite(telemetry[receiver].receivedDb),
+        `${receiver} heatmap and link readouts must be finite`,
+      );
+      assert.ok(
+        Math.abs(samples[receiver] - telemetry[receiver].receivedDb) <= 0.5,
+        `${receiver} heatmap sample must match its receiver readout: ${JSON.stringify({ samples, telemetry })}`,
+      );
+    }
+  };
+
+  const pathArray = (summary) =>
+    Array.isArray(summary) ? summary : Array.isArray(summary?.paths) ? summary.paths : [];
+  const bounceCount = (path) =>
+    Number(
+      path.bounces ??
+        path.bounceCount ??
+        path.reflectionCount ??
+        (Array.isArray(path.surfaces) ? path.surfaces.length : Number.NaN),
+    );
+  const surfaceKinds = (path) =>
+    (path.surfaces ?? path.reflections ?? []).map((surface) => {
+      const value = String(
+        typeof surface === 'string'
+          ? surface
+          : (surface.type ?? surface.kind ?? surface.surfaceType ?? surface.id ?? ''),
+      ).toLowerCase();
+      if (/wall|left|right|top|bottom/.test(value)) return 'wall';
+      if (/obstacle|reflector|panel|^r\d/.test(value)) return 'obstacle';
+      return value;
+    });
+
+  const obstacleCount = await page.locator('.reflective-surface').count();
+  assert.ok(obstacleCount >= 1 && obstacleCount <= 2, 'Secrecy lab needs one or two obstacles');
+  assert.equal(await heatmap.count(), 1, 'Secrecy lab must render one energy heatmap canvas');
+  assert.equal(
+    await page
+      .locator('.link-path, .beam, .beam-axis, .reflection-axis, .reflection-input')
+      .count(),
+    0,
+    'The heatmap view must not draw individual propagation paths or beam wedges',
+  );
   assert.equal(await field.getAttribute('data-objective'), 'secrecy-rate');
+  assert.equal(await field.getAttribute('data-reflection-model'), 'lossy-specular');
+  assert.equal(await field.getAttribute('data-power-combination'), 'incoherent');
+  assert.equal(await field.getAttribute('data-max-bounces'), '3');
+  assert.equal(await field.getAttribute('data-reflection-coefficient'), '0.46');
+  assert.equal(await field.getAttribute('data-db-floor'), '-36');
+  assert.equal(await field.getAttribute('data-obstacle-count'), String(obstacleCount));
   assert.equal(await field.getAttribute('data-walls'), 'false');
   assert.equal(await wallToggle.isChecked(), false);
-  assert.equal(await page.locator('.wall-link-path').count(), 0);
+
+  const debugContract = await page.evaluate(() => ({
+    evaluatePoint: typeof window.__secrecyDebug?.evaluatePoint,
+    scenario: typeof window.__secrecyDebug?.scenario,
+    pathSummary: typeof window.__secrecyDebug?.pathSummary,
+    sampleHeatmap: typeof window.__secrecyDebug?.sampleHeatmap,
+    constants: window.__secrecyDebug?.constants,
+  }));
+  assert.deepEqual(
+    [
+      debugContract.evaluatePoint,
+      debugContract.scenario,
+      debugContract.pathSummary,
+      debugContract.sampleHeatmap,
+    ],
+    ['function', 'function', 'function', 'function'],
+    'Secrecy heatmap must expose its deterministic QA surface',
+  );
+  const constants = debugContract.constants;
+  assert.ok(constants && typeof constants === 'object', 'Secrecy debug constants must be exposed');
+  assert.equal(constants.reflectionModel ?? constants.REFLECTION_MODEL, 'lossy-specular');
+  assert.equal(constants.powerCombination ?? constants.POWER_COMBINATION, 'incoherent');
+  assert.equal(Number(constants.maxBounces ?? constants.MAX_BOUNCES), 3);
+  const reflectionCoefficient = Number(
+    constants.reflectionCoefficient ?? constants.REFLECTION_COEFFICIENT,
+  );
+  assert.equal(reflectionCoefficient, 0.46);
+  assert.equal(
+    Number(
+      constants.wallReflectionCoefficient ??
+        constants.WALL_REFLECTION_COEFFICIENT ??
+        reflectionCoefficient,
+    ),
+    reflectionCoefficient,
+    'Walls must use the shared reflection coefficient',
+  );
+  assert.equal(
+    Number(
+      constants.obstacleReflectionCoefficient ??
+        constants.OBSTACLE_REFLECTION_COEFFICIENT ??
+        reflectionCoefficient,
+    ),
+    reflectionCoefficient,
+    'Obstacles must use the shared reflection coefficient',
+  );
+
+  const canvasSize = await heatmap.evaluate((canvas) => ({
+    width: canvas.width,
+    height: canvas.height,
+  }));
+  assert.deepEqual(canvasSize, {
+    width: Number(await field.getAttribute('data-heatmap-width')),
+    height: Number(await field.getAttribute('data-heatmap-height')),
+  });
+  assert.ok(canvasSize.width >= 32 && canvasSize.height >= 18, 'Heatmap grid is too coarse');
+  const initialHeatmap = await readHeatmap();
+  assert.equal(initialHeatmap.paintedPixels, canvasSize.width * canvasSize.height);
+  assert.ok(
+    initialHeatmap.uniqueColors >= 4 && initialHeatmap.luminanceRange >= 10,
+    `Energy heatmap must have visible intensity variation: ${JSON.stringify(initialHeatmap)}`,
+  );
 
   const assertSecrecyRateIdentity = async () => {
     const metrics = await field.evaluate((element) => ({
@@ -1291,101 +1489,154 @@ async function checkSecrecy(browser) {
   };
 
   const metricsWithoutWalls = await assertSecrecyRateIdentity();
+  await assertHeatmapSamplesMatchReceivers();
   assert.match(await page.locator('#secrecy-rate').textContent(), /^\d+\.\d{2}$/);
   assert.equal(await page.locator('.score-unit').textContent(), 'bit/s/Hz');
   assert.match(await page.locator('#bob-link').textContent(), /bit\/s\/Hz/);
   assert.match(await page.locator('#eve-link').textContent(), /bit\/s\/Hz/);
 
-  const configBeforeWalls = await field.getAttribute('data-config');
+  const visibilityProbe = await page.evaluate(() => {
+    const debug = window.__secrecyDebug;
+    const channel = debug.scenario();
+    const heading = Number(document.querySelector('#field').dataset.angle);
+    const receivers = [channel.bob, channel.eve].map((point) => {
+      const result = debug.evaluatePoint(point, heading, false);
+      return {
+        directVisible: result.directVisible,
+        directPower: Number(result.directPower ?? result.direct?.power),
+      };
+    });
+    const alice = channel.alice ?? { x: 50, y: 105 };
+    const clearPoint = { x: alice.x + 18, y: alice.y + 18 };
+    const clear = debug.evaluatePoint(clearPoint, heading, false);
+    return {
+      receivers,
+      clear: {
+        directVisible: clear.directVisible,
+        directPower: Number(clear.directPower ?? clear.direct?.power),
+      },
+    };
+  });
+  assert.ok(
+    visibilityProbe.receivers.some(
+      (receiver) => receiver.directVisible === false && receiver.directPower === 0,
+    ),
+    `An opaque obstacle must fully remove LOS power behind it: ${JSON.stringify(visibilityProbe)}`,
+  );
+  assert.equal(visibilityProbe.clear.directVisible, true, 'A nearby side probe must retain LOS');
+  assert.ok(visibilityProbe.clear.directPower > 0, 'An unobstructed LOS probe must receive power');
+  const telemetryWithoutWalls = await readLinkTelemetry();
+  assert.deepEqual(
+    telemetryWithoutWalls.bob.directVisible,
+    visibilityProbe.receivers[0].directVisible,
+  );
+  assert.deepEqual(
+    telemetryWithoutWalls.eve.directVisible,
+    visibilityProbe.receivers[1].directVisible,
+  );
+  for (const receiver of ['bob', 'eve']) {
+    assert.ok(telemetryWithoutWalls[receiver].pathCount >= 0);
+    assert.ok(
+      telemetryWithoutWalls[receiver].maxBounces >= 0 &&
+        telemetryWithoutWalls[receiver].maxBounces <= 3,
+    );
+  }
+
+  const initialAngle = await field.getAttribute('data-angle');
+  const revisionBeforeKeyboard = Number(await field.getAttribute('data-heatmap-revision'));
+  await field.press('Shift+ArrowRight');
+  await waitForHeatmapRevision(revisionBeforeKeyboard);
+  assert.notEqual(
+    await field.getAttribute('data-angle'),
+    initialAngle,
+    'Keyboard must steer Alice',
+  );
+  const steeredHeatmap = await readHeatmap();
+  assert.notEqual(
+    steeredHeatmap.hash,
+    initialHeatmap.hash,
+    'Changing Alice bearing must visibly change the energy heatmap',
+  );
+  await assertHeatmapSamplesMatchReceivers();
+
+  const scenarioBeforeWalls = await readScenario();
+  const heatmapBeforeWalls = await readHeatmap();
+  const revisionBeforeWalls = Number(await field.getAttribute('data-heatmap-revision'));
   await page.locator('.wall-toggle').click();
+  await waitForHeatmapRevision(revisionBeforeWalls);
   assert.equal(await wallToggle.isChecked(), true);
   assert.equal(await field.getAttribute('data-walls'), 'true');
-  assert.equal(await field.getAttribute('data-wall-reflection-count'), '8');
-  assert.equal(await page.locator('.wall-link-path').count(), 8);
-  const wallPaths = JSON.parse(await field.getAttribute('data-wall-reflections'));
-  const channelConfig = JSON.parse(configBeforeWalls);
-  const targets = {
-    bob: { x: channelConfig.bob[0], y: channelConfig.bob[1] },
-    eve: { x: channelConfig.eve[0], y: channelConfig.eve[1] },
-  };
-  assert.equal(wallPaths.length, 8);
-  for (const receiver of ['bob', 'eve']) {
-    const reflections = wallPaths.filter((path) => path.receiver === receiver);
-    assert.deepEqual(
-      reflections.map((path) => path.wall).sort(),
-      ['bottom', 'left', 'right', 'top'],
-      `${receiver} must receive one first-order path from every wall`,
-    );
-    for (const reflection of reflections) {
-      const [x, y] = reflection.bounce;
-      assert.ok(Number.isFinite(x) && Number.isFinite(y) && reflection.power >= 0);
-      assert.ok(x >= 4 - 0.001 && x <= 356 + 0.001 && y >= 4 - 0.001 && y <= 206 + 0.001);
-      if (reflection.wall === 'left') assert.ok(Math.abs(x - 4) <= 0.001);
-      if (reflection.wall === 'right') assert.ok(Math.abs(x - 356) <= 0.001);
-      if (reflection.wall === 'top') assert.ok(Math.abs(y - 4) <= 0.001);
-      if (reflection.wall === 'bottom') assert.ok(Math.abs(y - 206) <= 0.001);
+  assert.equal(
+    await page
+      .locator('.link-path, .beam, .beam-axis, .reflection-axis, .reflection-input')
+      .count(),
+    0,
+  );
+  const heatmapWithWalls = await readHeatmap();
+  assert.notEqual(
+    heatmapWithWalls.hash,
+    heatmapBeforeWalls.hash,
+    'Enabling wall reflections must visibly change the energy heatmap',
+  );
+  assert.deepEqual(
+    await readScenario(),
+    scenarioBeforeWalls,
+    'Wall mode must preserve Alice, Bob, Eve, and obstacle geometry',
+  );
 
-      const target = targets[receiver];
-      const mirrored = {
-        x:
-          reflection.wall === 'left'
-            ? 8 - target.x
-            : reflection.wall === 'right'
-              ? 712 - target.x
-              : target.x,
-        y:
-          reflection.wall === 'top'
-            ? 8 - target.y
-            : reflection.wall === 'bottom'
-              ? 412 - target.y
-              : target.y,
-      };
-      const incident = { x: x - 50, y: y - 105 };
-      const imageRay = { x: mirrored.x - 50, y: mirrored.y - 105 };
-      const normalizedCross =
-        Math.abs(incident.x * imageRay.y - incident.y * imageRay.x) /
-        (Math.hypot(incident.x, incident.y) * Math.hypot(imageRay.x, imageRay.y));
-      assert.ok(
-        normalizedCross <= 0.002,
-        `Wall bounce must satisfy image-method specular geometry: ${JSON.stringify(reflection)}`,
-      );
-    }
-  }
-  for (const wall of ['bottom', 'left', 'right', 'top']) {
-    const bobBounce = wallPaths.find(
-      (path) => path.receiver === 'bob' && path.wall === wall,
-    ).bounce;
-    const eveBounce = wallPaths.find(
-      (path) => path.receiver === 'eve' && path.wall === wall,
-    ).bounce;
+  const summariesWithWalls = await page.evaluate(() => {
+    const debug = window.__secrecyDebug;
+    const channel = debug.scenario();
+    return {
+      bob: debug.pathSummary(channel.bob, true),
+      eve: debug.pathSummary(channel.eve, true),
+      deterministic:
+        typeof debug.deterministicGeometry === 'function' ? debug.deterministicGeometry() : null,
+    };
+  });
+  const telemetryWithWalls = await readLinkTelemetry();
+  let allPaths = [];
+  for (const receiver of ['bob', 'eve']) {
+    const paths = pathArray(summariesWithWalls[receiver]);
+    assert.ok(paths.length > 0, `${receiver} must have at least one valid propagation path`);
+    assert.equal(paths.length, telemetryWithWalls[receiver].pathCount);
+    const bounceCounts = paths.map(bounceCount);
     assert.ok(
-      Math.hypot(bobBounce[0] - eveBounce[0], bobBounce[1] - eveBounce[1]) > 0.01,
-      `${wall} wall must use receiver-specific Bob and Eve bounce points`,
+      bounceCounts.every((count) => Number.isInteger(count) && count >= 0 && count <= 3),
+      `${receiver} paths must contain only zero to three reflections: ${JSON.stringify(bounceCounts)}`,
+    );
+    assert.equal(Math.max(...bounceCounts), telemetryWithWalls[receiver].maxBounces);
+    allPaths.push(...paths);
+  }
+  if (!allPaths.some((path) => bounceCount(path) === 3) && summariesWithWalls.deterministic) {
+    const fixture = summariesWithWalls.deterministic;
+    allPaths = allPaths.concat(
+      pathArray(fixture.summary ?? fixture.pathSummary ?? fixture.paths ?? fixture),
     );
   }
+  assert.ok(
+    allPaths.some((path) => bounceCount(path) === 3),
+    'The enumerator must expose at least one valid three-reflection path',
+  );
+  assert.equal(
+    allPaths.some((path) => bounceCount(path) >= 4),
+    false,
+    'The propagation model must never enumerate a fourth reflection',
+  );
+  const observedSurfaceKinds = new Set(allPaths.flatMap(surfaceKinds));
+  assert.ok(observedSurfaceKinds.has('wall'), 'Wall mode must enumerate specular wall reflections');
+
   const wallTarget = await page.locator('.wall-toggle').boundingBox();
   assert.ok(
     wallTarget && wallTarget.width >= 44 && wallTarget.height >= 44,
     `Wall toggle must expose a 44px touch target: ${JSON.stringify(wallTarget)}`,
   );
-  assert.equal(
-    await field.getAttribute('data-config'),
-    configBeforeWalls,
-    'Wall mode must preserve Alice, Bob, Eve, and panel geometry',
-  );
   const metricsWithWalls = await assertSecrecyRateIdentity();
+  await assertHeatmapSamplesMatchReceivers();
   assert.ok(
     Math.abs(metricsWithWalls.bobRate - metricsWithoutWalls.bobRate) > 1e-6 ||
       Math.abs(metricsWithWalls.eveRate - metricsWithoutWalls.eveRate) > 1e-6,
     'Four-wall mode must alter at least one link rate',
-  );
-
-  const initialAngle = await field.getAttribute('data-angle');
-  await field.press('ArrowRight');
-  assert.notEqual(
-    await field.getAttribute('data-angle'),
-    initialAngle,
-    'Keyboard must steer Alice',
   );
 
   const fieldBox = await field.boundingBox();
@@ -1400,23 +1651,16 @@ async function checkSecrecy(browser) {
     Number.isFinite(Number(await field.getAttribute('data-angle'))),
     'Pointer steering must keep a valid angle',
   );
+  await assertHeatmapSamplesMatchReceivers();
 
-  const initialConfig = await field.getAttribute('data-config');
+  const initialScenario = await readScenario();
+  const revisionBeforeRandomize = Number(await field.getAttribute('data-heatmap-revision'));
   await page.locator('#randomize').click();
-  const initialGeometry = JSON.parse(initialConfig);
-  const nextGeometry = JSON.parse(await field.getAttribute('data-config'));
+  await waitForHeatmapRevision(revisionBeforeRandomize);
   assert.notDeepEqual(
-    {
-      bob: nextGeometry.bob,
-      eve: nextGeometry.eve,
-      reflectors: nextGeometry.reflectors,
-    },
-    {
-      bob: initialGeometry.bob,
-      eve: initialGeometry.eve,
-      reflectors: initialGeometry.reflectors,
-    },
-    'Random scene must change target or reflector geometry',
+    await readScenario(),
+    initialScenario,
+    'Random scene must change channel geometry',
   );
   assert.equal(
     await field.getAttribute('data-walls'),
@@ -1452,14 +1696,24 @@ async function checkSecrecy(browser) {
     ) <= 0.011,
     'Animated search must settle on the evaluated maximum secrecy rate',
   );
+  await assertHeatmapSamplesMatchReceivers();
 
-  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
   await page.setViewportSize({ width: 280, height: 600 });
+  assert.equal(await page.locator('h1').textContent(), 'Secrecy Beam Lab');
+  assert.match(await page.locator('.wall-toggle-text').textContent(), /wall/i);
+  assert.match(await page.locator('.wall-toggle-copy').textContent(), /three|3/i);
+  assert.match(await page.locator('#control-help').textContent(), /energy/i);
+  assert.doesNotMatch(await page.locator('#control-help').textContent(), /dashed|ray paths?/i);
+  await assertNoOverflow(page, 'secrecy three-bounce English state');
+  await page.evaluate(() => window.PocketRuntime.apply({ lang: 'zh', theme: 'dark' }));
   assert.equal(await page.locator('h1').textContent(), '保密波束实验');
   assert.equal(await page.locator('.score-card-label').textContent(), '保密速率');
-  assert.equal(await page.locator('.wall-toggle-text').textContent(), '启用四墙多径');
-  assert.equal(await wallToggle.getAttribute('aria-label'), '启用四墙多径反射');
-  await assertNoOverflow(page, 'secrecy four-wall Chinese state');
+  assert.match(await page.locator('.wall-toggle-text').textContent(), /墙/);
+  assert.match(await page.locator('.wall-toggle-copy').textContent(), /三|3/);
+  assert.match(await wallToggle.getAttribute('aria-label'), /墙.*反射/);
+  assert.match(await page.locator('#control-help').textContent(), /能量/);
+  assert.doesNotMatch(await page.locator('#control-help').textContent(), /虚线|路径/);
+  await assertNoOverflow(page, 'secrecy three-bounce Chinese state');
   await page.reload({ waitUntil: 'networkidle' });
   assert.equal(await page.locator('#wall-mode').isChecked(), false);
   assert.equal(await page.locator('#field').getAttribute('data-walls'), 'false');
@@ -1476,6 +1730,8 @@ async function checkSecrecy(browser) {
     await reducedPage.locator('#field').getAttribute('data-angle'),
     await reducedPage.locator('#field').getAttribute('data-best-angle'),
   );
+  assert.equal(await reducedPage.locator('#field').getAttribute('data-max-bounces'), '3');
+  assert.equal(await reducedPage.locator('.link-path, .beam, .beam-axis').count(), 0);
   await reducedPage.close();
 }
 

@@ -43,18 +43,15 @@
         aria-describedby="control-help"
         data-optimizing="false"
       >
+        <canvas
+          id="energy-map"
+          width="120"
+          height="70"
+          aria-hidden="true"
+          data-db-min="-36"
+          data-db-max="0"
+        ></canvas>
         <svg id="scene" viewBox="0 0 360 210" aria-hidden="true">
-          <defs>
-            <linearGradient id="beam-fill" x1="0" x2="1">
-              <stop offset="0" stop-color="currentColor" stop-opacity="0.34" />
-              <stop offset="1" stop-color="currentColor" stop-opacity="0" />
-            </linearGradient>
-            <linearGradient id="reflection-fill" x1="0" x2="1">
-              <stop offset="0" stop-color="currentColor" stop-opacity="0.2" />
-              <stop offset="1" stop-color="currentColor" stop-opacity="0" />
-            </linearGradient>
-          </defs>
-
           <rect
             class="room-walls"
             id="room-walls"
@@ -64,18 +61,14 @@
             height="202"
             rx="4"
           ></rect>
-          <g id="reflection-layer"></g>
-          <path class="beam" id="beam"></path>
-          <line class="beam-axis" id="beam-axis"></line>
-          <g id="path-layer"></g>
+          <g id="surface-layer"></g>
 
           <g class="node alice" transform="translate(50 105)">
             <circle class="node-halo" r="17"></circle>
             <circle class="node-core" r="10"></circle>
             <g id="antenna">
-              <path class="dish" d="M 7 -9 Q 20 0 7 9 Q 12 0 7 -9 Z"></path>
-              <line x1="8" y1="0" x2="25" y2="0"></line>
-              <circle cx="27" cy="0" r="3"></circle>
+              <line class="antenna-needle" x1="8" y1="0" x2="21" y2="0"></line>
+              <circle class="antenna-tip" cx="22" cy="0" r="2.4"></circle>
             </g>
             <text y="31">Alice</text>
           </g>
@@ -101,23 +94,39 @@
         </div>
       </div>
 
+      <div
+        class="energy-legend"
+        role="img"
+        aria-label="Relative energy scale from −36 to 0 dB"
+        data-aria-en="Relative energy scale from −36 to 0 dB"
+        data-aria-zh="相对能量色标，从 −36 到 0 dB"
+      >
+        <span class="energy-legend-label" data-en="Relative energy" data-zh="相对能量"
+          >Relative energy</span
+        >
+        <span class="energy-ramp"></span>
+        <span class="energy-legend-scale"><span>−36 dB</span><span>0 dB</span></span>
+      </div>
+
       <label class="wall-toggle" for="wall-mode">
         <input
           id="wall-mode"
           type="checkbox"
-          aria-label="Enable four-wall multipath"
-          data-aria-en="Enable four-wall multipath"
-          data-aria-zh="启用四墙多径反射"
+          aria-label="Enable reflective walls"
+          data-aria-en="Enable reflective walls"
+          data-aria-zh="启用墙面反射"
         />
         <span class="toggle-track" aria-hidden="true">
           <span class="toggle-thumb"></span>
         </span>
         <span class="wall-toggle-copy">
-          <strong class="wall-toggle-text" data-en="Four-wall multipath" data-zh="启用四墙多径"
-            >Four-wall multipath</strong
+          <strong class="wall-toggle-text" data-en="Reflective walls" data-zh="反射墙面"
+            >Reflective walls</strong
           >
-          <small data-en="Add one specular path from each wall" data-zh="为每面墙加入一条镜面反射径"
-            >Add one specular path from each wall</small
+          <small
+            data-en="Opaque specular surfaces, up to three bounces"
+            data-zh="不透射镜面，最多三次反射"
+            >Opaque specular surfaces, up to three bounces</small
           >
         </span>
       </label>
@@ -129,12 +138,26 @@
         data-aria-zh="链路速率与状态"
       >
         <div class="link-card bob-link-card">
-          <span>Bob</span>
-          <output id="bob-link">—</output>
+          <strong>Bob</strong>
+          <div class="link-metric">
+            <span data-en="Rx energy" data-zh="接收能量">Rx energy</span>
+            <output id="bob-energy">— dB</output>
+          </div>
+          <div class="link-metric">
+            <span data-en="Rate" data-zh="速率">Rate</span>
+            <output id="bob-link">— bit/s/Hz</output>
+          </div>
         </div>
         <div class="link-card eve-link-card">
-          <span>Eve</span>
-          <output id="eve-link">—</output>
+          <strong>Eve</strong>
+          <div class="link-metric">
+            <span data-en="Rx energy" data-zh="接收能量">Rx energy</span>
+            <output id="eve-energy">— dB</output>
+          </div>
+          <div class="link-metric">
+            <span data-en="Rate" data-zh="速率">Rate</span>
+            <output id="eve-link">— bit/s/Hz</output>
+          </div>
         </div>
       </div>
 
@@ -163,11 +186,11 @@
       <p
         class="help"
         id="control-help"
-        data-en="Drag inside the channel diagram, or focus it and use the arrow keys. Dashed rays show first-order reflections; the objective is [Rᵦ − Rₑ]⁺."
-        data-zh="在信道示意图内拖拽，或聚焦后使用方向键。虚线表示一阶反射径；优化目标为 [Rᵦ − Rₑ]⁺。"
+        data-en="Drag to steer Alice, or focus the map and use the arrow keys. Brightness shows local average energy; obstacles remove the direct path behind them. The objective is [Rᵦ − Rₑ]⁺."
+        data-zh="拖拽调整 Alice 天线，或聚焦能量图后使用方向键。亮度表示局部平均能量；障碍物会完全遮断其后的直达径。优化目标为 [Rᵦ − Rₑ]⁺。"
       >
-        Drag inside the channel diagram, or focus it and use the arrow keys. Dashed rays show
-        first-order reflections; the objective is [Rᵦ − Rₑ]⁺.
+        Drag to steer Alice, or focus the map and use the arrow keys. Brightness shows local average
+        energy; obstacles remove the direct path behind them. The objective is [Rᵦ − Rₑ]⁺.
       </p>
     </main>
 

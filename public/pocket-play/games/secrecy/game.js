@@ -1,30 +1,41 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const ALICE = Object.freeze({ x: 50, y: 105 });
 const ROOM = Object.freeze({ left: 4, right: 356, top: 4, bottom: 206 });
-const WALLS = [
-  ['left', 'x', ROOM.left],
-  ['right', 'x', ROOM.right],
-  ['top', 'y', ROOM.top],
-  ['bottom', 'y', ROOM.bottom],
-].map(([id, axis, coordinate]) => ({ id, axis, coordinate }));
-const WALL_COEFFICIENT = 0.46;
+const VIEWBOX = Object.freeze({ width: 360, height: 210 });
+const REFLECTION_MODEL = 'lossy-specular';
+const POWER_COMBINATION = 'incoherent';
+const REFLECTION_COEFFICIENT = 0.46;
+const REFLECTION_POWER = REFLECTION_COEFFICIENT ** 2;
+const MAX_BOUNCES = 3;
+const DB_FLOOR = -36;
+const DB_CEILING = 0;
+const HEATMAP_WIDTH = 120;
+const HEATMAP_HEIGHT = 70;
 const BEAM_WIDTH = 17;
-const PANEL_OUTPUT_WIDTH = 21;
-const SIMULATED_WAVELENGTH = 36;
 const SNR_SCALE = 84;
 const CODEWORD_RATE = 1.6;
 const REDUNDANCY_RATE = 0.8;
+const EPSILON = 1e-6;
+
+const makeSurface = (id, kind, a, b) => ({ id, kind, a, b });
+const WALLS = Object.freeze([
+  makeSurface('wall-left', 'wall', { x: ROOM.left, y: ROOM.top }, { x: ROOM.left, y: ROOM.bottom }),
+  makeSurface('wall-right', 'wall', { x: ROOM.right, y: ROOM.top }, { x: ROOM.right, y: ROOM.bottom }),
+  makeSurface('wall-top', 'wall', { x: ROOM.left, y: ROOM.top }, { x: ROOM.right, y: ROOM.top }),
+  makeSurface('wall-bottom', 'wall', { x: ROOM.left, y: ROOM.bottom }, { x: ROOM.right, y: ROOM.bottom }),
+]);
 
 const field = document.querySelector('#field');
 const scene = document.querySelector('#scene');
-const beam = document.querySelector('#beam');
-const beamAxis = document.querySelector('#beam-axis');
+const heatmap = document.querySelector('#energy-map');
+const heatmapContext = heatmap.getContext('2d', { alpha: false, willReadFrequently: true });
 const antenna = document.querySelector('#antenna');
-const reflectionLayer = document.querySelector('#reflection-layer');
-const pathLayer = document.querySelector('#path-layer');
+const surfaceLayer = document.querySelector('#surface-layer');
 const bobNode = document.querySelector('#bob-node');
 const eveNode = document.querySelector('#eve-node');
 const bearingOutput = document.querySelector('#bearing');
+const bobEnergyOutput = document.querySelector('#bob-energy');
+const eveEnergyOutput = document.querySelector('#eve-energy');
 const bobOutput = document.querySelector('#bob-link');
 const eveOutput = document.querySelector('#eve-link');
 const secrecyRateOutput = document.querySelector('#secrecy-rate');
@@ -33,6 +44,9 @@ const wallToggle = document.querySelector('#wall-mode');
 const randomizeButton = document.querySelector('#randomize');
 const optimizeButton = document.querySelector('#optimize');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+heatmap.width = HEATMAP_WIDTH;
+heatmap.height = HEATMAP_HEIGHT;
 
 let scenarioNumber = 0;
 let scenario = null;
@@ -43,6 +57,9 @@ let optimizing = false;
 let optimizationFrame = 0;
 let optimizationResult = null;
 let lastAction = 'initial';
+let heatmapRevision = 0;
+let propagationCache = { bob: [], eve: [], grid: [] };
+let deterministicFixture = null;
 
 function text(english, chinese) {
   return window.PocketRuntime.text(english, chinese);
@@ -72,6 +89,13 @@ function pointAt(origin, angle, distance) {
   };
 }
 
+function interpolate(first, second, amount) {
+  return {
+    x: first.x + (second.x - first.x) * amount,
+    y: first.y + (second.y - first.y) * amount,
+  };
+}
+
 function distanceBetween(first, second) {
   return Math.hypot(second.x - first.x, second.y - first.y);
 }
@@ -98,116 +122,168 @@ function propagationPower(distance) {
   return (92 / (distance + 62)) ** 2;
 }
 
-function wedgePath(origin, angle, halfAngle, range) {
-  const first = pointAt(origin, angle - halfAngle, range);
-  const second = pointAt(origin, angle + halfAngle, range);
-  return `M ${origin.x} ${origin.y} L ${first.x.toFixed(2)} ${first.y.toFixed(2)} A ${range} ${range} 0 0 1 ${second.x.toFixed(2)} ${second.y.toFixed(2)} Z`;
+function powerToDb(power) {
+  return 10 * Math.log10(Math.max(power, 1e-12));
 }
 
-function pathComponent(power, length, phaseShift, details = {}) {
+function formatDb(db) {
+  if (db <= DB_FLOOR) return `≤ −${Math.abs(DB_FLOOR)} dB`;
+  return `${db.toFixed(1).replace('-', '−')} dB`;
+}
+
+function cross(first, second) {
+  return first.x * second.y - first.y * second.x;
+}
+
+function subtract(first, second) {
+  return { x: first.x - second.x, y: first.y - second.y };
+}
+
+function surfaceSide(surface, point) {
+  return cross(subtract(surface.b, surface.a), subtract(point, surface.a));
+}
+
+function reflectPoint(point, surface) {
+  const direction = subtract(surface.b, surface.a);
+  const lengthSquared = direction.x ** 2 + direction.y ** 2;
+  const offset = subtract(point, surface.a);
+  const projection = (offset.x * direction.x + offset.y * direction.y) / lengthSquared;
+  const foot = {
+    x: surface.a.x + projection * direction.x,
+    y: surface.a.y + projection * direction.y,
+  };
+  return { x: 2 * foot.x - point.x, y: 2 * foot.y - point.y };
+}
+
+function segmentIntersection(start, end, surface) {
+  const ray = subtract(end, start);
+  const edge = subtract(surface.b, surface.a);
+  const denominator = cross(ray, edge);
+  if (Math.abs(denominator) < EPSILON) return null;
+  const offset = subtract(surface.a, start);
+  const t = cross(offset, edge) / denominator;
+  const u = cross(offset, ray) / denominator;
   return {
-    ...details,
-    power: Math.max(0, power),
+    t,
+    u,
+    point: { x: start.x + t * ray.x, y: start.y + t * ray.y },
+  };
+}
+
+function segmentIsClear(start, end, blockers) {
+  for (const surface of blockers) {
+    const hit = segmentIntersection(start, end, surface);
+    if (hit && hit.t > 1e-5 && hit.t < 1 - 1e-5 && hit.u > -EPSILON && hit.u < 1 + EPSILON) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function pathFromSequence(target, sequence, blockers) {
+  const images = [ALICE];
+  for (const surface of sequence) {
+    images.push(reflectPoint(images.at(-1), surface));
+  }
+
+  const bounces = new Array(sequence.length);
+  let currentTarget = target;
+  for (let index = sequence.length - 1; index >= 0; index -= 1) {
+    const hit = segmentIntersection(images[index + 1], currentTarget, sequence[index]);
+    if (!hit || hit.t <= EPSILON || hit.t >= 1 - EPSILON || hit.u <= 0.002 || hit.u >= 0.998) {
+      return null;
+    }
+    bounces[index] = hit.point;
+    currentTarget = hit.point;
+  }
+
+  const points = [ALICE, ...bounces, target];
+  for (let index = 0; index < bounces.length; index += 1) {
+    const firstSide = surfaceSide(sequence[index], points[index]);
+    const secondSide = surfaceSide(sequence[index], points[index + 2]);
+    if (firstSide * secondSide <= EPSILON) return null;
+  }
+  for (let index = 0; index < points.length - 1; index += 1) {
+    if (!segmentIsClear(points[index], points[index + 1], blockers)) return null;
+  }
+
+  let length = 0;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    length += distanceBetween(points[index], points[index + 1]);
+  }
+  return {
+    bounces: sequence.length,
+    surfaces: sequence.map((surface) => surface.id),
+    points,
     length,
-    phase: (-2 * Math.PI * length) / SIMULATED_WAVELENGTH + phaseShift,
+    departureAngle: angleTo(ALICE, points[1]),
+    basePower: propagationPower(length) * REFLECTION_POWER ** sequence.length,
   };
 }
 
-function directComponent(target, angle) {
-  const departureAngle = angleTo(ALICE, target);
-  const length = distanceBetween(ALICE, target);
-  const power = antennaPower(angularDistance(angle, departureAngle)) * propagationPower(length);
-  return pathComponent(power, length, 0, { departureAngle });
-}
-
-function panelReflectionFor(target, reflector, angle) {
-  const departureAngle = angleTo(ALICE, reflector);
-  const illumination = antennaPower(angularDistance(angle, departureAngle));
-  const outgoingAngle = normalizeAngle(2 * reflector.angle - departureAngle);
-  const targetAngle = angleTo(reflector, target);
-  const outgoingPower = Math.exp(
-    -0.5 * (angularDistance(targetAngle, outgoingAngle) / PANEL_OUTPUT_WIDTH) ** 2,
-  );
-  const length = distanceBetween(ALICE, reflector) + distanceBetween(reflector, target);
-  const power = illumination * outgoingPower * propagationPower(length) * reflector.strength ** 2;
-  return pathComponent(power, length, reflector.phaseShift, {
-    departureAngle,
-    gain: power,
-    illumination,
-    outgoingAngle,
-  });
-}
-
-function mirrorTarget(target, wall) {
-  if (wall.axis === 'x') {
-    return { x: 2 * wall.coordinate - target.x, y: target.y };
+function enumeratePathsFor(target, obstacles, includeWalls) {
+  const surfaces = includeWalls ? [...obstacles, ...WALLS] : [...obstacles];
+  const paths = [];
+  if (segmentIsClear(ALICE, target, surfaces)) {
+    const length = distanceBetween(ALICE, target);
+    paths.push({
+      bounces: 0,
+      surfaces: [],
+      points: [ALICE, target],
+      length,
+      departureAngle: angleTo(ALICE, target),
+      basePower: propagationPower(length),
+    });
   }
-  return { x: target.x, y: 2 * wall.coordinate - target.y };
-}
 
-function wallBouncePoint(target, wall) {
-  const mirrored = mirrorTarget(target, wall);
-  if (wall.axis === 'x') {
-    const t = (wall.coordinate - ALICE.x) / (mirrored.x - ALICE.x);
-    return {
-      x: wall.coordinate,
-      y: ALICE.y + t * (mirrored.y - ALICE.y),
-    };
-  }
-  const t = (wall.coordinate - ALICE.y) / (mirrored.y - ALICE.y);
-  return {
-    x: ALICE.x + t * (mirrored.x - ALICE.x),
-    y: wall.coordinate,
+  const visit = (sequence) => {
+    if (sequence.length > 0) {
+      const path = pathFromSequence(target, sequence, surfaces);
+      if (path) paths.push(path);
+    }
+    if (sequence.length === MAX_BOUNCES) return;
+    for (const surface of surfaces) {
+      if (sequence.at(-1)?.id === surface.id) continue;
+      visit([...sequence, surface]);
+    }
   };
+  visit([]);
+  return paths;
 }
 
-function wallReflectionFor(target, wall, angle) {
-  const bounce = wallBouncePoint(target, wall);
-  const departureAngle = angleTo(ALICE, bounce);
-  const illumination = antennaPower(angularDistance(angle, departureAngle));
-  const length = distanceBetween(ALICE, bounce) + distanceBetween(bounce, target);
-  const power = illumination * propagationPower(length) * WALL_COEFFICIENT ** 2;
-  return pathComponent(power, length, Math.PI, {
-    wallId: wall.id,
-    bounce,
-    departureAngle,
-    gain: power,
-    illumination,
-  });
+function enumeratePaths(target, includeWalls = wallsEnabled) {
+  return enumeratePathsFor(target, scenario.obstacles, includeWalls);
 }
 
-function combineComponents(components) {
-  let real = 0;
-  let imaginary = 0;
-  for (const component of components) {
-    const amplitude = Math.sqrt(component.power);
-    real += amplitude * Math.cos(component.phase);
-    imaginary += amplitude * Math.sin(component.phase);
+function evaluatePaths(paths, angle) {
+  let receivedPower = 0;
+  let directPower = 0;
+  for (const path of paths) {
+    const power = path.basePower * antennaPower(angularDistance(angle, path.departureAngle));
+    receivedPower += power;
+    if (path.bounces === 0) directPower = power;
   }
-  const receivedPower = real ** 2 + imaginary ** 2;
   const snr = SNR_SCALE * receivedPower;
   return {
     receivedPower,
+    receivedDb: powerToDb(receivedPower),
+    directPower,
+    directVisible: paths.some((path) => path.bounces === 0),
+    pathCount: paths.length,
+    maxBounces: paths.reduce((maximum, path) => Math.max(maximum, path.bounces), 0),
     snr,
     rate: Math.log2(1 + snr),
+    paths,
   };
 }
 
-function linkMetrics(target, angle) {
-  const direct = directComponent(target, angle);
-  const panelReflections = scenario.reflectors.map((reflector) =>
-    panelReflectionFor(target, reflector, angle),
-  );
-  const wallReflections = wallsEnabled
-    ? WALLS.map((wall) => wallReflectionFor(target, wall, angle))
-    : [];
-  const combined = combineComponents([direct, ...panelReflections, ...wallReflections]);
-  return { ...combined, direct, panelReflections, wallReflections };
+function evaluatePoint(point, angle = heading, includeWalls = wallsEnabled) {
+  return evaluatePaths(enumeratePaths(point, includeWalls), normalizeAngle(angle));
 }
 
 function evaluate(angle) {
-  const bob = linkMetrics(scenario.bob, angle);
-  const eve = linkMetrics(scenario.eve, angle);
+  const bob = evaluatePaths(propagationCache.bob, angle);
+  const eve = evaluatePaths(propagationCache.eve, angle);
   const bobCovered = bob.rate >= CODEWORD_RATE;
   const eveListening = eve.rate > REDUNDANCY_RATE;
   const secrecyRate = Math.max(bob.rate - eve.rate, 0);
@@ -219,6 +295,59 @@ function evaluate(angle) {
     secure: bobCovered && !eveListening,
     secrecyRate,
   };
+}
+
+function gridPoint(column, row) {
+  return {
+    x: ((column + 0.5) / HEATMAP_WIDTH) * VIEWBOX.width,
+    y: ((row + 0.5) / HEATMAP_HEIGHT) * VIEWBOX.height,
+  };
+}
+
+function insideRoom(point) {
+  return point.x > ROOM.left && point.x < ROOM.right && point.y > ROOM.top && point.y < ROOM.bottom;
+}
+
+function rebuildPropagationCache() {
+  propagationCache = {
+    bob: enumeratePaths(scenario.bob),
+    eve: enumeratePaths(scenario.eve),
+    grid: [],
+  };
+  for (let row = 0; row < HEATMAP_HEIGHT; row += 1) {
+    for (let column = 0; column < HEATMAP_WIDTH; column += 1) {
+      const point = gridPoint(column, row);
+      propagationCache.grid.push(insideRoom(point) ? enumeratePaths(point) : []);
+    }
+  }
+}
+
+function paletteColor(amount) {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  const colors = dark
+    ? [[8, 11, 17], [41, 36, 79], [102, 80, 135], [175, 128, 111], [230, 204, 123], [255, 243, 176]]
+    : [[16, 20, 29], [52, 45, 98], [105, 80, 140], [176, 131, 121], [234, 210, 135], [255, 244, 189]];
+  const scaled = clamp(amount) * (colors.length - 1);
+  const lower = Math.min(Math.floor(scaled), colors.length - 2);
+  const mix = scaled - lower;
+  return colors[lower].map((value, index) => Math.round(value + (colors[lower + 1][index] - value) * mix));
+}
+
+function renderHeatmap() {
+  const image = heatmapContext.createImageData(HEATMAP_WIDTH, HEATMAP_HEIGHT);
+  for (let index = 0; index < propagationCache.grid.length; index += 1) {
+    const power = evaluatePaths(propagationCache.grid[index], heading).receivedPower;
+    const db = clamp(powerToDb(power), DB_FLOOR, DB_CEILING);
+    const [red, green, blue] = paletteColor((db - DB_FLOOR) / (DB_CEILING - DB_FLOOR));
+    const offset = index * 4;
+    image.data[offset] = red;
+    image.data[offset + 1] = green;
+    image.data[offset + 2] = blue;
+    image.data[offset + 3] = 255;
+  }
+  heatmapContext.putImageData(image, 0, 0);
+  heatmapRevision += 1;
+  field.dataset.heatmapRevision = String(heatmapRevision);
 }
 
 function createSvgElement(name, className) {
@@ -234,109 +363,29 @@ function setLine(line, start, end) {
   line.setAttribute('y2', end.y.toFixed(2));
 }
 
-function renderReflectors(metrics) {
-  reflectionLayer.replaceChildren();
-  scenario.reflectors.forEach((reflector, index) => {
-    const incoming = metrics.bob.panelReflections[index];
-    const outgoingEnd = pointAt(reflector, incoming.outgoingAngle, 230);
-    const panelStart = pointAt(reflector, reflector.angle, -13);
-    const panelEnd = pointAt(reflector, reflector.angle, 13);
-
-    const group = createSvgElement('g', 'reflection-group');
-    const coverage = createSvgElement('path', 'reflection-beam');
-    coverage.setAttribute(
-      'd',
-      wedgePath(reflector, incoming.outgoingAngle, PANEL_OUTPUT_WIDTH, 230),
-    );
-    coverage.style.opacity = String(0.1 + incoming.illumination * 0.45);
-
-    const input = createSvgElement('line', 'reflection-input');
-    setLine(input, ALICE, reflector);
-    input.style.opacity = String(0.1 + incoming.illumination * 0.5);
-
-    const axis = createSvgElement('line', 'reflection-axis');
-    setLine(axis, reflector, outgoingEnd);
-    axis.style.opacity = String(0.12 + incoming.illumination * 0.46);
-
-    const panel = createSvgElement('line', 'reflector');
-    setLine(panel, panelStart, panelEnd);
+function renderSurfaces() {
+  surfaceLayer.replaceChildren();
+  scenario.obstacles.forEach((surface, index) => {
+    const line = createSvgElement('line', 'surface reflective-surface obstacle-surface');
+    line.dataset.surface = surface.id;
+    line.dataset.surfaceType = 'obstacle';
+    setLine(line, surface.a, surface.b);
+    const centre = interpolate(surface.a, surface.b, 0.5);
     const dot = createSvgElement('circle', 'reflector-dot');
-    dot.setAttribute('cx', reflector.x);
-    dot.setAttribute('cy', reflector.y);
-    dot.setAttribute('r', '4');
+    dot.setAttribute('cx', centre.x.toFixed(2));
+    dot.setAttribute('cy', centre.y.toFixed(2));
+    dot.setAttribute('r', '3.2');
     const label = createSvgElement('text', 'reflector-label');
-    label.setAttribute('x', reflector.x);
-    label.setAttribute('y', reflector.y - 12);
+    label.setAttribute('x', centre.x.toFixed(2));
+    label.setAttribute('y', (centre.y - 11).toFixed(2));
     label.textContent = `R${index + 1}`;
-
-    group.append(coverage, input, axis, panel, dot, label);
-    reflectionLayer.append(group);
+    surfaceLayer.append(line, dot, label);
   });
-}
-
-function strongestPanelReflection(link) {
-  let bestIndex = -1;
-  let bestGain = 0;
-  link.panelReflections.forEach(({ gain }, index) => {
-    if (gain > bestGain) {
-      bestGain = gain;
-      bestIndex = index;
-    }
-  });
-  return { index: bestIndex, gain: bestGain };
-}
-
-function pathOpacity(power, minimum = 0.1) {
-  return clamp(minimum + Math.sqrt(power) * 1.65, minimum, 0.86);
-}
-
-function addPaths(target, link, className) {
-  const direct = createSvgElement('line', `link-path direct ${className}`);
-  setLine(direct, ALICE, target);
-  direct.style.opacity = String(pathOpacity(link.direct.power, 0.08));
-  pathLayer.append(direct);
-
-  const strongest = strongestPanelReflection(link);
-  if (strongest.gain >= 0.0005) {
-    const reflector = scenario.reflectors[strongest.index];
-    const reflected = createSvgElement(
-      'polyline',
-      `link-path reflected panel-link-path ${className}`,
-    );
-    reflected.setAttribute(
-      'points',
-      `${ALICE.x},${ALICE.y} ${reflector.x.toFixed(2)},${reflector.y.toFixed(2)} ${target.x.toFixed(2)},${target.y.toFixed(2)}`,
-    );
-    reflected.style.opacity = String(pathOpacity(strongest.gain, 0.12));
-    pathLayer.append(reflected);
-  }
-
-  for (const reflection of link.wallReflections) {
-    const reflected = createSvgElement(
-      'polyline',
-      `link-path reflected wall-link-path ${className} wall-${reflection.wallId}`,
-    );
-    reflected.setAttribute(
-      'points',
-      `${ALICE.x},${ALICE.y} ${reflection.bounce.x.toFixed(2)},${reflection.bounce.y.toFixed(2)} ${target.x.toFixed(2)},${target.y.toFixed(2)}`,
-    );
-    reflected.dataset.wall = reflection.wallId;
-    reflected.style.opacity = String(pathOpacity(reflection.power, 0.09));
-    pathLayer.append(reflected);
-  }
-}
-
-function linkLabel(rate, active, activeEnglish, activeChinese, quietEnglish, quietChinese) {
-  const state = active ? text(activeEnglish, activeChinese) : text(quietEnglish, quietChinese);
-  return `${state} · ${rate.toFixed(2)} bit/s/Hz`;
 }
 
 function statusText(metrics) {
   if (optimizing) {
-    return text(
-      'Scanning all bearings for maximum secrecy rate…',
-      '正在扫描全部方位，搜索最高保密速率…',
-    );
+    return text('Scanning every azimuth for the highest secrecy rate…', '正在遍历全部方位角，搜索最高保密速率…');
   }
   if (lastAction === 'optimized') {
     return text(
@@ -347,92 +396,62 @@ function statusText(metrics) {
   if (lastAction === 'walls') {
     return wallsEnabled
       ? text(
-          'Four-wall multipath on: reflections can reinforce or cancel.',
-          '已启用四墙多径：反射信号可能相长或相消。',
+          'Walls and obstacles now use the same opaque mirror model, with up to three reflections in total.',
+          '墙面与障碍物现采用同一种不透射镜面模型，合计最多发生三次反射。',
         )
       : text(
-          'Four-wall multipath off; reflector paths remain.',
-          '已关闭四墙多径；反射板仍然生效。',
+          'Wall reflections are off; opaque obstacles still block and reflect the signal.',
+          '墙面反射已关闭；不透射障碍物仍会遮挡并反射信号。',
         );
   }
   if (lastAction === 'randomized') {
-    return text(
-      'New channel ready. Steer Alice or run the search.',
-      '新信道已生成，可手动调节波束或直接搜索。',
-    );
+    return text('A new room is ready. Steer Alice or run the search.', '新场景已生成，可手动调整 Alice 天线或直接运行搜索。');
   }
   if (metrics.secure) {
     return text(
-      "Secure conditions met: Bob's achievable rate meets the codeword rate; Eve stays below redundancy.",
-      '安全传输条件满足：Bob 的可达速率达到码字传输速率，Eve 的可达速率低于冗余速率。',
+      "Secure delivery: Bob meets the codeword rate while Eve stays below the redundancy rate.",
+      '满足安全传输条件：Bob 的可达速率达到码字传输速率，Eve 的可达速率低于冗余速率。',
     );
   }
   if (!metrics.bobCovered) {
     return text(
-      "Bob's achievable rate is below the codeword rate. Steer toward a stronger path.",
-      'Bob 的可达速率低于码字传输速率，请调整波束以增强链路。',
+      "Bob's achievable rate is below the codeword rate. Steer energy toward a viable reflected corridor.",
+      'Bob 的可达速率低于码字传输速率，请把能量引向可用的直达或反射通道。',
     );
   }
   if (metrics.eveListening) {
     return text(
-      "Eve's achievable rate exceeds the redundancy rate. Increase the Bob–Eve gap.",
-      'Eve 的可达速率已超过冗余速率，请扩大 Bob 与 Eve 的速率差。',
+      "Eve's achievable rate exceeds the redundancy rate. Increase the Bob–Eve rate gap.",
+      'Eve 的可达速率已超过冗余速率，请进一步扩大 Bob 与 Eve 的速率差。',
     );
   }
-  return text(
-    'The secrecy rate is positive, but a link constraint still fails.',
-    '保密速率为正，但仍有一项链路判据未满足。',
-  );
+  return text('The secrecy rate is positive, but one link condition still fails.', '保密速率为正，但仍有一项链路条件未满足。');
 }
 
-function wallReflectionData(metrics) {
-  const compact = (receiver, reflection) => ({
-    receiver,
-    wall: reflection.wallId,
-    bounce: [Number(reflection.bounce.x.toFixed(3)), Number(reflection.bounce.y.toFixed(3))],
-    power: Number(reflection.power.toFixed(8)),
-  });
-  return [
-    ...metrics.bob.wallReflections.map((reflection) => compact('bob', reflection)),
-    ...metrics.eve.wallReflections.map((reflection) => compact('eve', reflection)),
-  ];
+function setNodeEnergy(node, receivedDb) {
+  const strength = clamp((receivedDb - DB_FLOOR) / (DB_CEILING - DB_FLOOR));
+  node.querySelector('.node-halo').style.opacity = String(0.28 + 0.72 * strength);
 }
 
 function render() {
   const metrics = evaluate(heading);
-  const beamEnd = pointAt(ALICE, heading, 330);
+  const roundedHeading = Math.round(normalizeAngle(heading)) % 360;
 
-  beam.setAttribute('d', wedgePath(ALICE, heading, BEAM_WIDTH, 330));
-  setLine(beamAxis, ALICE, beamEnd);
   antenna.setAttribute('transform', `rotate(${heading} 0 0)`);
   bobNode.setAttribute('transform', `translate(${scenario.bob.x} ${scenario.bob.y})`);
   eveNode.setAttribute('transform', `translate(${scenario.eve.x} ${scenario.eve.y})`);
   bobNode.classList.toggle('is-active', metrics.bobCovered);
   eveNode.classList.toggle('is-active', metrics.eveListening);
+  setNodeEnergy(bobNode, metrics.bob.receivedDb);
+  setNodeEnergy(eveNode, metrics.eve.receivedDb);
+  renderSurfaces();
+  renderHeatmap();
 
-  renderReflectors(metrics);
-  pathLayer.replaceChildren();
-  addPaths(scenario.bob, metrics.bob, 'bob-path');
-  addPaths(scenario.eve, metrics.eve, 'eve-path');
-
-  const roundedHeading = Math.round(normalizeAngle(heading)) % 360;
   bearingOutput.textContent = `${roundedHeading}°`;
-  bobOutput.textContent = linkLabel(
-    metrics.bob.rate,
-    metrics.bobCovered,
-    'Codeword rate met',
-    '满足码字传输速率',
-    'Below codeword rate',
-    '低于码字传输速率',
-  );
-  eveOutput.textContent = linkLabel(
-    metrics.eve.rate,
-    metrics.eveListening,
-    'Eavesdropping risk',
-    '存在窃听风险',
-    'Below redundancy',
-    '低于冗余速率',
-  );
+  bobEnergyOutput.textContent = formatDb(metrics.bob.receivedDb);
+  eveEnergyOutput.textContent = formatDb(metrics.eve.receivedDb);
+  bobOutput.textContent = `${metrics.bob.rate.toFixed(2)} bit/s/Hz`;
+  eveOutput.textContent = `${metrics.eve.rate.toFixed(2)} bit/s/Hz`;
   secrecyRateOutput.textContent = metrics.secrecyRate.toFixed(2);
   secrecyRateOutput.setAttribute(
     'aria-label',
@@ -443,28 +462,34 @@ function render() {
   );
   bobOutput.setAttribute(
     'aria-label',
-    text(`Bob link: ${bobOutput.textContent}`, `Bob 链路：${bobOutput.textContent}`),
+    text(
+      `Bob ${metrics.bobCovered ? 'meets' : 'is below'} the codeword rate: ${bobOutput.textContent}`,
+      `Bob ${metrics.bobCovered ? '达到' : '低于'}码字传输速率：${bobOutput.textContent}`,
+    ),
   );
   eveOutput.setAttribute(
     'aria-label',
-    text(`Eve link: ${eveOutput.textContent}`, `Eve 链路：${eveOutput.textContent}`),
+    text(
+      `Eve ${metrics.eveListening ? 'has eavesdropping risk' : 'is below redundancy'}: ${eveOutput.textContent}`,
+      `Eve ${metrics.eveListening ? '存在窃听风险' : '低于冗余速率'}：${eveOutput.textContent}`,
+    ),
   );
 
   statusOutput.textContent = statusText(metrics);
-  statusOutput.dataset.state = metrics.secure
-    ? 'secure'
-    : metrics.eveListening
-      ? 'exposed'
-      : 'weak';
+  statusOutput.dataset.state = metrics.secure ? 'secure' : metrics.eveListening ? 'exposed' : 'weak';
 
   field.dataset.objective = 'secrecy-rate';
+  field.dataset.reflectionModel = REFLECTION_MODEL;
+  field.dataset.powerCombination = POWER_COMBINATION;
+  field.dataset.maxBounces = String(MAX_BOUNCES);
+  field.dataset.reflectionCoefficient = String(REFLECTION_COEFFICIENT);
+  field.dataset.dbFloor = String(DB_FLOOR);
+  field.dataset.heatmapWidth = String(HEATMAP_WIDTH);
+  field.dataset.heatmapHeight = String(HEATMAP_HEIGHT);
+  field.dataset.obstacleCount = String(scenario.obstacles.length);
   field.dataset.angle = String(roundedHeading);
   field.dataset.optimizing = String(optimizing);
   field.dataset.walls = String(wallsEnabled);
-  field.dataset.wallReflectionCount = String(
-    metrics.bob.wallReflections.length + metrics.eve.wallReflections.length,
-  );
-  field.dataset.wallReflections = JSON.stringify(wallReflectionData(metrics));
   field.dataset.bobSnr = metrics.bob.snr.toFixed(8);
   field.dataset.eveSnr = metrics.eve.snr.toFixed(8);
   field.dataset.bobRate = metrics.bob.rate.toFixed(8);
@@ -475,21 +500,27 @@ function render() {
   field.dataset.bobCovered = String(metrics.bobCovered);
   field.dataset.eveListening = String(metrics.eveListening);
   field.dataset.secure = String(metrics.secure);
+  field.dataset.bobDirectVisible = String(metrics.bob.directVisible);
+  field.dataset.eveDirectVisible = String(metrics.eve.directVisible);
+  field.dataset.bobPathCount = String(metrics.bob.pathCount);
+  field.dataset.evePathCount = String(metrics.eve.pathCount);
+  field.dataset.bobMaxBounces = String(metrics.bob.maxBounces);
+  field.dataset.eveMaxBounces = String(metrics.eve.maxBounces);
+  field.dataset.bobReceivedDb = metrics.bob.receivedDb.toFixed(6);
+  field.dataset.eveReceivedDb = metrics.eve.receivedDb.toFixed(6);
   field.setAttribute('aria-valuenow', String(roundedHeading));
   field.setAttribute(
     'aria-valuetext',
     text(
-      `${roundedHeading} degrees. Secrecy rate ${metrics.secrecyRate.toFixed(2)}. Bob ${metrics.bobCovered ? 'meets the codeword rate' : 'is below the codeword rate'}; Eve ${metrics.eveListening ? 'has eavesdropping risk' : 'is below redundancy'}.`,
-      `${roundedHeading} 度。保密速率 ${metrics.secrecyRate.toFixed(2)}。Bob ${metrics.bobCovered ? '满足码字传输速率' : '低于码字传输速率'}；Eve ${metrics.eveListening ? '存在窃听风险' : '低于冗余速率'}。`,
+      `${roundedHeading} degrees. Secrecy rate ${metrics.secrecyRate.toFixed(2)}. Bob energy ${metrics.bob.receivedDb.toFixed(1)} dB; Eve energy ${metrics.eve.receivedDb.toFixed(1)} dB.`,
+      `${roundedHeading} 度。保密速率 ${metrics.secrecyRate.toFixed(2)}。Bob 接收能量 ${metrics.bob.receivedDb.toFixed(1)} dB；Eve 接收能量 ${metrics.eve.receivedDb.toFixed(1)} dB。`,
     ),
   );
 
   randomizeButton.disabled = optimizing;
   optimizeButton.disabled = optimizing;
   wallToggle.disabled = optimizing;
-  optimizeButton.textContent = optimizing
-    ? text('Searching…', '搜索中…')
-    : text('Maximize secrecy rate', '最大化保密速率');
+  optimizeButton.textContent = optimizing ? text('Searching…', '搜索中…') : text('Maximize secrecy rate', '最大化保密速率');
   randomizeButton.textContent = text('New scene', '随机场景');
 }
 
@@ -500,55 +531,115 @@ function makeTarget() {
   };
 }
 
+function obstacleAcross(target, index) {
+  const centre = interpolate(ALICE, target, randomBetween(0.48, 0.62));
+  const angle = angleTo(ALICE, target) + 90 + randomBetween(-14, 14);
+  const halfLength = randomBetween(18, 24);
+  return makeSurface(`obstacle-${index}`, 'obstacle', pointAt(centre, angle, -halfLength), pointAt(centre, angle, halfLength));
+}
+
+function obstacleCentre(surface) {
+  return interpolate(surface.a, surface.b, 0.5);
+}
+
+function randomObstacle(index, existing, targets) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const centre = { x: randomBetween(132, 226), y: randomBetween(30, 180) };
+    const angle = randomBetween(0, 180);
+    const halfLength = randomBetween(17, 24);
+    const candidate = makeSurface(
+      `obstacle-${index}`,
+      'obstacle',
+      pointAt(centre, angle, -halfLength),
+      pointAt(centre, angle, halfLength),
+    );
+    const clearOfNodes = targets.every((target) => distanceBetween(centre, target) > 44);
+    const clearOfSurfaces = existing.every((surface) => distanceBetween(centre, obstacleCentre(surface)) > 42);
+    if (clearOfNodes && clearOfSurfaces && insideRoom(candidate.a) && insideRoom(candidate.b)) return candidate;
+  }
+  return makeSurface(
+    `obstacle-${index}`,
+    'obstacle',
+    { x: 162, y: index === 2 ? 48 : 162 },
+    { x: 202, y: index === 2 ? 72 : 138 },
+  );
+}
+
+function publicScenario() {
+  const copyPoint = (point) => ({ x: Number(point.x.toFixed(4)), y: Number(point.y.toFixed(4)) });
+  return {
+    alice: copyPoint(ALICE),
+    bob: copyPoint(scenario.bob),
+    eve: copyPoint(scenario.eve),
+    obstacles: scenario.obstacles.map((surface) => ({
+      id: surface.id,
+      kind: surface.kind,
+      a: copyPoint(surface.a),
+      b: copyPoint(surface.b),
+    })),
+  };
+}
+
 function newScenario() {
   scenarioNumber += 1;
   const bob = makeTarget();
   let eve = makeTarget();
   for (let attempts = 0; attempts < 30; attempts += 1) {
-    const separated = distanceBetween(bob, eve) >= 52;
-    const angleGap = angularDistance(angleTo(ALICE, bob), angleTo(ALICE, eve)) >= 10;
-    if (separated && angleGap) break;
+    if (distanceBetween(bob, eve) >= 52 && angularDistance(angleTo(ALICE, bob), angleTo(ALICE, eve)) >= 10) break;
     eve = makeTarget();
   }
 
-  const reflectorCount = Math.random() < 0.52 ? 1 : 2;
-  const reflectors = [];
-  for (let attempts = 0; reflectors.length < reflectorCount && attempts < 160; attempts += 1) {
-    const candidate = {
-      x: Math.round(randomBetween(126, 228)),
-      y: Math.round(randomBetween(34, 176)),
-      angle: Math.round(randomBetween(0, 179)),
-      strength: randomBetween(0.52, 0.72),
-      phaseShift: randomBetween(-Math.PI, Math.PI),
-    };
-    const clearOfTargets =
-      distanceBetween(candidate, bob) > 46 && distanceBetween(candidate, eve) > 46;
-    const clearOfPanels = reflectors.every(
-      (reflector) => distanceBetween(candidate, reflector) > 48,
-    );
-    if (clearOfTargets && clearOfPanels) reflectors.push(candidate);
-  }
-  const fallbacks = [
-    { x: 145, y: 45, angle: 35, strength: 0.6, phaseShift: 0.7 },
-    { x: 195, y: 168, angle: 140, strength: 0.6, phaseShift: -1.1 },
-  ];
-  while (reflectors.length < reflectorCount) {
-    reflectors.push(fallbacks[reflectors.length]);
-  }
-
-  scenario = { bob, eve, reflectors };
+  const blockedTarget = Math.random() < 0.5 ? bob : eve;
+  const obstacles = [obstacleAcross(blockedTarget, 1)];
+  if (Math.random() < 0.52) obstacles.push(randomObstacle(2, obstacles, [ALICE, bob, eve]));
+  scenario = { bob, eve, obstacles };
   heading = normalizeAngle(angleTo(ALICE, bob) + randomBetween(-42, 42));
   field.dataset.config = JSON.stringify({
     scene: scenarioNumber,
     bob: [bob.x, bob.y],
     eve: [eve.x, eve.y],
-    reflectors: reflectors.map(({ x, y, angle, phaseShift }) => [
-      x,
-      y,
-      angle,
-      Number(phaseShift.toFixed(4)),
+    obstacles: obstacles.map((surface) => [
+      Number(surface.a.x.toFixed(3)),
+      Number(surface.a.y.toFixed(3)),
+      Number(surface.b.x.toFixed(3)),
+      Number(surface.b.y.toFixed(3)),
     ]),
   });
+  rebuildPropagationCache();
+}
+
+function summarizePaths(paths) {
+  return {
+    directVisible: paths.some((path) => path.bounces === 0),
+    pathCount: paths.length,
+    maxBounces: paths.reduce((maximum, path) => Math.max(maximum, path.bounces), 0),
+    paths: paths.map((path) => ({
+      bounces: path.bounces,
+      surfaces: [...path.surfaces],
+      departureAngle: Number(path.departureAngle.toFixed(4)),
+      length: Number(path.length.toFixed(4)),
+      segments: path.points.slice(0, -1).map((point, index) => [point, path.points[index + 1]]),
+    })),
+  };
+}
+
+function deterministicGeometry() {
+  if (deterministicFixture) return deterministicFixture;
+  const targets = [
+    { x: 300, y: 105 },
+    { x: 280, y: 58 },
+    { x: 280, y: 152 },
+    { x: 180, y: 105 },
+  ];
+  for (const target of targets) {
+    const paths = enumeratePathsFor(target, [], true);
+    if (paths.some((path) => path.bounces === MAX_BOUNCES)) {
+      deterministicFixture = { target, summary: summarizePaths(paths) };
+      return deterministicFixture;
+    }
+  }
+  deterministicFixture = { target: targets[0], summary: summarizePaths(enumeratePathsFor(targets[0], [], true)) };
+  return deterministicFixture;
 }
 
 function clearBestResult() {
@@ -575,23 +666,16 @@ function setHeading(nextHeading, action = 'manual') {
 
 function betterCandidate(candidate, best) {
   if (!best) return true;
-  if (Math.abs(candidate.secrecyRate - best.secrecyRate) > 1e-9) {
-    return candidate.secrecyRate > best.secrecyRate;
-  }
-  if (Math.abs(candidate.bob.rate - best.bob.rate) > 1e-9) {
-    return candidate.bob.rate > best.bob.rate;
-  }
-  if (Math.abs(candidate.eve.rate - best.eve.rate) > 1e-9) {
-    return candidate.eve.rate < best.eve.rate;
-  }
+  if (Math.abs(candidate.secrecyRate - best.secrecyRate) > 1e-9) return candidate.secrecyRate > best.secrecyRate;
+  if (Math.abs(candidate.bob.rate - best.bob.rate) > 1e-9) return candidate.bob.rate > best.bob.rate;
+  if (Math.abs(candidate.eve.rate - best.eve.rate) > 1e-9) return candidate.eve.rate < best.eve.rate;
   return candidate.angle < best.angle;
 }
 
 function bestBearing() {
   let best = null;
   for (let angle = 0; angle < 360; angle += 1) {
-    const metrics = evaluate(angle);
-    const candidate = { angle, ...metrics };
+    const candidate = { angle, ...evaluate(angle) };
     if (betterCandidate(candidate, best)) best = candidate;
   }
   return best;
@@ -617,16 +701,13 @@ function optimizeBearing() {
   optimizing = true;
   lastAction = 'optimizing';
   render();
-
   if (reducedMotion.matches) {
     finishOptimization();
     return;
   }
-
   const startedAt = performance.now();
   const duration = 920;
   const settleTurn = shortestTurn(startingHeading, optimizationResult.angle);
-
   function animate(now) {
     const progress = clamp((now - startedAt) / duration);
     if (progress < 0.72) {
@@ -634,17 +715,12 @@ function optimizeBearing() {
       heading = normalizeAngle(startingHeading + sweep * 360);
     } else {
       const settle = (progress - 0.72) / 0.28;
-      const eased = 1 - (1 - settle) ** 3;
-      heading = normalizeAngle(startingHeading + settleTurn * eased);
+      heading = normalizeAngle(startingHeading + settleTurn * (1 - (1 - settle) ** 3));
     }
     render();
-    if (progress < 1) {
-      optimizationFrame = window.requestAnimationFrame(animate);
-    } else {
-      finishOptimization();
-    }
+    if (progress < 1) optimizationFrame = window.requestAnimationFrame(animate);
+    else finishOptimization();
   }
-
   optimizationFrame = window.requestAnimationFrame(animate);
 }
 
@@ -673,9 +749,7 @@ field.addEventListener('pointermove', (event) => {
 
 field.addEventListener('pointerup', (event) => {
   dragging = false;
-  if (field.hasPointerCapture(event.pointerId)) {
-    field.releasePointerCapture(event.pointerId);
-  }
+  if (field.hasPointerCapture(event.pointerId)) field.releasePointerCapture(event.pointerId);
 });
 
 field.addEventListener('pointercancel', () => {
@@ -702,6 +776,7 @@ wallToggle.addEventListener('change', () => {
   clearBestResult();
   wallsEnabled = wallToggle.checked;
   lastAction = 'walls';
+  rebuildPropagationCache();
   render();
 });
 
@@ -714,13 +789,28 @@ randomizeButton.addEventListener('click', () => {
 });
 
 optimizeButton.addEventListener('click', optimizeBearing);
-
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && optimizing) finishOptimization();
 });
-
 reducedMotion.addEventListener('change', () => {
   if (reducedMotion.matches && optimizing) finishOptimization();
+});
+
+window.__secrecyDebug = Object.freeze({
+  constants: Object.freeze({
+    reflectionModel: REFLECTION_MODEL,
+    powerCombination: POWER_COMBINATION,
+    reflectionCoefficient: REFLECTION_COEFFICIENT,
+    wallReflectionCoefficient: REFLECTION_COEFFICIENT,
+    obstacleReflectionCoefficient: REFLECTION_COEFFICIENT,
+    maxBounces: MAX_BOUNCES,
+    dbFloor: DB_FLOOR,
+  }),
+  scenario: publicScenario,
+  evaluatePoint,
+  pathSummary: (point, includeWalls = wallsEnabled) => summarizePaths(enumeratePaths(point, includeWalls)),
+  sampleHeatmap: (point) => evaluatePoint(point, heading, wallsEnabled).receivedDb,
+  deterministicGeometry,
 });
 
 window.PocketRuntime.onChange(render);

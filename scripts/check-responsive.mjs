@@ -56,7 +56,7 @@ const gameHeights = {
   stl: 600,
   movable: 720,
   pinching: 680,
-  secrecy: 600,
+  secrecy: 620,
   hopper: 600,
   backscatter: 620,
   resilience: 600,
