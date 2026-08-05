@@ -1,6 +1,6 @@
 ---
 {
-  "title": "Zhiguo Ding：夹持天线的基础、放置与安全",
+  "title": "Zhiguo Ding 教授：夹持天线的基础、放置与安全",
   "locale": "zh",
   "slug": "zhiguo-pinching-foundations",
   "newsId": "news-20260803-zhiguo-pinching-foundations",
@@ -47,32 +47,39 @@
   "archived": false
 }
 ---
-## 观察视角
+## 一条研究主线如何从基本问题长出来
 
-这篇导师研究综述关注一条研究路线如何逐步建立：先定义系统，再推导可解释的位置规则，最后引入保密通信目标。
+Zhiguo Ding 教授早期的夹持天线工作，展示了一个新硬件概念如何逐步形成研究主线。顺序很重要：要优化设备，先得说明夹持点如何辐射、多个夹持点怎样相互作用；要谈自适应放置，先得找出优良位置背后的结构；要研究安全传输，还要说明哪些空间控制能够区分合法用户和窃听者。
 
-## Flexible-Antenna Systems: A Pinching-Antenna Perspective
+第一项工作把波导上的介质单元抽象成可重构辐射点。单波导条件下，位置会改变视距几何与路径损耗；同一馈源上的多个夹持点共享信号，因此引出 NOMA；多波导系统又可以联系到 MISO 干扰信道，并讨论相应可达条件。经过这一步，波导传播、共享激励和位置相关辐射成为后续研究可以共同使用的语言。
 
-**作者：** Zhiguo Ding, Robert Schober, H. Vincent Poor
+## 从模型中提炼可解释的设计规律
 
-**Zhiguo Ding 基础研究视角。** [查看主要公开记录](https://doi.org/10.1109/TCOMM.2025.3555866)。这篇基础工作把介质颗粒建模为波导上的可重构辐射点。单波导分析强调视距与路径损耗控制，同一馈源上的多个夹持点共享信号并由此引出 NOMA；多波导情形则关联到 MISO 干扰信道，并给出相应的可达条件。
+位置优化工作接着回答“夹持点应该放在哪里”。它没有只给出数值算法，而是针对多种 OMA 和 NOMA 目标推导闭式放置规则。在论文模型下，公平型 OMA 会选择兼顾用户集合的位置；高信噪比时，贪心 OMA 和公平型 NOMA 则倾向最靠近波导的用户。这些公式把权衡关系直接摆在面前，也为以后更复杂的算法提供了可以比较的基线。
 
-**证据边界。** 证据来自分析和计算机仿真，公开摘要没有验证实际耦合损耗、控制开销、信道获取或硬件原型。
+物理层安全论文在保留上述结构的同时加入新目标：幅度控制用于增强合法链路，相位对齐用于削弱窃听者，联盟博弈则从离散的预安装夹持点中选出激活集合。Shapley 值与边际贡献进一步解释每根天线怎样支撑整个联盟。仿真中的保密速率提升说明，位置不仅能改善覆盖，也可以成为安全资源。
 
-## Analytical Optimization for Antenna Placement in Pinching-Antenna Systems
+从研究脉络看，关键贡献是完成了“系统抽象—设计规则—安全应用”的递进。Zhiguo Ding 教授的这组工作提供了清晰的分析抓手，使后续硬件和网络研究有据可循。耦合损耗、信道获取开销、控制时延和真实对抗行为尚未解决，但一套有说服力的原型应该回答什么，已经被这些基础工作界定得相当明确。
 
-**作者：** Zhiguo Ding, H. Vincent Poor
+## 研究札记
 
-**状态：** 预印本
-
-**Zhiguo Ding 基础研究视角。** [查看主要公开记录](https://arxiv.org/abs/2507.13307)。该预印本针对若干 OMA 与 NOMA 目标推导闭式天线放置规则。在论文模型中，公平型 OMA 选择对所有用户有利的位置，而高信噪比下的贪心 OMA 与公平型 NOMA 往往偏向距离波导最近的用户。
-
-**证据边界。** 这些结论依赖特定目标和信道假设，高信噪比结果属于渐近结论，且目前仍是一版预印本。
-
-## Pinching-Antenna Systems for Physical Layer Security
-
-**作者：** Kaidi Wang, Zhiguo Ding, Naofal Al-Dhahir
-
-**Zhiguo Ding 基础研究视角。** [查看主要公开记录](https://doi.org/10.1109/LWC.2025.3624885)。该快报利用幅度控制增强合法链路，并通过相位对齐削弱窃听者。方法用联盟博弈激活离散的预安装夹持点，再以 Shapley 值与边际贡献量化各天线作用；仿真相对联盟价值基线报告了保密速率增益。
-
-**证据边界。** 模型假设掌握信道信息并采用离散候选位置，证据是篇幅受限的仿真，没有真实对手或硬件实验。
+> ### Flexible-Antenna Systems: A Pinching-Antenna Perspective
+>
+> - **作者：** Zhiguo Ding, Robert Schober, H. Vincent Poor
+> - **状态：** 已发表期刊论文
+> - **主要来源：** [IEEE Transactions on Communications](https://doi.org/10.1109/TCOMM.2025.3555866)
+> **证据说明：** 分析和仿真尚未验证实际耦合损耗、控制开销、信道获取或硬件原型。
+>
+> ### Analytical Optimization for Antenna Placement in Pinching-Antenna Systems
+>
+> - **作者：** Zhiguo Ding, H. Vincent Poor
+> - **状态：** 预印本
+> - **主要来源：** [arXiv:2507.13307](https://arxiv.org/abs/2507.13307)
+> **证据说明：** 放置结论依赖论文给定的目标与信道模型，其中高信噪比结果属于渐近结论。
+>
+> ### Pinching-Antenna Systems for Physical Layer Security
+>
+> - **作者：** Kaidi Wang, Zhiguo Ding, Naofal Al-Dhahir
+> - **状态：** 已发表期刊论文
+> - **主要来源：** [IEEE Wireless Communications Letters](https://doi.org/10.1109/LWC.2025.3624885)
+> **证据说明：** 模型假设已知信道并采用离散候选位置，验证来自仿真，没有真实对手或硬件实验。

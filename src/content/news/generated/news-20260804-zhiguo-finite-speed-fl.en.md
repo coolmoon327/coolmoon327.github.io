@@ -1,6 +1,6 @@
 ---
 {
-  "title": "Zhiguo Ding update: federated learning with finite-speed pinching antennas",
+  "title": "Prof. Zhiguo Ding: federated learning with finite-speed pinching antennas",
   "locale": "en",
   "slug": "zhiguo-finite-speed-fl",
   "newsId": "news-20260804-zhiguo-finite-speed-fl",
@@ -41,16 +41,32 @@
   "archived": false
 }
 ---
-## Perspective
+## Replacing ideal mobility with a physical constraint
 
-Within Zhiguo Ding’s pinching-antenna line, this preprint removes an idealized infinite-speed assumption and turns physical motion into part of the learning optimization.
+In the pinching-antenna research program involving Prof. Zhiguo Ding, configurable placement is a source of performance gain: a radiating point can move along a waveguide to reshape the effective channel. [Age-of-Information Aware Federated Learning with Finite Speed Pinching Antenna](https://arxiv.org/abs/2607.23595) asks what happens when that movement is no longer idealized as instantaneous.
 
-## Age-of-Information Aware Federated Learning with Finite Speed Pinching Antenna
+The answer changes the problem substantially. Once the antenna has a finite speed, repositioning consumes part of every federated-learning round. Device selection, antenna location, local computation, upload time, and the freshness of model updates become inseparable. This is a useful step in the research trajectory because it forces communication optimization to account for a physical action rather than treating geometry as a freely adjustable variable.
 
-**Authors:** Kaidi Wang, Daniel K C So, Zhiguo Ding
+## Linking actuator time to learning freshness
 
-**Status:** Preprint
+The proposed method uses a coalition game to choose participating devices and a branch-and-bound procedure to locate the antenna within the round’s reachable region. This combination gives the discrete participation decision and the continuous placement decision separate algorithmic roles while preserving their coupling through time and information age.
 
-[Open the primary public record](https://arxiv.org/abs/2607.23595). This work advances Zhiguo Ding’s placement-optimization line by replacing instantaneous motion with round-based finite-speed repositioning. Coalition selection and branch-and-bound placement then connect the physical constraint to federated-learning freshness.
+For federated learning, information age is more than a networking metric. An update may be statistically useful when computed but less useful after a long movement and upload delay. The formulation therefore connects a mechanical limit at the antenna to the pace at which the global model receives current information.
 
-**Evidence boundary.** The contribution is a more realistic optimization model, but the reported convergence and age gains remain simulated and do not include measured actuator cost.
+## A more realistic model awaiting physical validation
+
+Simulations report faster convergence and lower total information age against the selected comparison methods. The contribution is not simply a new optimizer; it demonstrates how removing one convenient physical assumption can reorder learning and communication decisions across an entire round.
+
+The remaining gap is experimental. The public results do not include actuator power, movement uncertainty, wear, calibration, or the latency of measuring the new channel after repositioning. For Prof. Zhiguo Ding’s broader pinching-antenna work, a hardware implementation would reveal whether the modeled freshness gain survives the costs required to move, sense, and control a real radiating point.
+
+## Research notes
+
+> ### Age-of-Information Aware Federated Learning with Finite Speed Pinching Antenna
+>
+> **Authors:** Kaidi Wang, Daniel K C So, Zhiguo Ding
+>
+> **Status:** Preprint
+>
+> **Primary source:** [arXiv:2607.23595](https://arxiv.org/abs/2607.23595)
+>
+> **Evidence note:** Device selection uses a coalition game, while branch-and-bound optimizes placement within a finite-speed feasible region. Faster convergence and lower total information age are simulation results; measured actuator costs and hardware validation are not reported.

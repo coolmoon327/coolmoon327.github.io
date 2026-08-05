@@ -42,16 +42,32 @@
   "archived": false
 }
 ---
-## Perspective
+## Directionality starts with the shape of the pinch
 
-The field-level question is whether geometry-aware radiation models can survive contact with hardware. This preprint provides an early link-level answer while leaving network scalability open.
+Pinching-antenna systems create radiating points by deforming or coupling to a waveguide, but a radiating point is not automatically a useful directional antenna. Its shape and orientation determine the induced polarization current, which in turn controls where electromagnetic energy is sent. A design that ignores this geometry may optimize a nominal antenna location while overlooking the physical mechanism that produces gain.
 
-## Unlocking Directional Radiation in Pinching-Antenna Systems: Geometry-Aware Design and Experimental Verification
+[Unlocking Directional Radiation in Pinching-Antenna Systems](https://arxiv.org/abs/2607.24011) makes that mechanism explicit. The preprint connects pinch geometry to polarization current and directional radiation, allowing the shape of the structure—not only its position along a waveguide—to become a design variable.
 
-**Authors:** Haoyang Li, Weidong Liu, Zhongliang Li, Gaojie Chen, Zheng Yang, Zhiguo Ding
+## From full-wave analysis to a 60 GHz link
 
-**Status:** Preprint
+Full-wave simulations examine how different shapes and orientations change the radiation behavior. This is important because a simplified link model can hide effects that arise from the actual electromagnetic structure. By testing geometry at the field level, the study builds a more physically grounded path from mechanical configuration to directional gain.
 
-[Open the primary public record](https://arxiv.org/abs/2607.24011). From a field perspective, the key contribution is the connection between pinch geometry, induced polarization current, and directional gain. Full-wave simulations explore shape and orientation, while a 60 GHz video link shows that changing the pinch state produces a measurable link-level effect.
+The authors then demonstrate a 60 GHz video-transmission link in which changing the pinch state creates a measurable link-level effect. That prototype is a valuable step beyond purely numerical channel optimization: it shows that the proposed geometry can alter a real millimeter-wave connection and that the underlying radiation mechanism can be exercised in hardware.
 
-**Evidence boundary.** This is early evidence from one video link: useful for physical plausibility, but not yet for scalability, repeatability across environments, or network-level performance.
+## What one prototype establishes
+
+The experiment supports physical plausibility, not yet network maturity. A single video link does not answer whether the mechanism remains repeatable across rooms, user motion, manufacturing variation, or multiple simultaneous users. It also leaves open the control overhead and mechanical reliability of repeatedly changing the pinch geometry.
+
+Even with those open questions, the work changes the discussion in a useful way. Pinching-antenna optimization can no longer treat each radiating point as an abstract, isotropic source; geometry, polarization, and actuation must be considered alongside placement and resource allocation. The next convincing step will be a repeatable multi-link evaluation that connects electromagnetic gain to network-level performance.
+
+## Research notes
+
+> ### Unlocking Directional Radiation in Pinching-Antenna Systems: Geometry-Aware Design and Experimental Verification
+>
+> **Authors:** Haoyang Li, Weidong Liu, Zhongliang Li, Gaojie Chen, Zheng Yang, Zhiguo Ding
+>
+> **Status:** Preprint
+>
+> **Primary source:** [arXiv:2607.24011](https://arxiv.org/abs/2607.24011)
+>
+> **Evidence note:** Full-wave simulations study shape and orientation, and a 60 GHz video link demonstrates a measurable link-level effect. The public evidence covers one prototype link, not repeatability across environments, a multi-user network, or field deployment.

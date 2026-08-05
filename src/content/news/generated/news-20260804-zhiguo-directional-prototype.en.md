@@ -1,6 +1,6 @@
 ---
 {
-  "title": "Zhiguo Ding update: directional radiation with a 60 GHz prototype",
+  "title": "Prof. Zhiguo Ding: directional radiation with a 60 GHz prototype",
   "locale": "en",
   "slug": "zhiguo-directional-prototype",
   "newsId": "news-20260804-zhiguo-directional-prototype",
@@ -43,16 +43,32 @@
   "archived": false
 }
 ---
-## Perspective
+## Moving a pinching-antenna model toward hardware
 
-Within Zhiguo Ding’s recent work, this preprint is notable for carrying a geometry-aware model from full-wave analysis to a 60 GHz hardware bench.
+Recent pinching-antenna research associated with Prof. Zhiguo Ding has emphasized the unusual freedom created when radiating points can be configured along a waveguide. The new preprint [Unlocking Directional Radiation in Pinching-Antenna Systems](https://arxiv.org/abs/2607.24011) adds a necessary physical layer to that program: the radiating point has a shape and polarization current, and those details determine whether the energy is directed usefully.
 
-## Unlocking Directional Radiation in Pinching-Antenna Systems: Geometry-Aware Design and Experimental Verification
+This shift matters because placement optimization alone can make the hardware appear more ideal than it is. By connecting the mechanical geometry of a pinch to induced current and directional gain, the work asks what a configurable antenna can actually realize rather than what an abstract channel model permits.
 
-**Authors:** Haoyang Li, Weidong Liu, Zhongliang Li, Gaojie Chen, Zheng Yang, Zhiguo Ding
+## A model-to-bench progression
 
-**Status:** Preprint
+The study first uses full-wave simulations to compare shapes and orientations. That electromagnetic analysis supplies a more detailed account of how a particular pinch configuration produces radiation, creating a bridge between geometry-aware modeling and the quantities later used in communication design.
 
-[Open the primary public record](https://arxiv.org/abs/2607.24011). In Zhiguo Ding’s recent research line, this work marks a model-to-bench transition. It combines polarization-current modeling and full-wave geometry studies with a 60 GHz video-transmission prototype.
+It then carries the idea to a 60 GHz video-transmission prototype. A measurable change in the link when the pinch state is altered is modest in scale but important in kind: the result is tied to a hardware bench, not only to an optimized numerical channel. For Prof. Zhiguo Ding’s broader work on pinching antennas, this is an early step from configurable-location theory toward experimentally grounded radiation design.
 
-**Evidence boundary.** The advisor-focused significance is the transition to hardware evidence; the public experiment still covers one link rather than a multi-user network or field deployment.
+## The next test for the research program
+
+The public experiment remains one link. It does not yet establish performance across different environments, repeated mechanical operation, multi-user interference, or network-scale control. Those questions are especially important because the attraction of pinching antennas lies in coordinated reconfiguration, where many physical and communication decisions may interact.
+
+The contribution should therefore be read as a stronger foundation rather than a finished platform. It validates that geometry-aware actuation can influence a real millimeter-wave link and clarifies which physical parameters future optimization must respect. Scaling that result into repeatable multi-user experiments would connect the program’s theoretical flexibility to system-level evidence.
+
+## Research notes
+
+> ### Unlocking Directional Radiation in Pinching-Antenna Systems: Geometry-Aware Design and Experimental Verification
+>
+> **Authors:** Haoyang Li, Weidong Liu, Zhongliang Li, Gaojie Chen, Zheng Yang, Zhiguo Ding
+>
+> **Status:** Preprint
+>
+> **Primary source:** [arXiv:2607.24011](https://arxiv.org/abs/2607.24011)
+>
+> **Evidence note:** The work combines polarization-current modeling, full-wave geometry studies, and a 60 GHz video-transmission prototype. The public hardware result covers one link, not a multi-user network, repeated cross-environment validation, or field deployment.

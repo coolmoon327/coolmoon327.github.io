@@ -1,6 +1,6 @@
 ---
 {
-  "title": "Zhiguo Ding: foundations, placement, and security for pinching antennas",
+  "title": "Prof. Zhiguo Ding: foundations, placement, and security for pinching antennas",
   "locale": "en",
   "slug": "zhiguo-pinching-foundations",
   "newsId": "news-20260803-zhiguo-pinching-foundations",
@@ -47,32 +47,39 @@
   "archived": false
 }
 ---
-## Perspective
+## Building a research line from first principles
 
-This advisor-focused reading follows how one research line is built: first define the system, then derive interpretable placement rules, and finally introduce secrecy objectives.
+The early pinching-antenna work of Prof. Zhiguo Ding illustrates how a new hardware idea can be developed into a research program. The sequence matters. Before optimizing a device, the communication model has to say what a pinch radiates and how several pinches interact. Before claiming adaptive placement, one has to identify the structure of a good location. Before discussing secure transmission, the model has to explain which spatial controls distinguish a legitimate receiver from an eavesdropper.
 
-## Flexible-Antenna Systems: A Pinching-Antenna Perspective
+The first paper treats dielectric particles on a waveguide as reconfigurable radiating points. For one waveguide, location changes line-of-sight geometry and path loss. Multiple pinches sharing a feed motivate NOMA, while multiple waveguides connect the system to a MISO interference channel with stated achievability conditions. This step gives the research line its common language: waveguide propagation, shared excitation, and position-dependent radiation.
 
-**Authors:** Zhiguo Ding, Robert Schober, H. Vincent Poor
+## Turning the model into an interpretable design
 
-**Zhiguo Ding foundations lens.** [Open the primary public record](https://doi.org/10.1109/TCOMM.2025.3555866). This foundation paper models dielectric particles as reconfigurable radiating points on a waveguide. Its single-waveguide analysis emphasizes line-of-sight and path-loss control; multiple pinches on one feed share a signal and motivate NOMA, while the multi-waveguide case is related to a MISO interference channel with stated achievability conditions.
+The placement paper then asks which of those locations should be used. Rather than relying only on numerical optimization, it derives closed-form antenna-placement rules for several OMA and NOMA objectives. Fairness-oriented OMA chooses a location that benefits the user set under the stated model; at high SNR, greedy OMA and fairness-oriented NOMA tend toward the user closest to the waveguide. The formulas make the tradeoff visible and provide a reference against which more elaborate algorithms can later be judged.
 
-**Zhiguo Ding foundations lens.** **Evidence boundary.** The evidence is analytical and simulation-based. Practical coupling loss, control overhead, channel acquisition, and a hardware prototype are outside the public abstract’s validation.
+The security letter adds a new objective without discarding that structure. Amplitude control is used to reinforce the intended link, phase alignment to suppress the eavesdropper, and a coalition game to activate a subset of discrete pre-installed pinching points. Shapley values and marginal contributions then describe how individual antennas support the coalition. Simulated secrecy-rate gains show that placement can become a security resource, not merely a coverage tool.
 
-## Analytical Optimization for Antenna Placement in Pinching-Antenna Systems
+Viewed as a research trajectory, the contribution is the progression from abstraction to design rule to application. Prof. Zhiguo Ding’s papers establish analytical handles that make later hardware and network studies easier to interpret. They do not yet settle coupling loss, acquisition overhead, control latency, or real adversarial behavior, but they define the questions a convincing prototype will have to answer.
 
-**Authors:** Zhiguo Ding, H. Vincent Poor
+## Research notes
 
-**Status:** Preprint
-
-**Zhiguo Ding foundations lens.** [Open the primary public record](https://arxiv.org/abs/2507.13307). The preprint derives closed-form antenna-placement rules for several OMA and NOMA objectives. Under its model, fairness-oriented OMA selects a location beneficial to all users, while high-SNR greedy OMA and fairness-oriented NOMA tend toward the user nearest the waveguide.
-
-**Zhiguo Ding foundations lens.** **Evidence boundary.** The conclusions depend on specific objectives and channel assumptions; the high-SNR statements are asymptotic and the record remains a single-version preprint.
-
-## Pinching-Antenna Systems for Physical Layer Security
-
-**Authors:** Kaidi Wang, Zhiguo Ding, Naofal Al-Dhahir
-
-**Zhiguo Ding foundations lens.** [Open the primary public record](https://doi.org/10.1109/LWC.2025.3624885). The letter uses amplitude control to strengthen the intended link and phase alignment to degrade an eavesdropper. A coalition game selects discrete pre-installed pinches, while Shapley and marginal-contribution values quantify each antenna’s role; simulation reports secrecy-rate gains over a coalition-value baseline.
-
-**Zhiguo Ding foundations lens.** **Evidence boundary.** The model assumes channel knowledge and discrete candidate positions, and the evidence is letter-scale simulation without a real adversary or hardware experiment.
+> ### Flexible-Antenna Systems: A Pinching-Antenna Perspective
+>
+> - **Authors:** Zhiguo Ding, Robert Schober, H. Vincent Poor
+> - **Status:** Published journal article
+> - **Primary source:** [IEEE Transactions on Communications](https://doi.org/10.1109/TCOMM.2025.3555866)
+> **Evidence note:** The analysis and simulations do not validate practical coupling loss, control overhead, channel acquisition, or a hardware prototype.
+>
+> ### Analytical Optimization for Antenna Placement in Pinching-Antenna Systems
+>
+> - **Authors:** Zhiguo Ding, H. Vincent Poor
+> - **Status:** Preprint
+> - **Primary source:** [arXiv:2507.13307](https://arxiv.org/abs/2507.13307)
+> **Evidence note:** The placement conclusions depend on the stated objectives and channel model; the high-SNR results are asymptotic.
+>
+> ### Pinching-Antenna Systems for Physical Layer Security
+>
+> - **Authors:** Kaidi Wang, Zhiguo Ding, Naofal Al-Dhahir
+> - **Status:** Published journal article
+> - **Primary source:** [IEEE Wireless Communications Letters](https://doi.org/10.1109/LWC.2025.3624885)
+> **Evidence note:** The model assumes channel knowledge and discrete candidate positions, and validation is simulation-based without a real adversary or hardware experiment.

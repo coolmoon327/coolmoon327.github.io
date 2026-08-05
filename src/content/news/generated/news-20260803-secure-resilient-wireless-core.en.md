@@ -57,32 +57,42 @@
   "archived": false
 }
 ---
-## Perspective
+## Resilience changes meaning as the system grows
 
-Comparing one result at each of three network layers reveals where resilience is being optimized: link policy, route selection, or service-chain placement. The metrics are not interchangeable, but the layered comparison exposes complementary failure modes.
+A wireless link, a satellite route, and a virtualized service chain can all fail under attack, but they fail in different ways. The link loses a useful policy, the route loses safe connectivity, and the service chain accumulates risky placements or disruptive migrations. Comparing recent work at these three layers shows why resilient wireless design needs a hierarchy of defenses rather than a single universal algorithm.
 
-## Outsmarting the Smart: Intelligent Jamming Strategies Against AI-Empowered Anti-Jamming Frameworks
+At the link, [Outsmarting the Smart](https://doi.org/10.1109/JSAC.2026.3700139) studies reinforcement-learning anti-jamming under black-box attack. Adaptive interaction-driven and optimization-driven jammers use the victim’s behavior to push it toward suboptimal operation, while the public abstract reports lower power use than conventional reactive jamming. The study exposes a basic weakness of learned control: a policy that adapts can also produce patterns an adversary learns to exploit.
 
-**Authors:** Muhammad Shahzad Arif, Yuhang Shen, Sami Muhaidat, Paschalis C. Sofotasios
+## Routing through a moving and contested topology
 
-**Cross-layer field lens.** [Open the primary public record](https://doi.org/10.1109/JSAC.2026.3700139). The public abstract compares interaction-driven and optimization-driven reactive jammers against a reinforcement-learning anti-jamming link under black-box access. It reports that adaptive learning-driven jammers can push the intelligent link toward suboptimal operation while spending less power than conventional reactive jamming, making the work a direct stress test of learned wireless control.
+The routing problem becomes harder in a LEO constellation because the topology is already changing before an attacker intervenes. A digital twin, federated learning, and quantum deep reinforcement learning are combined to optimize inter-satellite routes under smart jamming. Against selected numerical benchmarks, the public abstract reports 48.16% lower jamming success, 22.26% lower delay, and 6.17% higher energy efficiency. These figures do not come from live satellites or quantum hardware, but they show how route quality, security, and energy can be evaluated together.
 
-**Cross-layer field lens.** **Evidence boundary.** The abstract does not provide exact deltas for every claim, and the evidence is numerical benchmarking rather than an over-the-air deployment.
+## Keeping services safe after the route is chosen
 
-## Digital Twin-Assisted Federated Quantum Deep Reinforcement Learning for Resilient and Dynamic ISL Routing
+Connectivity alone does not guarantee that the services carried over it are safely placed. The cross-slice service-function-chain study jointly optimizes co-location risk, CPU consumption, and VNF migration stability in a dynamic constellation. Its evaluated setting reports 40% lower co-location risk, 80% fewer avoidable migrations, and a 23-fold warm-start speedup compared with a greedy baseline. The risk score is a standards-inspired proxy, yet it captures a failure mode that route optimization alone misses: two sensitive functions may remain reachable while still being placed together in an undesirable way.
 
-**Authors:** Silvirianti, Georges Kaddoum, Mahdi Chehimi, Sami Muhaidat
+The three studies therefore describe complementary layers of resilience. Link policy must withstand behavioral exploitation; routing must react to a moving, jammed topology; service orchestration must manage security risk without constant migration. Their metrics should not be merged into one headline number, and all three still rely on numerical or simulated validation. Their combined value is architectural: they show where one layer’s successful decision becomes the next layer’s starting condition.
 
-**Cross-layer field lens.** [Open the primary public record](https://doi.org/10.1109/JSAC.2026.3691713). A digital-twin and federated quantum deep-RL framework jointly optimizes dynamic LEO inter-satellite routing under smart jamming. The public abstract reports 48.16% lower jamming success, 22.26% lower delay, and 6.17% higher energy efficiency than the selected benchmarks.
+## Research notes
 
-**Cross-layer field lens.** **Evidence boundary.** Those gains come from model-based numerical experiments; the abstract reports no live satellite, quantum hardware, or operational routing trial.
-
-## Cross-Slice Co-Location Risk-Aware SFC Provisioning in Multi-Slice LEO Satellite Networks
-
-**Authors:** Mohammed Mahyoub, Wael Jaafar, Sami Muhaidat, Halim Yanikomeroglu
-
-**Status:** Preprint
-
-**Cross-layer field lens.** [Open the primary public record](https://arxiv.org/abs/2605.03656). This preprint jointly optimizes cross-slice co-location risk, CPU use, and VNF migration stability in dynamic LEO constellations. In the evaluated setting it reports 40% lower co-location risk, 80% fewer avoidable migrations, and a 23-fold warm-start speedup against a greedy baseline.
-
-**Cross-layer field lens.** **Evidence boundary.** The risk score is an optimization proxy inspired by standards principles, and all results are simulated rather than drawn from an operational constellation.
+> ### Outsmarting the Smart: Intelligent Jamming Strategies Against AI-Empowered Anti-Jamming Frameworks
+>
+> - **Authors:** Muhammad Shahzad Arif, Yuhang Shen, Sami Muhaidat, Paschalis C. Sofotasios
+> - **Status:** Published journal article
+> - **Primary source:** [IEEE Journal on Selected Areas in Communications](https://doi.org/10.1109/JSAC.2026.3700139)
+> **Evidence note:** The public abstract does not quantify every claim; validation is numerical benchmarking rather than an over-the-air deployment.
+>
+>
+> ### Digital Twin-Assisted Federated Quantum Deep Reinforcement Learning for Resilient and Dynamic ISL Routing
+>
+> - **Authors:** Silvirianti, Georges Kaddoum, Mahdi Chehimi, Sami Muhaidat
+> - **Status:** Published journal article
+> - **Primary source:** [IEEE Journal on Selected Areas in Communications](https://doi.org/10.1109/JSAC.2026.3691713)
+> **Evidence note:** The 48.16%, 22.26%, and 6.17% improvements are from model-based numerical experiments, not live satellite or quantum-hardware trials.
+>
+> ### Cross-Slice Co-Location Risk-Aware SFC Provisioning in Multi-Slice LEO Satellite Networks
+>
+> - **Authors:** Mohammed Mahyoub, Wael Jaafar, Sami Muhaidat, Halim Yanikomeroglu
+> - **Status:** Preprint
+> - **Primary source:** [arXiv:2605.03656](https://arxiv.org/abs/2605.03656)
+> **Evidence note:** The standards-inspired risk score is an optimization proxy, and validation is simulated rather than operational.

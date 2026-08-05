@@ -51,30 +51,39 @@
   "archived": false
 }
 ---
-## Perspective
+## An intelligent defender creates a new kind of target
 
-The three studies form an attacker-centered progression: exploit a learned policy through black-box interaction, shape its observations and rewards, and then examine how imperfect sensing changes the attack surface.
+Muhammad Shahzad Arif’s recent anti-jamming work asks what happens when the attacker stops being a fixed source of interference and starts studying the defender. A reinforcement-learning radio changes channels or operating modes from experience, but those decisions also reveal a policy. The three studies follow that attack surface from black-box behavioral exploitation, through manipulation of the learning signal, to the surprising effects of imperfect sensing.
 
-## Outsmarting the Smart: Intelligent Jamming Strategies Against AI-Empowered Anti-Jamming Frameworks
+[Outsmarting the Smart](https://doi.org/10.1109/JSAC.2026.3700139) starts with an adversary that has black-box access rather than the victim’s internal model. Interaction-driven and optimization-driven reactive jammers adapt to observed behavior and can push the learned anti-jamming link toward suboptimal operation. The public abstract also reports lower power consumption than conventional reactive jamming. A defender does not need to expose its parameters to leak useful information; repeated actions can be enough.
 
-**Authors:** Muhammad Shahzad Arif, Yuhang Shen, Sami Muhaidat, Paschalis C. Sofotasios
+## Attacking what the agent believes
 
-**Muhammad Shahzad Arif lens.** [Open the primary public record](https://doi.org/10.1109/JSAC.2026.3700139). The public abstract compares interaction-driven and optimization-driven reactive jammers against a reinforcement-learning anti-jamming link under black-box access. It reports that adaptive learning-driven jammers can push the intelligent link toward suboptimal operation while spending less power than conventional reactive jamming, making the work a direct stress test of learned wireless control.
+[Bait Tactics](https://doi.org/10.1109/PIMRC62392.2025.11275524) targets the agent’s perceived state transitions and reward variance. The victim is a deep-RL cognitive radio that can exploit jamming energy through backscatter and harvesting, so the attacker must influence both communication and learning. In the reported simulation, victim throughput falls by as much as 72%, while the jammer uses as much as 67% less power than standard reactive jamming. These are scenario-specific values, but they demonstrate that misleading experience can be more efficient than simply transmitting more interference.
 
-**Muhammad Shahzad Arif lens.** **Evidence boundary.** The abstract does not provide exact deltas for every claim, and the evidence is numerical benchmarking rather than an over-the-air deployment.
+The hardware-impairment paper then asks whether a jammer becomes harmless when its sensing is inaccurate. False alarms and missed detections do weaken its observation, yet they also randomize the interference pattern. Under the evaluated model, that randomness can make the jammer more disruptive to an RL defender than an idealized jammer using the same resources. An error on the attacking side can therefore act like an unintended form of adversarial diversity.
 
-## Bait Tactics: Misleading DRL-Based Cognitive Anti-Jamming Communications via Adversarial Learning
+Together, the studies shift anti-jamming evaluation away from a contest against one fixed baseline. A credible learned defense should be tested against adaptive behavior, corrupted feedback, and uncertainty in the attacker itself. The current evidence is numerical and tied to specific learning and sensing models, so it does not establish universal attack success. It does, however, define a much harder and more realistic evaluation agenda.
 
-**Authors:** Muhammad Shahzad Arif, Sami Muhaidat, Paschalis C. Sofotasios
+## Research notes
 
-**Muhammad Shahzad Arif lens.** [Open the primary public record](https://doi.org/10.1109/PIMRC62392.2025.11275524). The study manipulates perceived state transitions and reward variance for a deep-reinforcement-learning anti-jamming agent that also exploits jamming energy through backscatter and harvesting. In the reported simulation, victim throughput falls by as much as 72% while the jammer saves as much as 67% power relative to standard reactive jamming.
-
-**Muhammad Shahzad Arif lens.** **Evidence boundary.** Both percentages are scenario-specific simulation results and should not be read as field measurements or universal attack guarantees.
-
-## Performance of AI-Empowered Anti-Jamming Communications under Hardware Impairments
-
-**Authors:** Muhammad Shahzad Arif, Sami Muhaidat, Antonios Argyriou, Paschalis C. Sofotasios
-
-**Muhammad Shahzad Arif lens.** [Open the primary public record](https://doi.org/10.1109/MECOM61498.2024.10881377). The simulations isolate sensing false alarms and missed detections in a reactive jammer. Under the studied learning setup, those imperfections can randomize the jammer pattern and make it more disruptive to an RL anti-jamming agent than an idealized jammer using the same resources, a useful warning that hardware errors do not always weaken an adversary.
-
-**Muhammad Shahzad Arif lens.** **Evidence boundary.** The conclusion is tied to the paper’s sensing-error and learning model and does not cover every radio impairment or deployed waveform.
+> ### Outsmarting the Smart: Intelligent Jamming Strategies Against AI-Empowered Anti-Jamming Frameworks
+>
+> - **Authors:** Muhammad Shahzad Arif, Yuhang Shen, Sami Muhaidat, Paschalis C. Sofotasios
+> - **Status:** Published journal article
+> - **Primary source:** [IEEE Journal on Selected Areas in Communications](https://doi.org/10.1109/JSAC.2026.3700139)
+> **Evidence note:** The public abstract does not quantify every claim; validation is numerical benchmarking rather than an over-the-air deployment.
+>
+> ### Bait Tactics: Misleading DRL-Based Cognitive Anti-Jamming Communications via Adversarial Learning
+>
+> - **Authors:** Muhammad Shahzad Arif, Sami Muhaidat, Paschalis C. Sofotasios
+> - **Status:** Published conference paper
+> - **Primary source:** [IEEE PIMRC](https://doi.org/10.1109/PIMRC62392.2025.11275524)
+> **Evidence note:** The 72% throughput loss and 67% jammer-power saving are specific to the reported simulation scenario.
+>
+> ### Performance of AI-Empowered Anti-Jamming Communications under Hardware Impairments
+>
+> - **Authors:** Muhammad Shahzad Arif, Sami Muhaidat, Antonios Argyriou, Paschalis C. Sofotasios
+> - **Status:** Published conference paper
+> - **Primary source:** [IEEE MECOM](https://doi.org/10.1109/MECOM61498.2024.10881377)
+> **Evidence note:** The conclusion follows from the evaluated sensing-error and learning model and does not cover every radio impairment or waveform.

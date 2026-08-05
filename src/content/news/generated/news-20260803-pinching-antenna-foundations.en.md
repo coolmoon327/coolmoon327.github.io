@@ -46,32 +46,41 @@
   "archived": false
 }
 ---
-## Perspective
+## Why position can become a radio control variable
 
-Read together, these papers establish the baseline vocabulary of pinching-antenna systems—waveguide radiation, placement structure, multiple access, and secrecy—before later prototype claims are interpreted.
+A conventional antenna array is designed around radiators whose locations are fixed. A pinching-antenna system changes that premise: dielectric elements placed along a waveguide act as reconfigurable radiating points, so geometry becomes part of transmission design. The attraction is easy to see, but the technology needs a clear mathematical baseline before prototype results or performance claims can be judged.
 
-## Flexible-Antenna Systems: A Pinching-Antenna Perspective
+The foundational paper led by Prof. Zhiguo Ding provides that baseline. In a single-waveguide setting, line-of-sight geometry and path loss connect the pinch locations to received power. Several pinches driven by the same feed share one signal, which naturally leads to a NOMA interpretation. With multiple waveguides, the model becomes related to a MISO interference channel and supports stated achievability conditions. This framework turns a visually intuitive idea—moving a radiation point closer to a user—into a communication model that can be analyzed.
 
-**Authors:** Zhiguo Ding, Robert Schober, H. Vincent Poor
+## From system geometry to placement rules
 
-**Pinching-antenna field lens.** [Open the primary public record](https://doi.org/10.1109/TCOMM.2025.3555866). This foundation paper models dielectric particles as reconfigurable radiating points on a waveguide. Its single-waveguide analysis emphasizes line-of-sight and path-loss control; multiple pinches on one feed share a signal and motivate NOMA, while the multi-waveguide case is related to a MISO interference channel with stated achievability conditions.
+Once location is a control variable, the next question is whether useful placements require a costly numerical search. [Analytical Optimization for Antenna Placement](https://arxiv.org/abs/2507.13307) derives closed-form rules for several OMA and NOMA objectives. Under the paper’s assumptions, fairness-oriented OMA chooses a position that benefits all users. At high SNR, greedy OMA and fairness-oriented NOMA tend to favor the user closest to the waveguide. The result is valuable because it exposes the structure of the optimization rather than treating placement as a black box, although the conclusions remain tied to the selected objective and channel model.
 
-**Pinching-antenna field lens.** **Evidence boundary.** The evidence is analytical and simulation-based. Practical coupling loss, control overhead, channel acquisition, and a hardware prototype are outside the public abstract’s validation.
+## Making geometry serve secrecy
 
-## Analytical Optimization for Antenna Placement in Pinching-Antenna Systems
+The security paper asks whether the same spatial flexibility can separate a legitimate receiver from an eavesdropper. It combines amplitude control that strengthens the intended link with phase alignment that weakens the unintended one. A coalition game chooses among discrete, pre-installed pinching points, while Shapley values and marginal contributions quantify how much each active antenna adds. Simulations report secrecy-rate gains over a coalition-value baseline.
 
-**Authors:** Zhiguo Ding, H. Vincent Poor
+These three papers establish a coherent starting point for the field: a waveguide-based system model, interpretable placement structure, and a first physical-layer security design. They also show what is still missing. Practical coupling loss, channel acquisition, control overhead, and measured hardware behavior are not resolved by analytical and simulation results. The foundation is therefore substantial, but it should be read as the platform on which experiments must be built rather than as proof that the complete system is deployment-ready.
 
-**Status:** Preprint
+## Research notes
 
-**Pinching-antenna field lens.** [Open the primary public record](https://arxiv.org/abs/2507.13307). The preprint derives closed-form antenna-placement rules for several OMA and NOMA objectives. Under its model, fairness-oriented OMA selects a location beneficial to all users, while high-SNR greedy OMA and fairness-oriented NOMA tend toward the user nearest the waveguide.
-
-**Pinching-antenna field lens.** **Evidence boundary.** The conclusions depend on specific objectives and channel assumptions; the high-SNR statements are asymptotic and the record remains a single-version preprint.
-
-## Pinching-Antenna Systems for Physical Layer Security
-
-**Authors:** Kaidi Wang, Zhiguo Ding, Naofal Al-Dhahir
-
-**Pinching-antenna field lens.** [Open the primary public record](https://doi.org/10.1109/LWC.2025.3624885). The letter uses amplitude control to strengthen the intended link and phase alignment to degrade an eavesdropper. A coalition game selects discrete pre-installed pinches, while Shapley and marginal-contribution values quantify each antenna’s role; simulation reports secrecy-rate gains over a coalition-value baseline.
-
-**Pinching-antenna field lens.** **Evidence boundary.** The model assumes channel knowledge and discrete candidate positions, and the evidence is letter-scale simulation without a real adversary or hardware experiment.
+> ### Flexible-Antenna Systems: A Pinching-Antenna Perspective
+>
+> - **Authors:** Zhiguo Ding, Robert Schober, H. Vincent Poor
+> - **Status:** Published journal article
+> - **Primary source:** [IEEE Transactions on Communications](https://doi.org/10.1109/TCOMM.2025.3555866)
+> **Evidence note:** The analysis and simulations do not validate practical coupling loss, control overhead, channel acquisition, or a hardware prototype.
+>
+> ### Analytical Optimization for Antenna Placement in Pinching-Antenna Systems
+>
+> - **Authors:** Zhiguo Ding, H. Vincent Poor
+> - **Status:** Preprint
+> - **Primary source:** [arXiv:2507.13307](https://arxiv.org/abs/2507.13307)
+> **Evidence note:** The placement conclusions depend on the stated objectives and channel model; the high-SNR results are asymptotic.
+>
+> ### Pinching-Antenna Systems for Physical Layer Security
+>
+> - **Authors:** Kaidi Wang, Zhiguo Ding, Naofal Al-Dhahir
+> - **Status:** Published journal article
+> - **Primary source:** [IEEE Wireless Communications Letters](https://doi.org/10.1109/LWC.2025.3624885)
+> **Evidence note:** The model assumes channel knowledge and discrete candidate positions, and validation is simulation-based without a real adversary or hardware experiment.

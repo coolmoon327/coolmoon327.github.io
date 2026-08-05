@@ -51,30 +51,39 @@
   "archived": false
 }
 ---
-## 观察视角
+## 智能防御本身也会暴露新的攻击面
 
-三项工作构成一条以攻击者为中心的研究脉络：先通过黑盒交互利用学习策略，再操纵其观测与奖励，最后考察不完美感知如何改变攻击面。
+Muhammad Shahzad Arif 近期的抗干扰工作，把攻击者从“固定发射噪声的设备”变成了“会观察防御者的智能体”。强化学习无线系统会根据经验切换信道或调整工作方式，但一连串决策也会暴露策略规律。三项研究依次考察黑盒行为利用、学习信号操纵，以及感知缺陷带来的反常影响。
 
-## Outsmarting the Smart: Intelligent Jamming Strategies Against AI-Empowered Anti-Jamming Frameworks
+[Outsmarting the Smart](https://doi.org/10.1109/JSAC.2026.3700139)中的对手不需要读取受害模型内部参数，只需通过黑盒交互观察链路行为。交互驱动与优化驱动的反应式干扰器据此持续适应，把学习型抗干扰链路推向次优状态；公开摘要还报告了低于传统反应式干扰的功率消耗。由此可见，参数不公开并不意味着策略没有泄露信息，重复行为本身就可能被利用。
 
-**作者：** Muhammad Shahzad Arif, Yuhang Shen, Sami Muhaidat, Paschalis C. Sofotasios
+## 攻击智能体所相信的“经验”
 
-**Muhammad Shahzad Arif 视角。** [查看主要公开记录](https://doi.org/10.1109/JSAC.2026.3700139)。公开摘要比较了交互驱动与优化驱动的反应式干扰器，并在黑盒访问条件下攻击强化学习抗干扰链路。结果表明，自适应学习型干扰器可将智能链路推向次优运行状态，同时比传统反应式干扰消耗更少功率，因此该工作可视为对学习型无线控制的一次直接压力测试。
+[Bait Tactics](https://doi.org/10.1109/PIMRC62392.2025.11275524)把目标转向智能体感知到的状态转移和奖励方差。受害者是一套能够通过反向散射与能量采集利用干扰能量的深度强化学习认知无线系统，因此攻击同时影响通信过程和学习过程。在论文仿真中，受害链路吞吐量最高下降 72%，干扰器相对标准反应式干扰最高节省 67% 功率。数值虽然只属于特定场景，却说明误导经验可能比单纯增加干扰功率更有效。
 
-**证据边界。** 摘要没有为每项结论给出完整的精确差值，证据来自数值基准测试，而不是空口部署。
+硬件非理想因素研究随后提出一个反常问题：感知不准的干扰器是否一定更弱？虚警和漏检确实让观测变差，却也会把干扰模式随机化。在论文采用的模型下，这种随机性反而使强化学习防御者更难掌握规律，使用相同资源的不完美干扰器可能比理想化干扰器造成更强破坏。攻击方的误差，甚至会意外形成一种“对抗多样性”。
 
-## Bait Tactics: Misleading DRL-Based Cognitive Anti-Jamming Communications via Adversarial Learning
+三项工作共同把抗干扰评估从“对付一个固定基线”推进到更困难的情形。可信的学习型防御，需要同时面对会适应的行为、被污染的反馈，以及攻击者自身的不确定性。现有结果仍是受具体学习和感知模型约束的数值证据，不能解释成普遍攻击成功率；但它们已经明确指出，下一代抗干扰系统应该接受怎样的压力测试。
 
-**作者：** Muhammad Shahzad Arif, Sami Muhaidat, Paschalis C. Sofotasios
+## 研究札记
 
-**Muhammad Shahzad Arif 视角。** [查看主要公开记录](https://doi.org/10.1109/PIMRC62392.2025.11275524)。该研究通过操纵深度强化学习抗干扰智能体感知到的状态转移与奖励方差实施“诱饵”攻击，同时考虑利用干扰能量进行反向散射和能量采集。在论文给定的仿真中，受害链路吞吐量最高下降 72%，而干扰器相对标准反应式干扰最高节省 67% 功率。
-
-**证据边界。** 这两个百分比都只适用于论文设定的仿真场景，不能视为空口测量或普遍攻击保证。
-
-## Performance of AI-Empowered Anti-Jamming Communications under Hardware Impairments
-
-**作者：** Muhammad Shahzad Arif, Sami Muhaidat, Antonios Argyriou, Paschalis C. Sofotasios
-
-**Muhammad Shahzad Arif 视角。** [查看主要公开记录](https://doi.org/10.1109/MECOM61498.2024.10881377)。该仿真研究单独分析反应式干扰器中的感知虚警与漏检。在论文给定的学习设置下，这些缺陷会随机化干扰模式，使其在相同资源下反而比理想化干扰器更能破坏强化学习抗干扰智能体，提示硬件误差并不总会削弱对手。
-
-**证据边界。** 结论受论文的感知误差与学习模型约束，不能覆盖所有射频缺陷或已部署波形。
+> ### Outsmarting the Smart: Intelligent Jamming Strategies Against AI-Empowered Anti-Jamming Frameworks
+>
+> - **作者：** Muhammad Shahzad Arif, Yuhang Shen, Sami Muhaidat, Paschalis C. Sofotasios
+> - **状态：** 已发表期刊论文
+> - **主要来源：** [IEEE Journal on Selected Areas in Communications](https://doi.org/10.1109/JSAC.2026.3700139)
+> **证据说明：** 公开摘要没有量化所有结论；验证属于数值基准测试，并非空口部署。
+>
+> ### Bait Tactics: Misleading DRL-Based Cognitive Anti-Jamming Communications via Adversarial Learning
+>
+> - **作者：** Muhammad Shahzad Arif, Sami Muhaidat, Paschalis C. Sofotasios
+> - **状态：** 已发表会议论文
+> - **主要来源：** [IEEE PIMRC](https://doi.org/10.1109/PIMRC62392.2025.11275524)
+> **证据说明：** 72% 的吞吐量下降与 67% 的干扰器功率节省只适用于论文给定的仿真场景。
+>
+> ### Performance of AI-Empowered Anti-Jamming Communications under Hardware Impairments
+>
+> - **作者：** Muhammad Shahzad Arif, Sami Muhaidat, Antonios Argyriou, Paschalis C. Sofotasios
+> - **状态：** 已发表会议论文
+> - **主要来源：** [IEEE MECOM](https://doi.org/10.1109/MECOM61498.2024.10881377)
+> **证据说明：** 结论受论文采用的感知误差与学习模型约束，不能覆盖所有射频缺陷或波形。

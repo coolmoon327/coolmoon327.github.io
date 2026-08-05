@@ -57,32 +57,42 @@
   "archived": false
 }
 ---
-## 观察视角
+## 系统尺度一变，“韧性”的含义也会变化
 
-把三个网络层上的代表性结果并列，可以看清韧性究竟被优化在何处：链路策略、路由选择，还是服务链放置。三类指标不能直接互换，但分层比较能够揭示互补的失效模式。
+无线链路、卫星路由和虚拟化服务链都可能在攻击下失效，但失效方式并不相同：链路可能学到错误策略，路由可能失去安全连通性，服务链则可能形成高风险共址或频繁迁移。把三个层次的近期工作放在一起，可以看出韧性无线系统需要的是分层防线，而不是一个包打天下的算法。
 
-## Outsmarting the Smart: Intelligent Jamming Strategies Against AI-Empowered Anti-Jamming Frameworks
+链路层的 [Outsmarting the Smart](https://doi.org/10.1109/JSAC.2026.3700139)研究黑盒攻击下的强化学习抗干扰。交互驱动与优化驱动的自适应干扰器从受害链路的行为中寻找规律，把它推向次优状态；公开摘要还指出，其功率消耗低于传统反应式干扰。学习控制的两面性由此显现：策略能够适应环境，也会留下可供对手学习的模式。
 
-**作者：** Muhammad Shahzad Arif, Yuhang Shen, Sami Muhaidat, Paschalis C. Sofotasios
+## 在持续运动且存在对抗的拓扑中选路
 
-**跨层领域视角。** [查看主要公开记录](https://doi.org/10.1109/JSAC.2026.3700139)。公开摘要比较了交互驱动与优化驱动的反应式干扰器，并在黑盒访问条件下攻击强化学习抗干扰链路。结果表明，自适应学习型干扰器可将智能链路推向次优运行状态，同时比传统反应式干扰消耗更少功率，因此该工作可视为对学习型无线控制的一次直接压力测试。
+低轨星座本身就在不断变化，攻击出现后，路由问题更加复杂。相关工作把数字孪生、联邦学习和量子深度强化学习结合起来，在智能干扰下优化星间路由。相对所选数值基线，公开摘要报告了 48.16% 的干扰成功率下降、22.26% 的时延下降和 6.17% 的能效提升。这些结果不是来自真实卫星或量子硬件，但它们把路由质量、安全与能耗放进了同一个评估框架。
 
-**证据边界。** 摘要没有为每项结论给出完整的精确差值，证据来自数值基准测试，而不是空口部署。
+## 路由建立之后，服务仍可能放错位置
 
-## Digital Twin-Assisted Federated Quantum Deep Reinforcement Learning for Resilient and Dynamic ISL Routing
+连通并不等于服务部署安全。跨切片服务功能链工作同时优化共址风险、CPU 使用和虚拟网络功能迁移稳定性。在论文评估环境中，相对贪心基线，共址风险下降 40%，可避免迁移减少 80%，热启动速度提高 23 倍。风险分数是受标准原则启发的代理指标，却抓住了单纯路由优化看不到的问题：两个敏感功能即使都可达，也可能因为被放在一起而产生风险。
 
-**作者：** Silvirianti, Georges Kaddoum, Mahdi Chehimi, Sami Muhaidat
+三项研究对应的防线彼此衔接：链路策略要抵抗行为利用，路由要适应运动和干扰，服务编排还要在安全风险与迁移代价之间取舍。三类指标不能拼成一个漂亮的总分，现有证据也都以数值或仿真为主；但它们共同给出了清晰架构——上一层做出的“成功”决定，往往只是下一层问题的起点。
 
-**跨层领域视角。** [查看主要公开记录](https://doi.org/10.1109/JSAC.2026.3691713)。该工作把数字孪生、联邦学习和量子深度强化学习结合起来，在智能干扰下联合优化动态低轨卫星星间路由。公开摘要相对所选基线报告了 48.16% 的干扰成功率下降、22.26% 的时延下降以及 6.17% 的能效提升。
+## 研究札记
 
-**证据边界。** 这些增益来自模型驱动的数值实验，摘要没有报告真实卫星、量子硬件或运营路由试验。
-
-## Cross-Slice Co-Location Risk-Aware SFC Provisioning in Multi-Slice LEO Satellite Networks
-
-**作者：** Mohammed Mahyoub, Wael Jaafar, Sami Muhaidat, Halim Yanikomeroglu
-
-**状态：** 预印本
-
-**跨层领域视角。** [查看主要公开记录](https://arxiv.org/abs/2605.03656)。该预印本在动态低轨星座中联合优化跨切片共址风险、CPU 使用和虚拟网络功能迁移稳定性。在论文评估设置下，相对贪心基线报告了 40% 的共址风险下降、80% 的可避免迁移减少以及 23 倍的热启动加速。
-
-**证据边界。** 风险分数是受标准原则启发的优化代理指标，全部结果来自仿真而非运营星座。
+> ### Outsmarting the Smart: Intelligent Jamming Strategies Against AI-Empowered Anti-Jamming Frameworks
+>
+> - **作者：** Muhammad Shahzad Arif, Yuhang Shen, Sami Muhaidat, Paschalis C. Sofotasios
+> - **状态：** 已发表期刊论文
+> - **主要来源：** [IEEE Journal on Selected Areas in Communications](https://doi.org/10.1109/JSAC.2026.3700139)
+> **证据说明：** 公开摘要没有量化所有结论；验证属于数值基准测试，并非空口部署。
+>
+>
+> ### Digital Twin-Assisted Federated Quantum Deep Reinforcement Learning for Resilient and Dynamic ISL Routing
+>
+> - **作者：** Silvirianti, Georges Kaddoum, Mahdi Chehimi, Sami Muhaidat
+> - **状态：** 已发表期刊论文
+> - **主要来源：** [IEEE Journal on Selected Areas in Communications](https://doi.org/10.1109/JSAC.2026.3691713)
+> **证据说明：** 48.16%、22.26% 和 6.17% 的改进来自模型驱动数值实验，不是真实卫星或量子硬件试验。
+>
+> ### Cross-Slice Co-Location Risk-Aware SFC Provisioning in Multi-Slice LEO Satellite Networks
+>
+> - **作者：** Mohammed Mahyoub, Wael Jaafar, Sami Muhaidat, Halim Yanikomeroglu
+> - **状态：** 预印本
+> - **主要来源：** [arXiv:2605.03656](https://arxiv.org/abs/2605.03656)
+> **证据说明：** 受标准原则启发的风险分数属于优化代理指标，验证来自仿真而非运营系统。
