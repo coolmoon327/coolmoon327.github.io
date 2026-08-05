@@ -1183,6 +1183,187 @@
   }
 }
 
+/* Unlayered so these document styles reliably beat Preflight's resets. */
+.article-prose {
+  min-width: 0;
+  font-size: clamp(1rem, 0.975rem + 0.12vw, 1.0625rem);
+  line-height: 1.78;
+  overflow-wrap: anywhere;
+}
+
+.article-prose:lang(zh) {
+  line-height: 1.9;
+  letter-spacing: 0.022em;
+}
+
+.article-prose > :first-child {
+  margin-block-start: 0;
+}
+
+.article-prose > :last-child {
+  margin-block-end: 0;
+}
+
+.article-prose :where(h2, h3, h4) {
+  color: var(--global-text-color);
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.article-prose h2 {
+  margin-block: 2.75rem 0.9rem;
+  padding-block-end: 0.45rem;
+  border-bottom: 1px solid var(--global-divider-color);
+  font-size: clamp(1.5rem, 1.36rem + 0.68vw, 1.9rem);
+}
+
+.article-prose h3 {
+  margin-block: 2.1rem 0.75rem;
+  font-size: clamp(1.22rem, 1.14rem + 0.4vw, 1.45rem);
+}
+
+.article-prose h4 {
+  margin-block: 1.65rem 0.6rem;
+  font-size: 1.08rem;
+}
+
+.article-prose:lang(zh) :where(h2, h3, h4) {
+  letter-spacing: 0.015em;
+}
+
+.article-prose p {
+  margin-block: 0 1.1rem;
+}
+
+.article-prose :where(ul, ol) {
+  margin-block: 1rem 1.25rem;
+  padding-inline-start: 1.6rem;
+}
+
+.article-prose ul {
+  list-style: disc;
+}
+
+.article-prose ol {
+  list-style: decimal;
+}
+
+.article-prose li {
+  margin-block: 0.42rem;
+  padding-inline-start: 0.18rem;
+}
+
+.article-prose li::marker {
+  color: var(--global-theme-color);
+  font-weight: 700;
+}
+
+.article-prose li > :where(p, ul, ol) {
+  margin-block: 0.45rem;
+}
+
+.article-prose a {
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.article-prose :where(pre, table, blockquote) {
+  margin-block: 1.5rem;
+}
+
+.article-prose pre {
+  max-width: 100%;
+  border: 1px solid var(--global-divider-color);
+  overflow-x: auto;
+  line-height: 1.65;
+}
+
+.article-prose pre code {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: pre;
+}
+
+.article-prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+
+.article-prose blockquote {
+  border: 1px solid color-mix(in srgb, var(--global-theme-color) 24%, var(--global-divider-color));
+  border-inline-start: 0.28rem solid var(--global-theme-color);
+  border-radius: 0.75rem;
+  padding: clamp(1rem, 2.5vw, 1.35rem) clamp(1rem, 3vw, 1.5rem);
+  background: color-mix(in srgb, var(--global-theme-color) 5%, var(--global-card-bg-color));
+  font-style: normal;
+}
+
+.article-prose blockquote > :first-child {
+  margin-block-start: 0;
+}
+
+.article-prose blockquote > :last-child {
+  margin-block-end: 0;
+}
+
+.article-prose hr {
+  margin-block: 2.75rem;
+}
+
+.article-prose img {
+  display: block;
+  margin: 1.75rem auto;
+}
+
+.article-prose :where(.katex-display, .math-display) {
+  max-width: 100%;
+  margin-block: 1.5rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+@media (max-width: 48rem) {
+  .article-prose {
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+
+  .article-prose:lang(zh) {
+    line-height: 1.86;
+  }
+
+  .article-prose h2 {
+    margin-block-start: 2.25rem;
+    font-size: 1.45rem;
+  }
+
+  .article-prose h3 {
+    margin-block-start: 1.75rem;
+    font-size: 1.22rem;
+  }
+
+  .article-prose h4 {
+    margin-block-start: 1.4rem;
+  }
+
+  .article-prose :where(ul, ol) {
+    padding-inline-start: 1.35rem;
+  }
+
+  .article-prose pre {
+    font-size: 0.82rem;
+  }
+
+  .article-prose blockquote {
+    padding: 0.95rem 1rem;
+  }
+}
+
 /* ─── Shiki dual-theme dark mode ─────────────────────────────────────────── */
 /* Shiki embeds light colors as inline styles and dark colors as CSS vars.   */
 /* This maps our [data-theme='dark'] toggle to those variables.              */
