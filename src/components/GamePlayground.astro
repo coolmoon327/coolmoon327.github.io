@@ -467,6 +467,12 @@ const balanceGameColumns = (games: PlaygroundGame[], currentLocale: 'en' | 'zh')
     }
   }
 
+  @media (max-width: 279px) {
+    .game-stage {
+      display: none;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .game-card {
       transition: none;
