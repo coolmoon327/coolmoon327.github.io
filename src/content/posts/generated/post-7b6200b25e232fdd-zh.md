@@ -1,39 +1,89 @@
 ---
-title: "通过 VLAN 单线复用将光猫 IPTV 桥接到路由器"
+title: "宽带与 IPTV 的 VLAN 单线复用：一种可迁移的设计范式"
 date: "2024-01-04"
-description: "通过 VLAN Trunk 在光猫与路由器之间用一根网线承载互联网与桥接 IPTV 流量的配置方法。"
-tags: ["iptv", "vlan", "router"]
-categories: ["Networking"]
+math: false
+description: "用一种可迁移的 VLAN Trunk 设计，在单条物理链路上承载宽带与 IPTV，并保持流量域边界清晰。"
+tags: ["vlan", "iptv", "network-design", "openwrt"]
+categories: ["Systems Engineering"]
 locale: "zh"
-slug: "bridge-iptv-over-vlan-single-cable"
+slug: "vlan-trunking-for-broadband-and-iptv"
 sourceId: "post-7b6200b25e232fdd"
 translationKey: "post-7b6200b25e232fdd"
 generated: true
 draft: false
 ---
 
-> 该方案仅适用于 IPTV 链路的转发，不能使用 M3U。
-> 该网络环境已经实现了光猫的桥接化，并由路由器进行 PPPoE 拨号。
+一根以太网线可以同时承载宽带与 IPTV，而不必把两种业务混在一起。可迁移的核心思路是：始终把两者保留为独立的二层流量域，在共享链路上为两个流量域加标签，只在预期的接入口去除相应标签。
 
-**1. 原理**：利用 VLAN 技术，将光猫的多个端口桥接到路由器上的不同端口，于是就能用路由器同时连接上网设备与 IPTV 设备。
+这是一种设计范式，而不是某款设备的配置教程。VLAN 标识、业务模式、认证方式、DHCP 行为与组播需求均由运营商决定，必须以获得授权的文档为准。
 
-**2. 过程**：
-(a) 获取光猫的超级账号和超级密码，可以给负责自家宽带的运营商师傅打电话询问。
+## 设计问题
 
-(b) 在光猫上对网络流（INTERNET）与 IPTV 流（OTHER）分别设置桥接模式的 VLAN（1337 和 43）。
+光网络终端或光猫可能把宽带与 IPTV 呈现为相互独立的业务电路。路由器可以终结宽带会话，例如使用 [PPPoE](https://datatracker.ietf.org/doc/html/rfc2516)；与此同时，机顶盒可能需要以桥接以太网业务的形式接入 IPTV 电路。
 
-![光猫 INTERNET VLAN 桥接配置](/assets/blog/generated/nas-import/dan-xian-fu-yong-tong-guo-vlan-jiang-guang-mao-de-iptv-qiao-jie-dao-lu-you-qi-sh/image-001.png)
+当运营商边界与路由器之间只有一条物理链路时，支持 VLAN 的 Trunk 可以同时承载两个电路。Trunk 解决的是布线问题；它不会把一种业务转换为另一种业务，也不会自动生成应用层播放列表或互联网视频服务。
 
-![光猫 IPTV VLAN 桥接配置](/assets/blog/generated/nas-import/dan-xian-fu-yong-tong-guo-vlan-jiang-guang-mao-de-iptv-qiao-jie-dao-lu-you-qi-sh/image-002.png)
+## 二层模型
 
-(c) 将两个 VLAN 配置在一个与路由器直连的端口上，该端口成为 Trunk 链路的接口。
+[OpenWrt VLAN 文档](https://openwrt.org/docs/guide-user/network/vlan/switch_configuration)区分了带标签的 Trunk 端口与不带标签的 Access 端口。应用到这里，整个模型包含四种角色：
 
-![光猫 Trunk 端口 VLAN 配置](/assets/blog/generated/nas-import/dan-xian-fu-yong-tong-guo-vlan-jiang-guang-mao-de-iptv-qiao-jie-dao-lu-you-qi-sh/image-003.png)
+- **运营商业务边界：** 让宽带与 IPTV 电路保持独立。
+- **共享 Trunk：** 在一条物理线缆上用带标签帧承载两个逻辑网络。
+- **路由器或可管理交换机：** 把每个标签关联到正确的逻辑接口或网桥。
+- **业务接入口：** 通常以不带标签的形式，只向接收设备呈现 IPTV 流量域。
 
-(d) 在华硕路由器上配置 IPTV，选择“手动设置”，分别将 INTERNET 和 IPTV 的 VLAN 填到自己希望配置的端口上。DHCP 选“RFC3442 & Microsoft”。Udpxy 还没有搞懂怎么使用。
+![一张无具体参数的拓扑图：独立的宽带与 IPTV VLAN 先共享一条带标签 Trunk，再到达路由器侧相互分离的业务边界](https://raw.githubusercontent.com/coolmoon327/picBed/1c7baacf9353993c835bdd7eaa4211eb70f06067/blog/v1/vlan-trunking-for-broadband-and-iptv/vlan-trunking-pattern.png)
 
-![华硕路由器 IPTV VLAN 设置](/assets/blog/generated/nas-import/dan-xian-fu-yong-tong-guo-vlan-jiang-guang-mao-de-iptv-qiao-jie-dao-lu-you-qi-sh/image-004.png)
+这张图有意省略了真实 VLAN 标识、端口名、地址、凭据与设备截图。这些值属于部署数据，而不是通用设计的一部分。
 
-(e) 将 IPTV 设备连接到路由器配置了 IPTV VLAN 的接口上即可使用。
+## 流量角色与边界
 
-**3. 问题与缺陷**：仅能实现 IPTV 与 INTERNET 的单线复用，以及 IPTV 的桥接，之后进一步研究如何实现组播。
+### 宽带路径
+
+宽带 VLAN 属于路由器的 WAN 角色。如果运营商使用 PPPoE，PPPoE 客户端应在这里终结；如果使用 DHCP 或其他方式，则应采用运营商规定的方法。常规 WAN 防火墙与路由仍应和 IPTV 桥接保持分离。
+
+### IPTV 路径
+
+IPTV VLAN 通常映射到面向接收设备的独立网桥或 Access 端口。除非运营商设计明确要求路由，并且已经审查防火墙策略，否则不要把它加入普通 LAN 网桥。桥接 IPTV 电路与 M3U 播放列表解决的是不同问题，不能相互替代。
+
+### 管理路径
+
+设备管理需要独立且经过验证的路径。改变 VLAN 成员关系时，至少保留一个管理接口或本地恢复方式。共享 Trunk 只应承载两端均明确允许的业务 VLAN。
+
+## 与厂商无关的部署顺序
+
+1. 导出现有设备配置，并确认可以通过本地方式恢复。
+2. 从运营商或获得授权的设备文档中确认业务 VLAN 分配、标签预期与接入方式，不要复制其他用户或网络截图中的标识。
+3. 在运营商边界，把每个已授权业务电路映射到独立 VLAN，同时避免暴露管理平面。
+4. 把设备间链路配置为仅允许这些业务 VLAN 的带标签 Trunk。
+5. 在路由器上，把宽带 VLAN 绑定到 WAN 业务，并让 IPTV VLAN 保持在独立网桥或接口中。
+6. 把接收设备所在端口设为 IPTV VLAN 的不带标签成员，并配置匹配的 PVID；该端口不应同时成为普通 LAN 的不带标签成员。
+7. 每次只改变一个边界，确认管理访问仍然可用后再继续。
+
+OpenWrt 的具体表示方式取决于设备使用 DSA、旧式交换机模型还是独立以太网接口。应以当前硬件文档为准，不能在不同平台之间机械照搬端口名。
+
+## 组播是另一个问题
+
+许多 IPTV 系统使用 IP 组播分发频道。VLAN Trunk 能够工作，只能证明二层连通性已经建立。为了高效传送组播，还可能需要正确处理 IGMP 成员关系、在对应流量域中部署 Querier，或在明确需要跨接口路由时使用 IGMP Proxy。
+
+[RFC 4541](https://datatracker.ietf.org/doc/html/rfc4541)解释了支持 IGMP Snooping 的交换机如何利用成员关系限制组播转发，也说明错误的 Snooping 行为可能造成流量泛洪或阻断所需数据流。只有运营商拓扑确有要求时才启用 Snooping 或 Proxy；这两项功能都无法修复错误的 VLAN 边界。
+
+## 安全与运维边界
+
+- VLAN 标签提供流量隔离，而不是加密或身份认证。
+- 不要把 Trunk 直接连接到不受信任的终端，也不要在业务 VLAN 上暴露设备管理界面。
+- Trunk 只允许所需 VLAN，并移除未使用的端口成员关系。
+- 宽带 WAN 策略、IPTV 桥接与管理访问应保持为不同角色。
+- 只使用获得授权的管理方式，不绕过运营商控制，也不公开设备凭据。
+- 修改唯一管理链路之前，应保留可回滚配置和本地恢复路径。
+
+## 验证清单
+
+- Trunk 只承载预期的带标签业务流量域。
+- WAN 业务可以通过宽带 VLAN，采用运营商规定的方式完成接入。
+- 接收设备只能在专用 Access 端口获得预期 IPTV 业务。
+- 普通 LAN 客户端不会意外进入 IPTV 或运营商管理流量域。
+- 组播频道启动与切换正常，同时不会向无关端口泛洪。
+- 重启后管理访问与回滚能力仍然可用。
+
+最好的实现，是在保留上述边界的前提下尽可能简洁。设备截图和照搬的标识看似具体，但远不如明确表达每个角色的拓扑可靠、安全。

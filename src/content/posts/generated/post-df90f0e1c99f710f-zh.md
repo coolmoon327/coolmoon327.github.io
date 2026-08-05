@@ -1,81 +1,151 @@
 ---
-title: "Ubuntu Server 根目录扩容"
+title: "安全扩展 Linux 存储：分区、LVM 与文件系统"
 date: "2022-11-30"
-description: "介绍磁盘、LVM、分区以及扩容 Ubuntu Server 根文件系统的实用步骤。"
-tags: ["ubuntu-server","lvm","storage"]
-categories: ["Systems"]
+math: false
+description: "以安全边界为先，解释 Linux 存储扩容中分区、LVM 与文件系统各层的职责和操作顺序。"
+tags: ["linux-storage", "lvm", "filesystems", "operations"]
+categories: ["Systems Engineering"]
 locale: "zh"
-slug: "ubuntu-server-root-volume-expansion"
+slug: "growing-linux-storage-safely"
 sourceId: "post-df90f0e1c99f710f"
 translationKey: "post-df90f0e1c99f710f"
 generated: true
 draft: false
 ---
-## 相关工具
 
-1. LVM
-   - 可以实现动态扩容
-   - 是虚拟的，想要物理扩容需要通过另一个启动盘使用 `gparted` 调整 `/` 的大小
-   - `lvextend` 命令可以通过 `apt-get install lvm2` 安装
-2. fdisk
-   - 用于分区管理
-   - `fdisk -l` 可列出分区表
-   - `fdisk /dev/sda` 可管理 `sda` 的分区，常用命令包括 `n` 新建分区，`d` 删除分区，`t` 更改分区格式，`p` 打印分区表（记得先打印分区表，搞清楚目标分区的**编号**）
+只有按正确顺序扩展每一层，Linux 根文件系统的扩容才是安全的。命令本身并不长；真正重要的是准确识别磁盘、分区、物理卷、卷组、逻辑卷和文件系统。
 
-## 硬盘管理
+## 从存储层次开始理解
 
-- 块设备：给机器插上新的硬盘。
-- 硬盘分区：把块设备分成多个分区（1个分区用尽整块磁盘也可以，无所谓），每个分区的大小也是固定的。
-- **创建物理卷（PV）**：按照LVM的规则，把每个硬盘分区创建为一个物理卷（physical volume）。
-- **创建卷池（VG）**：新建的物理卷就像一桶矿泉水，把它们加入到一个VG大池子里面，这样池子里的水（硬件空间）就会变多。
-  只有在同一卷池里的空间，才能用 `lvextend` 扩容
-- **创建逻辑卷（LV）**：想要划分一块硬盘空间拿来使用，只需要从VG里面取一瓢水出来即可，这个划分出来的硬盘空间叫做一个LV（logical volume）。
-- 文件系统：现在可以对LV制作文件系统，比如：ext4格式。
-- 挂载目录：现在可以把在做好文件系统的LV挂载到某个目录，就可以访问了。
+一个基于 LVM 的文件系统通常包含以下链路：
 
-中间三个是 LVM 新增的，其他部分是传统硬盘管理的内容。LVM 教程详见 [博客](https://linux.cn/article-3218-1.html)。
+1. 虚拟化平台或物理磁盘提供块存储容量。
+2. 分区可以限定分配给 LVM 的空间。
+3. LVM 物理卷（PV）把该分区交给卷组（VG）管理。
+4. VG 向逻辑卷（LV）分配物理区域。
+5. ext4 或 XFS 等文件系统位于 LV 之上。
+6. 挂载点（通常是 `/`）把文件系统呈现给应用。
 
-## 根目录扩容
+[Red Hat LVM 文档](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/configuring_and_managing_logical_volumes/basic-logical-volume-management)描述了相同的 PV–VG–LV 模型。只扩展某一层，并不会自动让上层看到新增空间。
 
-### 1. 了解 ubuntu server 的分区结构
+## 扩容前必须停止的情况
 
-可以使用 `lsblk` 工具查看，并把握 `/` 目录相关的 LVM 信息，比如卷池名 `ubuntu--vg`，逻辑卷名 `ubuntu--vg-ubuntu--lv`
+不要从分区编辑器开始。首先制作应用一致的备份，并确认备份可以恢复。如果根磁盘、远程访问、加密、RAID、多路径或快照会让恢复过程变得不确定，应安排维护窗口。
 
-通过 `df -h` 命令查看文件系统的占用信息，找到目标卷池的位置为 `/dev/mapper/ubuntu--vg-ubuntu--lv`
+出现以下任一情况时，应停止操作并查找与平台匹配的专用流程：
 
-进一步还可以用 `vgdisplay` 命令查看具体的卷池信息，需要注意其中的 `Free` 空间大小，如果是 0，则需要往卷池中加入其他物理卷才能给 `/` 的逻辑卷扩容
+- 无法唯一确定目标设备或 LV；
+- 磁盘报告错误，或 RAID 已经降级；
+- 磁盘与 LVM 之间还存在 LUKS、硬件 RAID、精简配置或其他存储层；
+- 文件系统既不是 ext4，也不是 XFS；
+- 计划中的操作会缩小或移动现有分区。
 
-### 2. 扩容磁盘
+本文只讨论扩容，不把 LVM 快照当作备份，也不建议删除并重建正在使用的分区。
 
-首先需要为 ubuntu server 加装新的存储空间，系统中会多出一个块设备。
+## 1. 记录当前布局并保护数据
 
-如果是 ubuntu 虚拟机，可以直接调整虚拟机的磁盘大小，不过会引起 `fdisk` 的报错，详见本文最后。
+修改前先保存完整的映射关系：
 
-### 3. LVM 分区
+```bash
+sudo lsblk -f
+sudo pvs
+sudo vgs
+sudo lvs -a -o +devices
+findmnt /
+df -hT /
+```
 
-> 假设我们直接对原始硬盘进行扩容，ubuntu 中对应为 `sda` 磁盘，用 `parted -l` 完成修复
+记录 `/` 对应的准确源设备、文件系统类型、LV 与 VG 名称、PV 设备和分区编号，并把输出与备份记录放在一起。下文的设备名只是占位符，不能直接照抄。
 
-- 使用 `fdisk /dev/sda` 配置 `sda` 磁盘，用 `n` 指令新建一个分区，全选默认，记下新分区的编号 `sda4`
-- 继续用 `t` 指令修改上述新建分区的文件系统，输入新分区的编号 `4`，选择 `Linux LVM` 对应的代码（不同系统环境可能不一样，用 `L` 查看，我配的时候是十进制 31）
-- 使用 `p` 指令确认分区结构，无误后用 `w` 指令保存并退出
+## 2. 判断究竟是哪一层缺少空间
 
-`fdisk` 在执行 `w` 指令之前都不会真正修改文件系统，非常安全，可以大胆尝试
+- 如果 `vgs` 已经显示足够的空闲区域，说明磁盘、分区和 PV 都已经足够大，可直接进入 LV 扩容步骤。
+- 如果虚拟磁盘或物理磁盘已经变大，但 LVM 分区尚未扩展，应先扩大现有分区，再调整 PV。
+- 如果容量来自一块新磁盘，只有确认目标设备为空之后，才能创建新 PV 并加入指定 VG；这与扩展现有分区是两种不同操作。
+- 如果 `/` 不在 LVM 上，PV、VG 和 LV 步骤均不适用。
 
-### 4. 逻辑扩容
+应同时用 `lsblk` 和 LVM 报告交叉确认结论，不能根据示例或另一台机器的历史配置猜测设备名。
 
-现在只对新的空间进行了分区，还没有创建卷，现在就要用到我们之前记录的那些卷号信息了
+## 3. 扩展现有分区
 
-- 在新分区上创建一个 PV：`pvcreate /dev/sda4`
-- 将该 PV 加入到目标 VG：`vgextend ubuntu--vg /dev/sda4`
-- 确认 VG 信息：`vgdisplay`
-- 扩容目标 LV：
-  - 指定大小：`lvresize -L 20G /dev/mapper/ubuntu--vg-ubuntu--lv`
-  - 将全部剩余空间扩容进去：`lvresize -l +100%FREE /dev/mapper/ubuntu--vg-ubuntu--lv`
-- 更新文件系统：`resize2fs /dev/mapper/ubuntu--vg-ubuntu--lv`
-- 确认扩容完成：`df -h`
+扩大底层虚拟磁盘或物理设备后，[growpart](https://manpages.ubuntu.com/manpages/jammy/man1/growpart.1.html) 可以在保留起始边界的前提下，把一个现有分区扩展到相邻的未分配空间。如果系统中没有该命令，应安装发行版提供 `growpart` 的软件包。
 
-## 潜在问题
+把下面两个占位符替换为第一步记录的值：
 
-1. 虚拟机系统从外部调整磁盘大小后，`fdisk` 会提示表头信息与实际大小不符
-   - 使用 `parted -l` 会弹出是否修复的询问，选择 `fix`
-   - 如果没有修复询问，使用 `sudo` 权限执行
+```bash
+DISK=/dev/sdX
+PARTITION_NUMBER=N
+
+sudo growpart "$DISK" "$PARTITION_NUMBER"
+sudo lsblk -f
+```
+
+只有当 `lsblk` 显示目标分区起点不变且容量增大时，才能继续。如果内核没有识别新的分区边界，应停止操作，并采用平台文档规定的重新扫描或维护重启流程，而不是临时使用 `fdisk` 猜测处理。
+
+## 4. 调整 LVM 物理卷
+
+此时分区可能已经变大，但 LVM 仍然看到旧的 PV 容量。[pvresize](https://manpages.ubuntu.com/manpages/jammy/man8/pvresize.8.html) 会更新 LVM 对可用物理区域的认知：
+
+```bash
+PV_PARTITION=/dev/sdXN
+
+sudo pvresize "$PV_PARTITION"
+sudo pvs
+sudo vgs
+```
+
+确认目标 VG 已经出现新增空闲空间。即使命令执行成功，作用于错误 PV 仍然是错误操作，因此必须把设备名和 VG 名称与基线记录再次比对。
+
+## 5. 同时扩展逻辑卷与文件系统
+
+扩容时更安全的命令是 `lvextend`，而不是同时具备缩容能力的通用调整命令。根据 [lvextend 文档](https://manpages.ubuntu.com/manpages/jammy/man8/lvextend.8.html)，`-r` 选项会在扩展 LV 后请求 LVM 一并扩大文件系统。
+
+如果同一 VG 被多个 LV 共享，应明确分配需要的容量：
+
+```bash
+LV_PATH=/dev/mapper/vg-lv
+
+sudo lvextend -r -L +10G "$LV_PATH"
+sudo lvs
+df -hT /
+```
+
+只有确定要让该 LV 使用全部剩余空间时，才使用所有空闲区域：
+
+```bash
+sudo lvextend -r -l +100%FREE "$LV_PATH"
+```
+
+如果 LV 已经扩展而文件系统扩展失败，不要盲目重复命令。应先检查 `lvs`、`findmnt` 和文件系统工具的诊断信息；此时 LV 可能已经变大，只是文件系统尚未扩大。
+
+## 6. 区分 ext4 与 XFS
+
+当系统安装的 LVM 工具支持目标文件系统时，`lvextend -r` 是首选的一体化操作，但底层工具的接口并不相同：
+
+- 对 ext4 而言，[resize2fs](https://manpages.ubuntu.com/manpages/jammy/man8/resize2fs.8.html) 作用于文件系统所在的块设备，并支持对已挂载 ext4 文件系统进行在线扩容。
+- 对 XFS 而言，[xfs_growfs](https://manpages.ubuntu.com/manpages/jammy/man8/xfs_growfs.8.html) 扩展已挂载的文件系统，参数是挂载点，而不是 LV 路径。
+
+因此，在任何手动补救操作前，都应先用 `findmnt -no FSTYPE,SOURCE,TARGET /` 确认类型。不要同时运行两种文件系统工具，也不要相互替代。
+
+## 7. 验证每一层
+
+操作完成后重新执行完整盘点：
+
+```bash
+sudo lsblk -f
+sudo pvs
+sudo vgs
+sudo lvs -a -o +devices
+findmnt /
+df -hT /
+```
+
+磁盘与分区应显示扩展后的容量，PV 应把空间交给 VG，LV 应达到计划大小，`df` 应显示文件系统新增的可用空间。关闭维护窗口前，还应检查系统日志与应用健康状态。
+
+## 常见错误
+
+- 扩大虚拟磁盘后，忘记继续处理分区或 PV 层。
+- 在还需要为其他 LV 或快照保留空间的 VG 中使用 `100%FREE`。
+- 使用记忆中的 mapper 路径，而不是 `findmnt` 报告的实际源设备。
+- 对 XFS 运行 `resize2fs`，或把 LV 设备而非挂载点传给 `xfs_growfs`。
+- 只因为命令返回成功就认为完成，而没有把最终状态与基线逐层对比。

@@ -1,85 +1,123 @@
 ---
-title: "多智能体强化学习笔记"
+title: "多智能体强化学习实践：CTDE、MAPPO 与系统设计"
 date: "2022-10-23"
-description: "关于 MARL 设置、CTDE、价值分解、基准环境以及 MAPPO 目标与技巧的笔记。"
-tags: ["multi-agent-reinforcement-learning","mappo"]
-categories: ["Study Notes"]
+description: "从 CTDE、MAPPO、协作难点与实现选择出发，建立多智能体强化学习的实践框架。"
+tags: ["multi-agent-reinforcement-learning", "ctde", "mappo", "system-design"]
+categories: ["Reinforcement Learning"]
 locale: "zh"
-slug: "multi-agent-reinforcement-learning-notes"
+slug: "multi-agent-reinforcement-learning-in-practice"
 sourceId: "post-66f20488abeedd62"
 translationKey: "post-66f20488abeedd62"
 generated: true
 draft: false
+math: true
 ---
-# 分类
 
-## 调度方式
+多智能体强化学习（MARL）并不是把单智能体强化学习简单复制若干份。每个智能体只能看到系统的一部分，其行为会改变其他智能体面对的学习问题，而团队共享奖励通常无法说明究竟是哪一次决策带来了成功或失败。因此，更有价值的工程问题不是“应该实现哪个算法缩写”，而是“训练阶段允许使用哪些信息，执行阶段必须保留哪些局部边界，以及系统应在哪里表达协作关系”。
 
-- centrilized：合作游戏，直接扩展单智能体 RL，所有智能体共享策略
-- decentralized：每个智能体最优化自己独立的环境回报
-  - IPPO
+## 从决策过程开始
 
-## 算法思路
+协作任务通常可描述为分散式部分可观测马尔可夫决策过程（Dec-POMDP）：
 
-- centralized training and decentralized execution (CTDE)：使用 Actor-Critic 框架，通过集中式的 Critic 纵览大局
-  - MADDPG
-  - COMA：multi-agent PG methods
-  - QMix
-- value decomposition (VD)
-  - value-decomposed Q-learning
+$$
+\mathcal{M} = \left\langle \mathcal{S}, \{\mathcal{A}_i\}_{i=1}^{n}, P, R, \{\mathcal{O}_i\}_{i=1}^{n}, O, \gamma \right\rangle .
+$$
 
-# 问题
+在时刻 $t$，智能体 $i$ 获得局部观测 $o_t^i$，选择动作 $a_t^i$，并参与联合动作 $\mathbf{a}_t=(a_t^1,\ldots,a_t^n)$。在完全协作问题中，各策略优化同一个回报：
 
-1. instability
-2. high variance
-   - 使用大的 batch size 降低 PG 的方差
+$$
+J(\theta)=\mathbb{E}_{\tau\sim\pi_\theta}\left[\sum_{t=0}^{T-1}\gamma^t r_t\right].
+$$
 
-# 环境
+马尔可夫状态 $s_t$ 可能只对仿真器或训练系统可见，而任何单个 Actor 都无法直接观测。当单步观测不足以支持决策时，Actor 可以依赖动作—观测历史，实践中常由循环网络编码。部分可观测首先是状态信息不足的问题，本身并不意味着底层动力学“不稳定”。
 
-## MDP
+实践中主要有三类困难：
 
-- Decentralized partially observable Markov decision processes (DEC-POMDP) shared rewards. A DEC-POMDP is defined by ⟨S,A,O,R,P,n,γ⟩.S\langle\mathcal{S}, \mathcal{A}, O, R, P, n, \gamma\rangle . \mathcal{S}⟨S,A,O,R,P,n,γ⟩.S is the state space. A\mathcal{A}A is the shared action space for each agent. oi=O(s;i)o\_{i}=O(s ; i)oi​=O(s;i) is the local observation for agent iii at global state sss. P(s′∣s,A)P\left(s^{\prime} \mid s, A\right)P(s′∣s,A) denotes the transition probability from SSS to S′S^{\prime}S′ given the joint action A=(a1,…,an)A=\left(a\_{1}, \ldots, a\_{n}\right)A=(a1​,…,an​) for all nnn agents. R(s,A)R(s, A)R(s,A) denotes the shared reward function. γ\gammaγ is the discount factor. Since most of the benchmark environments contain homogeneous agents, we utilize parameter sharing: each agent uses a shared policy πθ(ai∣oi)\pi\_{\theta}\left(a\_{i} \mid o\_{i}\right)πθ​(ai​∣oi​) parameterized by θ\thetaθ to produce its action aia\_{i}ai​ from its local observation oio\_{i}oi​, and optimizes its discounted accumulated reward J(θ)=Eat,st[∑tγtR(st,at)]J(\theta)=\mathbb{E}\_{a^{t}, s^{t}}\left[\sum\_{t} \gamma^{t} R\left(s^{t}, a^{t}\right)\right]J(θ)=Eat,st​[∑t​γtR(st,at)].
+- **学习过程的非平稳性。** 从某个智能体的视角看，其他策略更新会持续改变它收到的数据分布。
+- **信用分配。** 团队奖励不能直接辨别某个智能体动作的贡献。
+- **组合规模。** 联合观测与联合动作空间会随智能体数量快速增长。
 
-## GYM
+## CTDE 是一条信息边界
 
-- multi-agent particle-world environment (MPE)
-- Starcraft multi-agent challenge (SMAC)
-- Hanabi challenge
+集中训练、分散执行（CTDE）把“训练时能够学习什么”与“在线时允许使用什么”分开。训练阶段的 Critic 或混合网络可以读取全局状态、联合动作或其他智能体的观测；执行阶段的智能体 $i$ 则只能根据被允许的局部信息做出动作。
 
-# MAPPO
+这条边界对应了几类常见算法结构：
 
-## 描述
+| 算法族 | 训练信号 | 执行方式 | 主要取舍 |
+| --- | --- | --- | --- |
+| 独立策略优化 | 基于局部数据的各自价值估计 | 局部策略 | 简单且易扩展，但把持续变化的队友视为环境的一部分 |
+| 集中式 Actor–Critic | 使用联合或全局信息的集中式 Critic | 局部 Actor | 训练信号更丰富，但 Critic 规模和信用分配会更困难 |
+| 价值分解 | 由各智能体效用组合出联合价值 | 各自局部贪心决策 | 分散动作选择高效，但分解结构限制了可表达的联合价值函数 |
 
-​ 既是有集中式价值函数的 CTDE 算法，也是有分布式价值函数的分布学习算法 —— 既有一套 CTDE 式的网络，也允许各个智能体自己有一套独立的网络。
+MADDPG 与 COMA 属于集中式 Critic；VDN 与 QMIX 对团队价值进行分解，其中 QMIX 施加单调性约束，使局部贪心选择与集中式最大化保持一致。MAPPO 则用集中式价值函数配合 PPO 风格的策略优化。这些是不同的结构选择，并不是从“低级集中”到“高级集中”的单一排序。
 
-​ 能有效解决 [PPO](https://openai.com/blog/openai-baselines-ppo/) 这类 on-policy 方法样本效率（sample efficient）低的问题 —— 使用重要性采样来学习以前的经验。
+参数共享同样不是必选项。当智能体同质、任务近似满足置换对称性时，共享参数通常很有效；如果相同观测在不同角色下本来就应产生不同动作，则需要智能体标识、角色特征或独立输出头。让异质智能体强行共用一套策略，只会把建模错配隐藏起来。
 
-## 思路
+## MAPPO 仍然是 on-policy 方法
 
-​ 像 PPO 一样训练策略 πθ\pi\_\thetaπθ​ 与值函数 Vϕ(s)V\_\phi(s)Vϕ​(s)。用于在训练中降低方差的 Vϕ(s)V\_\phi(s)Vϕ​(s) 具有全局视野，让 MAPPO 成为了 CTDE 结构。这些网络可以被分发给每一个智能体，智能体也可以再保留两个独立的网络。
+MAPPO 用当前行为策略采集 rollout，通过集中式 Critic 估计优势函数，再对这批新数据执行有限次数的 PPO 更新。对智能体 $i$，概率比为
 
-​ 使用五个对 MAPPO 重要的技巧来调整网络：value normalization, value function inputs, training data usage, policy and value clipping, and death masking。
+$$
+r_t^i(\theta)=\frac{\pi_\theta(a_t^i\mid o_t^i)}{\pi_{\theta_{\mathrm{old}}}(a_t^i\mid o_t^i)}.
+$$
 
-## 技巧
+其裁剪替代目标可写为
 
-1. Utilize value normalization to stabilize value learning.
-2. Include agent-speciﬁc features in the global state and check that these features do not make the state dimension substantially higher.
-3. Avoid using too many training epochs and do not split data into mini-batches.
-4. For the best PPO performance, tune the clipping ratio ϵ\epsilonϵ as a trade-off between training stability and fast convergence.
-5. Use zero states with agent ID as the value input for dead agents.
+$$
+L_{\mathrm{clip}}(\theta)=\mathbb{E}_t\left[\min\left(r_t^i(\theta)\hat A_t^i,\operatorname{clip}\left(r_t^i(\theta),1-\epsilon,1+\epsilon\right)\hat A_t^i\right)\right].
+$$
 
-## 优化目标
+一种常见的优势估计使用集中式价值输入 $x_t^i$：
 
-1. Actor 网络
+$$
+\hat A_t^i=\sum_{\ell=0}^{T-t-1}(\gamma\lambda)^\ell\delta_{t+\ell}^i,\qquad
+\delta_t^i=r_t+\gamma V_\phi(x_{t+1}^i)-V_\phi(x_t^i).
+$$
 
-L(θ)=[1Bn∑i=1B∑k=1nmin⁡(rθ,i(k)Ai(k),clip⁡(rθ,i(k),1−ϵ,1+ϵ)Ai(k))]+σ1Bn∑i=1B∑k=1nS[πθ(oi(k)))]\left.L(\theta)=\left[\frac{1}{B n} \sum\_{i=1}^{B} \sum\_{k=1}^{n} \min \left(r\_{\theta, i}^{(k)} A\_{i}^{(k)}, \operatorname{clip}\left(r\_{\theta, i}^{(k)}, 1-\epsilon, 1+\epsilon\right) A\_{i}^{(k)}\right)\right]+\sigma \frac{1}{B n} \sum\_{i=1}^{B} \sum\_{k=1}^{n} S\left[\pi\_{\theta}\left(o\_{i}^{(k)}\right)\right)\right]
-L(θ)=[Bn1​i=1∑B​k=1∑n​min(rθ,i(k)​Ai(k)​,clip(rθ,i(k)​,1−ϵ,1+ϵ)Ai(k)​)]+σBn1​i=1∑B​k=1∑n​S[πθ​(oi(k)​))]
+概率比用于修正优化当前 rollout 时产生的小幅策略变化，并不会把 MAPPO 变成基于经验回放的 off-policy 学习。在一次策略更新内，对新采集数据执行多个 epoch 属于近端数据复用；当旧轨迹与当前行为策略相差过大后，它们就不再继续使用。MAPPO 在论文基准上表现出的样本效率是经验结论，并不意味着算法属于 off-policy。
 
-where $ r\_{\theta, i}{(k)}=\frac{\pi\_{\theta}\left(a\_{i} \mid o\_{i}^{(k)}\right)}{\pi\_{\theta\_{o l d}}{\left(a\_{i}^{(k)} \mid o\_{i}^{(k)}\right)}} \cdot A\_{i}^{(k)} $ is computed using the GAE method, $ S $ is the policy entropy, and $ \sigma $ is the entropy coefficient hyperparameter.
+MAPPO 研究强调了若干需要配套考虑的实现选择：
 
-2. Critic 网络
+- 当回报尺度变化明显时，对价值目标进行归一化；
+- 为 Critic 提供真正有解释力的全局与智能体特征，而不是无条件拼接所有张量；
+- 限制更新 epoch 并谨慎设置 minibatch，避免同一批数据被反复使用到过度陈旧；
+- 将裁剪阈值与 epoch 数量联合调节；
+- 对不可用动作进行 mask，并一致地表示失活或死亡智能体，必要时保留身份信号。
 
-L(ϕ)=1Bn∑i=1B∑k=1n(max⁡[(Vϕ(si(k))−R^i)2,(clip⁡(Vϕ(si(k)),Vϕold(si(k))−ε,Vϕold(si(k))+ε)−R^i)2]L(\phi)=\frac{1}{B n} \sum\_{i=1}^{B} \sum\_{k=1}^{n}\left(\max \left[\left(V\_{\phi}\left(s\_{i}^{(k)}\right)-\hat{R}\_{i}\right)^{2},\left(\operatorname{clip}\left(V\_{\phi}\left(s\_{i}^{(k)}\right), V\_{\phi\_{o l d}}\left(s\_{i}^{(k)}\right)-\varepsilon, V\_{\phi\_{o l d}}\left(s\_{i}^{(k)}\right)+\varepsilon\right)-\hat{R}\_{i}\right)^{2}\right]\right.
-L(ϕ)=Bn1​i=1∑B​k=1∑n​(max[(Vϕ​(si(k)​)−R^i​)2,(clip(Vϕ​(si(k)​),Vϕold​​(si(k)​)−ε,Vϕold​​(si(k)​)+ε)−R^i​)2]
+这些是由基准实验支持的实践经验，而不是不随环境变化的常数。回合长度、循环状态处理、奖励尺度与并行环境数量都会改变最佳设置。
 
-where R^i\hat{R}\_{i}R^i​ is the discounted reward-to-go. BBB refers to the batch size and nnn refers to the number of agents.
+## 系统设计清单
+
+### 观测与执行契约
+
+明确写下每个 Actor 在部署时究竟能够观测什么，并在移除全局状态张量后测试导出的策略。如果需要历史信息，只能在真实回合边界重置循环状态，同时在所有损失中屏蔽 padding 时间步。
+
+### Critic 设计
+
+加入全局特征的理由应是它们能够解释未来回报，而不是“这些特征恰好可用”。至少比较局部 Critic、紧凑集中式 Critic 与完整全局状态 Critic。如果 Critic 损失持续下降而策略性能反而恶化，它可能利用了无法形成有效优势信号的信息。
+
+### 批数据语义
+
+在采集时保存行为策略的 log-probability、价值预测、mask、智能体活动状态和循环状态。策略变化后，不要重新计算行为概率或当时的 mask。比较样本效率时应报告环境交互步数，而不能只报告梯度更新次数。
+
+### 评估
+
+使用未参与训练的随机种子，并至少从团队回报、任务成功率和单智能体行为或负载三个角度评估。确定性策略与随机策略应分别测试；较高的平均值可能掩盖少数场景中的协作崩溃。
+
+## 按失效模式调试
+
+- 如果每次更新后回报都大幅振荡，减少 epoch 或裁剪范围，并检查策略 KL。
+- 如果 Critic 拟合良好但 Actor 无法协作，检查反事实信用信号，或比较价值分解方法。
+- 如果所有智能体坍缩为相同行为，确认角色或身份信息确实可观测。
+- 如果只有在执行阶段加入全局状态才能成功，说明 CTDE 信息边界已经被破坏。
+- 如果增加智能体数量后训练崩溃，先分析联合张量规模，再考虑扩大网络。
+
+最可靠的 MARL 基线，通常是满足执行信息边界的最简单方法。MAPPO 的价值恰恰在于说明：实现严谨的 on-policy 基线可以走得很远；不能因为它对同一 rollout 做了若干次近端更新，就把它误称为 off-policy。
+
+## 延伸阅读
+
+- [协作多智能体博弈中 PPO 出乎意料的有效性](https://arxiv.org/abs/2103.01955)
+- [MAPPO 官方实现](https://github.com/marlbenchmark/on-policy)
+- [混合协作—竞争环境中的多智能体 Actor–Critic](https://arxiv.org/abs/1706.02275)
+- [反事实多智能体策略梯度](https://arxiv.org/abs/1705.08926)
+- [QMIX：深度多智能体强化学习的单调价值函数分解](https://proceedings.mlr.press/v80/rashid18a.html)
