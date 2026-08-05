@@ -16,7 +16,7 @@ afterAll(() => {
   vi.unstubAllEnvs();
 });
 
-describe('localized Blog and Owner Access copy', () => {
+describe('localized Blog, Research News, and Owner Access copy', () => {
   it('keeps both locales structurally aligned', () => {
     const english = site.pages.localized.en;
     const chinese = site.pages.localized.zh;
@@ -25,16 +25,32 @@ describe('localized Blog and Owner Access copy', () => {
     expect(Object.keys(chinese.blog.protected).sort()).toEqual(
       Object.keys(english.blog.protected).sort(),
     );
+    expect(Object.keys(chinese.news).sort()).toEqual(Object.keys(english.news).sort());
+    expect(Object.keys(chinese.news.modules).sort()).toEqual(
+      Object.keys(english.news.modules).sort(),
+    );
+    expect(Object.keys(chinese.news.keywords).sort()).toEqual(
+      Object.keys(english.news.keywords).sort(),
+    );
     expect(Object.keys(chinese.owner).sort()).toEqual(Object.keys(english.owner).sort());
   });
 
   it('provides every component-owned label through site configuration', () => {
     for (const locale of ['en', 'zh'] as const) {
-      const { blog, owner } = site.pages.localized[locale];
+      const { blog, news, owner } = site.pages.localized[locale];
       const labels = [
         blog.protectedLabel,
         blog.rssLabel,
         ...Object.values(blog.protected),
+        news.filtersLabel,
+        news.moduleLabel,
+        news.keywordLabel,
+        news.authorLabel,
+        news.authorsLabel,
+        news.resetAction,
+        news.moreAuthors,
+        ...Object.values(news.modules),
+        ...Object.values(news.keywords),
         owner.internetGroup,
         owner.homeGroup,
         owner.internetBadge,
@@ -42,6 +58,21 @@ describe('localized Blog and Owner Access copy', () => {
       ];
 
       expect(labels.every((label) => label.trim().length > 0)).toBe(true);
+    }
+  });
+
+  it('describes post-level author lists as coverage rather than a shared byline', () => {
+    expect(site.pages.localized.en.news.authorsLabel).toBe('Authors covered');
+    expect(site.pages.localized.zh.news.authorsLabel).toBe('本期涉及作者');
+  });
+
+  it('keeps Research News first in the More menu without adding a top-level item', () => {
+    for (const locale of ['en', 'zh'] as const) {
+      const items = site.i18n.locales[locale].navbar.items;
+      const more = items.find((item) => 'children' in item);
+      expect(more && 'children' in more ? more.children[0]?.href : undefined).toBe(
+        locale === 'zh' ? '/zh/news/' : '/news/',
+      );
     }
   });
 });

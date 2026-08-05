@@ -1,0 +1,271 @@
+---
+import NewsCover from '@components/news/NewsCover.astro';
+import { site } from '@config/site';
+import { assertBilingualNewsPairs, type NewsEntry, newsRoute, translatedNews } from '@utils/news';
+import { getCollection } from 'astro:content';
+
+import Base from './Base.astro';
+
+interface Props {
+  entry: NewsEntry;
+}
+
+const { entry } = Astro.props;
+const { data } = entry;
+const locale = data.locale;
+const page = site.pages.localized[locale].news;
+const localeConfig = site.i18n.locales[locale];
+const languageTag = locale === 'zh' ? 'zh-CN' : 'en-US';
+const newsRoot = locale === 'zh' ? '/zh/news/' : '/news/';
+const allNews = await getCollection('news');
+assertBilingualNewsPairs(allNews);
+const translation = translatedNews(entry, allNews);
+const canonicalURL = new URL(`${site.base}${newsRoute(entry)}`, site.url).toString();
+
+const formatDate = (date: Date) =>
+  date.toLocaleDateString(languageTag, { year: 'numeric', month: 'long', day: 'numeric' });
+const coverage =
+  data.coverageStart.getTime() === data.coverageEnd.getTime()
+    ? formatDate(data.coverageStart)
+    : `${formatDate(data.coverageStart)} – ${formatDate(data.coverageEnd)}`;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: data.title,
+  description: data.description,
+  datePublished: data.date.toISOString(),
+  ...(data.lastmod ? { dateModified: data.lastmod.toISOString() } : {}),
+  url: canonicalURL,
+  author: { '@type': 'Person', name: site.author.name, url: site.url },
+  about: data.keywords,
+};
+---
+
+<Base
+  title={data.title}
+  description={data.description}
+  robots={data.archived ? 'noindex, follow' : undefined}
+  pagefind={!data.archived}
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: page.title,
+            item: new URL(`${site.base}${newsRoot}`, site.url).toString(),
+          },
+          { '@type': 'ListItem', position: 2, name: data.title, item: canonicalURL },
+        ],
+      })}
+    />
+  </Fragment>
+
+  <div class="news-post page-container">
+    <nav class="news-post__nav breadcrumb-nav" aria-label={page.title}>
+      <a href={`${site.base}${newsRoot}`}>← {page.backAction}</a>
+      {
+        translation && (
+          <a
+            href={`${site.base}${newsRoute(translation)}`}
+            hreflang={translation.data.locale === 'zh' ? 'zh-CN' : 'en'}
+          >
+            {localeConfig.switchLabel}
+          </a>
+        )
+      }
+    </nav>
+
+    <header class="news-post__header">
+      <div class="news-post__copy">
+        <p class="news-post__eyebrow">
+          {page.modules[data.module]}
+          {data.archived && <span>{page.archivedLabel}</span>}
+        </p>
+        <h1 data-pagefind-weight="10">{data.title}</h1>
+        <p class="news-post__description">{data.description}</p>
+        <dl class="news-post__meta">
+          <div>
+            <dt>{page.publishedLabel}</dt>
+            <dd><time datetime={data.date.toISOString()}>{formatDate(data.date)}</time></dd>
+          </div>
+          <div>
+            <dt>{page.coverageLabel}</dt>
+            <dd>{coverage}</dd>
+          </div>
+          <div>
+            <dt>{page.authorsLabel}</dt>
+            <dd>{data.authors.join(', ')}</dd>
+          </div>
+        </dl>
+      </div>
+      <NewsCover entry={entry} />
+    </header>
+
+    <ul class="news-post__keywords" aria-label={page.keywordsLabel}>
+      {
+        data.keywords.map((keyword) => (
+          <li>{page.keywords[keyword as keyof typeof page.keywords] ?? keyword}</li>
+        ))
+      }
+    </ul>
+
+    <article class="prose news-post__body" id="news-content">
+      <slot />
+    </article>
+  </div>
+</Base>
+
+<style>
+  .news-post {
+    min-height: calc(100vh - 57px);
+    padding-top: clamp(2rem, 6vw, 4.5rem);
+    padding-bottom: 5rem;
+  }
+
+  .news-post__nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .news-post__nav a {
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .news-post__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(15rem, 0.65fr);
+    gap: clamp(2rem, 6vw, 4.5rem);
+    align-items: center;
+    margin-top: clamp(2rem, 5vw, 3.5rem);
+  }
+
+  .news-post__eyebrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .news-post__eyebrow span {
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--global-divider-color);
+    color: var(--global-text-color-light);
+  }
+
+  h1 {
+    margin: 0.75rem 0 0;
+    font-family: var(--font-condensed);
+    font-size: clamp(2.5rem, 7vw, 5rem);
+    letter-spacing: -0.025em;
+    line-height: 0.98;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+  }
+
+  .news-post__description {
+    max-width: 46rem;
+    margin: 1.25rem 0 0;
+    color: var(--global-text-color-light);
+    font-size: clamp(1rem, 2vw, 1.17rem);
+    line-height: 1.7;
+  }
+
+  .news-post__meta {
+    display: grid;
+    gap: 0.65rem;
+    margin: 1.5rem 0 0;
+  }
+
+  .news-post__meta div {
+    display: grid;
+    grid-template-columns: minmax(6rem, 0.35fr) minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .news-post__meta dt,
+  .news-post__meta dd {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .news-post__meta dt {
+    color: var(--global-text-color-light);
+    font-family: var(--font-mono);
+    font-weight: 700;
+  }
+
+  .news-post__meta dd {
+    overflow-wrap: anywhere;
+  }
+
+  .news-post__header :global(.news-cover) {
+    border: 1px solid var(--global-divider-color);
+    border-radius: 0.9rem;
+    box-shadow: 0 0.8rem 2.5rem rgb(15 23 42 / 12%);
+  }
+
+  .news-post__keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: clamp(2rem, 5vw, 3.5rem) 0 0;
+    padding: 1rem 0;
+    border-top: 1px solid var(--global-divider-color);
+    border-bottom: 1px solid var(--global-divider-color);
+    list-style: none;
+  }
+
+  .news-post__keywords li {
+    padding: 0.3rem 0.55rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--global-theme-color) 10%, transparent);
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+  }
+
+  .news-post__body {
+    max-width: 48rem;
+    margin: clamp(2rem, 5vw, 3.5rem) auto 0;
+  }
+
+  @media (max-width: 760px) {
+    .news-post__header {
+      grid-template-columns: 1fr;
+    }
+
+    .news-post__header :global(.news-cover) {
+      width: min(100%, 24rem);
+      justify-self: center;
+      order: -1;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .news-post__meta div {
+      grid-template-columns: 1fr;
+      gap: 0.15rem;
+    }
+  }
+</style>

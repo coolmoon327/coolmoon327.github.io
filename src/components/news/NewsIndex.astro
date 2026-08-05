@@ -1,0 +1,378 @@
+---
+import { site } from '@config/site';
+import Base from '@layouts/Base.astro';
+import { newsAuthors, type NewsEntry, newsKeywords, type NewsLocale } from '@utils/news';
+
+import NewsCard from './NewsCard.astro';
+
+interface Props {
+  locale: NewsLocale;
+  entries: NewsEntry[];
+}
+
+const { locale, entries } = Astro.props;
+const page = site.pages.localized[locale].news;
+const authors = newsAuthors(entries);
+const keywords = newsKeywords(entries);
+const modules = ['fields', 'advisors', 'interests'] as const;
+---
+
+<Base title={page.title} description={page.intro}>
+  <div
+    class="news-index page-container"
+    data-news-index
+    data-result-singular={page.resultSingular}
+    data-result-plural={page.resultPlural}
+  >
+    <header class="news-header">
+      <p class="news-eyebrow">{page.eyebrow}</p>
+      <h1>{page.title}</h1>
+      <p class="news-intro">{page.intro}</p>
+    </header>
+
+    <form class="news-filters" data-news-filters aria-label={page.filtersLabel}>
+      <label>
+        <span>{page.moduleLabel}</span>
+        <select name="module" data-news-filter="module">
+          <option value="">{page.allModules}</option>
+          {modules.map((module) => <option value={module}>{page.modules[module]}</option>)}
+        </select>
+      </label>
+      <label>
+        <span>{page.keywordLabel}</span>
+        <select name="keyword" data-news-filter="keyword">
+          <option value="">{page.allKeywords}</option>
+          {
+            keywords.map((keyword) => (
+              <option value={keyword}>
+                {page.keywords[keyword as keyof typeof page.keywords] ?? keyword}
+              </option>
+            ))
+          }
+        </select>
+      </label>
+      <label>
+        <span>{page.authorLabel}</span>
+        <select name="author" data-news-filter="author">
+          <option value="">{page.allAuthors}</option>
+          {authors.map((author) => <option value={author}>{author}</option>)}
+        </select>
+      </label>
+      <button type="reset">{page.resetAction}</button>
+    </form>
+
+    <p class="news-results" aria-live="polite" aria-atomic="true">
+      <span>{page.resultsLabel}: </span>
+      <strong data-news-result-count>{entries.length}</strong>
+      <span data-news-result-noun>
+        {entries.length === 1 ? page.resultSingular : page.resultPlural}
+      </span>
+    </p>
+
+    <ol class="news-grid" data-news-grid aria-label={page.title}>
+      {
+        entries.map((entry) => (
+          <li
+            data-news-card
+            data-module={entry.data.module}
+            data-keywords={JSON.stringify(entry.data.keywords)}
+            data-authors={JSON.stringify(entry.data.authors)}
+          >
+            <NewsCard entry={entry} locale={locale} />
+          </li>
+        ))
+      }
+    </ol>
+
+    <section class="news-empty" data-news-empty hidden aria-live="polite">
+      <h2>{page.noResultsTitle}</h2>
+      <p>{page.noResultsBody}</p>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .news-index {
+    min-height: calc(100vh - 57px);
+    padding-top: clamp(3rem, 8vw, 6rem);
+    padding-bottom: 5rem;
+  }
+
+  .news-header {
+    display: grid;
+    grid-template-columns: minmax(20rem, 1fr) minmax(0, 1.1fr);
+    gap: 0.65rem 3rem;
+    align-items: end;
+    margin-bottom: clamp(2rem, 5vw, 3.5rem);
+  }
+
+  .news-header > * {
+    min-width: 0;
+  }
+
+  .news-eyebrow {
+    grid-column: 1;
+    margin: 0;
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    grid-column: 1;
+    margin: 0;
+    font-family: var(--font-condensed);
+    font-size: clamp(2.75rem, 8vw, 5.5rem);
+    line-height: 0.9;
+    overflow-wrap: normal;
+    text-wrap: balance;
+    word-break: keep-all;
+  }
+
+  .news-intro {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    max-width: 42rem;
+    margin: 0;
+    color: var(--global-text-color-light);
+    font-size: clamp(1rem, 2.2vw, 1.2rem);
+    line-height: 1.65;
+  }
+
+  .news-filters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    gap: 0.8rem;
+    align-items: end;
+    padding: 1rem;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 0.85rem;
+    background: var(--global-card-bg-color);
+  }
+
+  .news-filters label {
+    display: grid;
+    min-width: 0;
+    gap: 0.38rem;
+  }
+
+  .news-filters label > span {
+    color: var(--global-text-color-light);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .news-filters select,
+  .news-filters button {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 2.65rem;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 0.5rem;
+    background: var(--global-bg-color);
+    color: var(--global-text-color);
+    font: inherit;
+    font-size: 0.84rem;
+  }
+
+  .news-filters select {
+    width: 100%;
+    padding: 0.55rem 2rem 0.55rem 0.7rem;
+  }
+
+  .news-filters button {
+    padding: 0.55rem 0.8rem;
+    color: var(--global-theme-color);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
+  .news-filters button:hover,
+  .news-filters button:focus-visible,
+  .news-filters select:focus-visible {
+    border-color: var(--global-theme-color);
+  }
+
+  .news-results {
+    display: flex;
+    gap: 0.3rem;
+    margin: 1rem 0 1.25rem;
+    color: var(--global-text-color-light);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+  }
+
+  .news-results strong {
+    color: var(--global-text-color);
+  }
+
+  .news-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .news-grid > li[hidden] {
+    display: none;
+  }
+
+  .news-empty {
+    padding: clamp(1.5rem, 4vw, 2.5rem);
+    border: 1px solid var(--global-divider-color);
+    border-radius: 0.85rem;
+    background: var(--global-card-bg-color);
+  }
+
+  .news-empty h2 {
+    margin: 0;
+    font-family: var(--font-condensed);
+    font-size: clamp(1.4rem, 4vw, 2rem);
+  }
+
+  .news-empty p {
+    margin: 0.6rem 0 0;
+    color: var(--global-text-color-light);
+  }
+
+  @media (max-width: 900px) {
+    .news-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .news-filters {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .news-filters button {
+      grid-column: 1 / -1;
+      justify-self: start;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .news-header {
+      grid-template-columns: 1fr;
+      gap: 0.65rem;
+    }
+
+    .news-eyebrow,
+    h1,
+    .news-intro {
+      grid-column: 1;
+      grid-row: auto;
+    }
+
+    .news-intro {
+      margin-top: 0.75rem;
+    }
+
+    .news-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .news-filters {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .news-filters label:first-child {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .news-grid,
+    .news-filters {
+      grid-template-columns: 1fr;
+    }
+
+    .news-filters label:first-child,
+    .news-filters button {
+      grid-column: auto;
+    }
+
+    .news-filters button {
+      width: 100%;
+    }
+
+    h1 {
+      overflow-wrap: anywhere;
+      word-break: normal;
+    }
+  }
+</style>
+
+<script>
+  let filterController: AbortController | undefined;
+
+  function parseList(value: string | undefined): string[] {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function initNewsFilters() {
+    filterController?.abort();
+    filterController = new AbortController();
+
+    document.querySelectorAll<HTMLElement>('[data-news-index]').forEach((root) => {
+      const form = root.querySelector<HTMLFormElement>('[data-news-filters]');
+      const moduleSelect = form?.querySelector<HTMLSelectElement>('[data-news-filter="module"]');
+      const keywordSelect = form?.querySelector<HTMLSelectElement>('[data-news-filter="keyword"]');
+      const authorSelect = form?.querySelector<HTMLSelectElement>('[data-news-filter="author"]');
+      const cards = [...root.querySelectorAll<HTMLElement>('[data-news-card]')];
+      const count = root.querySelector<HTMLElement>('[data-news-result-count]');
+      const noun = root.querySelector<HTMLElement>('[data-news-result-noun]');
+      const empty = root.querySelector<HTMLElement>('[data-news-empty]');
+
+      if (!form || !moduleSelect || !keywordSelect || !authorSelect || !count || !noun || !empty) {
+        return;
+      }
+
+      const update = () => {
+        let visible = 0;
+        for (const card of cards) {
+          const moduleMatches = !moduleSelect.value || card.dataset.module === moduleSelect.value;
+          const keywordMatches =
+            !keywordSelect.value || parseList(card.dataset.keywords).includes(keywordSelect.value);
+          const authorMatches =
+            !authorSelect.value || parseList(card.dataset.authors).includes(authorSelect.value);
+          card.hidden = !(moduleMatches && keywordMatches && authorMatches);
+          if (!card.hidden) visible += 1;
+        }
+
+        count.textContent = String(visible);
+        noun.textContent =
+          visible === 1 ? (root.dataset.resultSingular ?? '') : (root.dataset.resultPlural ?? '');
+        empty.hidden = visible !== 0;
+      };
+
+      form.addEventListener('change', update, { signal: filterController?.signal });
+      form.addEventListener(
+        'reset',
+        () => {
+          window.setTimeout(update, 0);
+        },
+        { signal: filterController?.signal },
+      );
+      update();
+    });
+  }
+
+  initNewsFilters();
+  document.addEventListener('astro:page-load', initNewsFilters);
+</script>

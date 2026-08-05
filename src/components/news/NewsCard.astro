@@ -1,0 +1,177 @@
+---
+import { site } from '@config/site';
+import { type NewsEntry, type NewsLocale, newsRoute } from '@utils/news';
+
+import NewsCover from './NewsCover.astro';
+
+interface Props {
+  entry: NewsEntry;
+  locale: NewsLocale;
+}
+
+const { entry, locale } = Astro.props;
+const page = site.pages.localized[locale].news;
+const languageTag = locale === 'zh' ? 'zh-CN' : 'en-US';
+const formattedDate = entry.data.date.toLocaleDateString(languageTag, {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+});
+const visibleAuthors = entry.data.authors.slice(0, 3);
+const remainingAuthors = entry.data.authors.length - visibleAuthors.length;
+const moreAuthors = page.moreAuthors.replace('{count}', String(remainingAuthors));
+---
+
+<article class="news-card">
+  <a
+    class="news-card-link"
+    href={`${site.base}${newsRoute(entry)}`}
+    aria-label={`${page.readAction}: ${entry.data.title}`}
+  >
+    <NewsCover entry={entry} compact />
+    <div class="news-card__body">
+      <p class="news-card__eyebrow">
+        <span>{page.modules[entry.data.module]}</span>
+        <time datetime={entry.data.date.toISOString()}>{formattedDate}</time>
+      </p>
+      <h2>{entry.data.title}</h2>
+      <p class="news-card__description">{entry.data.description}</p>
+      <p class="news-card__authors" title={entry.data.authors.join(', ')}>
+        {visibleAuthors.join(', ')}{remainingAuthors > 0 && <span> · {moreAuthors}</span>}
+      </p>
+      <ul class="news-card__keywords" aria-label={page.keywordsLabel}>
+        {
+          entry.data.keywords
+            .slice(0, 3)
+            .map((keyword) => (
+              <li>{page.keywords[keyword as keyof typeof page.keywords] ?? keyword}</li>
+            ))
+        }
+      </ul>
+    </div>
+  </a>
+</article>
+
+<style>
+  .news-card,
+  .news-card-link {
+    height: 100%;
+  }
+
+  .news-card-link {
+    display: flex;
+    overflow: hidden;
+    flex-direction: column;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 0.9rem;
+    background: var(--global-card-bg-color);
+    color: var(--global-text-color);
+    box-shadow: 0 0.4rem 1.4rem rgb(15 23 42 / 7%);
+    text-decoration: none;
+  }
+
+  .news-card-link:hover,
+  .news-card-link:focus-visible {
+    border-color: color-mix(in srgb, var(--global-theme-color) 55%, var(--global-divider-color));
+    box-shadow: 0 0.8rem 2rem rgb(15 23 42 / 13%);
+    color: var(--global-text-color);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .news-card-link {
+      transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        transform 180ms ease;
+    }
+
+    .news-card-link:hover,
+    .news-card-link:focus-visible {
+      transform: translateY(-0.2rem);
+    }
+  }
+
+  .news-card__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: 1rem 1rem 1.1rem;
+  }
+
+  .news-card__eyebrow {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin: 0;
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  .news-card__eyebrow time {
+    flex: none;
+    color: var(--global-text-color-light);
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  @media (max-width: 360px) {
+    .news-card__eyebrow {
+      flex-direction: column;
+    }
+  }
+
+  h2 {
+    margin: 0.7rem 0 0;
+    font-family: var(--font-condensed);
+    font-size: clamp(1.2rem, 2.2vw, 1.55rem);
+    line-height: 1.12;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+  }
+
+  .news-card__description {
+    display: -webkit-box;
+    margin: 0.7rem 0 0;
+    overflow: hidden;
+    color: var(--global-text-color-light);
+    font-size: 0.84rem;
+    line-height: 1.55;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .news-card__authors {
+    margin: auto 0 0;
+    padding-top: 0.9rem;
+    color: var(--global-text-color-light);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  .news-card__keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.7rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .news-card__keywords li {
+    padding: 0.2rem 0.38rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--global-theme-color) 10%, transparent);
+    color: var(--global-theme-color);
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    line-height: 1.3;
+  }
+</style>

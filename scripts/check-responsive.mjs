@@ -23,6 +23,7 @@ const routes = [
   '/publications/',
   '/projects/',
   '/blog/',
+  '/news/',
   '/games/',
   '/playground/',
   '/owner/',
@@ -32,11 +33,33 @@ const routes = [
   '/zh/publications/',
   '/zh/projects/',
   '/zh/blog/',
+  '/zh/news/',
   '/zh/games/',
   '/zh/playground/',
   '/zh/owner/',
   '/404.html',
 ];
+
+function htmlAttribute(tag, name) {
+  return tag.match(new RegExp(`\\b${name}=["']([^"']*)["']`, 'i'))?.[1] ?? null;
+}
+
+async function addRepresentativeNewsDetails() {
+  for (const indexRoute of ['/news/', '/zh/news/']) {
+    const response = await fetch(baseUrl + indexRoute);
+    assert.equal(response.status, 200, `Cannot discover a News detail route from ${indexRoute}`);
+    const html = await response.text();
+    const cardTag = [...html.matchAll(/<a\b[^>]*>/gi)]
+      .map((match) => match[0])
+      .find((tag) => (htmlAttribute(tag, 'class') ?? '').split(/\s+/).includes('news-card-link'));
+    const href = cardTag ? htmlAttribute(cardTag, 'href') : null;
+    assert.ok(href, `No listed News detail link found at ${indexRoute}`);
+    const pathname = new URL(href, previewUrl.origin).pathname;
+    const route =
+      basePath && pathname.startsWith(`${basePath}/`) ? pathname.slice(basePath.length) : pathname;
+    if (!routes.includes(route)) routes.push(route);
+  }
+}
 
 const inlineGamesByRoute = {
   '/': 'orbit',
@@ -347,6 +370,8 @@ async function measurePage(page) {
             .gridTemplateColumns.split(' ')
             .filter((track) => track.length > 0).length
         : 0;
+    const newsGrid = document.querySelector('[data-news-grid]');
+    const newsCards = newsGrid ? [...newsGrid.querySelectorAll(':scope > [data-news-card]')] : [];
     const inlineGames = [...document.querySelectorAll('[data-inline-game]')].map((section) => {
       const copy = section.querySelector('.inline-game__copy');
       const stage = section.querySelector('.inline-game__stage');
@@ -401,6 +426,12 @@ async function measurePage(page) {
       headingTop: headingRect ? Math.round(headingRect.top) : null,
       profileHeadingLines,
       inlineGames,
+      news: newsGrid
+        ? {
+            cardCount: newsCards.length,
+            columnCount: gridTrackCount(newsGrid),
+          }
+        : null,
       profile: profileGrid
         ? {
             cardCount: profileCards.length,
@@ -828,6 +859,23 @@ async function auditSiteMatrix(browser) {
           'Unexpected inline game on this route',
           { inlineGames: metrics.inlineGames },
         );
+      }
+      if (route === '/news/' || route === '/zh/news/') {
+        const expectedColumns =
+          scenario.width > 900 ? 4 : scenario.width > 760 ? 3 : scenario.width > 520 ? 2 : 1;
+        if (
+          !metrics.news ||
+          metrics.news.cardCount < 1 ||
+          metrics.news.columnCount !== expectedColumns
+        ) {
+          addFailure(
+            'news-grid',
+            route,
+            scenario.name,
+            `News feed should use ${expectedColumns} columns at this viewport`,
+            { news: metrics.news, expectedColumns },
+          );
+        }
       }
       if (route === '/publications/' && scenario.width >= 901 && metrics.hero) {
         const headingRight = Math.max(...metrics.hero.headingLines.map((line) => line.right));
@@ -1419,7 +1467,150 @@ async function auditResponsiveStates(browser) {
       noScriptState,
     );
   }
+
+  await noScriptPage.goto(baseUrl + '/news/', { waitUntil: 'domcontentloaded' });
+  const noScriptNews = await noScriptPage.locator('[data-news-index]').evaluate((root) => {
+    const cards = [...root.querySelectorAll('[data-news-card]')];
+    const visibleCards = cards.filter((card) => {
+      const rect = card.getBoundingClientRect();
+      const style = getComputedStyle(card);
+      return !card.hidden && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+    });
+    return {
+      cardCount: cards.length,
+      visibleCardCount: visibleCards.length,
+      selectCount: root.querySelectorAll('select[data-news-filter]').length,
+    };
+  });
+  results.stateCases += 1;
+  if (
+    noScriptNews.cardCount < 1 ||
+    noScriptNews.visibleCardCount !== noScriptNews.cardCount ||
+    noScriptNews.selectCount !== 3
+  ) {
+    addFailure(
+      'responsive-state',
+      'research-news',
+      'javascript-disabled-feed',
+      'News must show every card without JavaScript while retaining three native selects',
+      noScriptNews,
+    );
+  }
   await noScriptContext.close();
+
+  const filterPage = await browser.newPage({ viewport: { width: 901, height: 700 } });
+  await filterPage.goto(baseUrl + '/news/', { waitUntil: 'domcontentloaded' });
+  await waitForStableLayout(filterPage);
+  const filterSeed = await filterPage
+    .locator('[data-news-card]')
+    .first()
+    .evaluate((card) => ({
+      author: JSON.parse(card.getAttribute('data-authors') || '[]')[0],
+      keyword: JSON.parse(card.getAttribute('data-keywords') || '[]')[0],
+      module: card.getAttribute('data-module'),
+    }));
+  await filterPage.selectOption('[data-news-filter="module"]', filterSeed.module);
+  await filterPage.selectOption('[data-news-filter="keyword"]', filterSeed.keyword);
+  await filterPage.selectOption('[data-news-filter="author"]', filterSeed.author);
+  const filteredNews = await filterPage.locator('[data-news-index]').evaluate((root) => {
+    const cards = [...root.querySelectorAll('[data-news-card]')];
+    const selected = Object.fromEntries(
+      [...root.querySelectorAll('select[data-news-filter]')].map((select) => [
+        select.name,
+        select.value,
+      ]),
+    );
+    const visible = cards.filter((card) => !card.hidden);
+    return {
+      selected,
+      total: cards.length,
+      visible: visible.length,
+      hidden: cards.length - visible.length,
+      count: Number(root.querySelector('[data-news-result-count]')?.textContent),
+      everyVisibleMatches: visible.every(
+        (card) =>
+          card.getAttribute('data-module') === selected.module &&
+          JSON.parse(card.getAttribute('data-keywords') || '[]').includes(selected.keyword) &&
+          JSON.parse(card.getAttribute('data-authors') || '[]').includes(selected.author),
+      ),
+    };
+  });
+
+  const zeroCombo = await filterPage.locator('[data-news-index]').evaluate((root) => {
+    const cards = [...root.querySelectorAll('[data-news-card]')].map((card) => ({
+      module: card.getAttribute('data-module'),
+      keywords: JSON.parse(card.getAttribute('data-keywords') || '[]'),
+      authors: JSON.parse(card.getAttribute('data-authors') || '[]'),
+    }));
+    const options = (name) =>
+      [...root.querySelectorAll(`select[name="${name}"] option`)]
+        .map((option) => option.value)
+        .filter(Boolean);
+    for (const module of options('module')) {
+      for (const keyword of options('keyword')) {
+        for (const author of options('author')) {
+          const matches = cards.some(
+            (card) =>
+              card.module === module &&
+              card.keywords.includes(keyword) &&
+              card.authors.includes(author),
+          );
+          if (!matches) return { module, keyword, author };
+        }
+      }
+    }
+    return null;
+  });
+  if (zeroCombo) {
+    await filterPage.selectOption('[data-news-filter="module"]', zeroCombo.module);
+    await filterPage.selectOption('[data-news-filter="keyword"]', zeroCombo.keyword);
+    await filterPage.selectOption('[data-news-filter="author"]', zeroCombo.author);
+  }
+  const zeroNews = await filterPage.locator('[data-news-index]').evaluate((root) => ({
+    count: Number(root.querySelector('[data-news-result-count]')?.textContent),
+    emptyVisible: !root.querySelector('[data-news-empty]')?.hidden,
+    visible: [...root.querySelectorAll('[data-news-card]')].filter((card) => !card.hidden).length,
+  }));
+  await filterPage.locator('[data-news-filters] button[type="reset"]').click();
+  await filterPage.waitForTimeout(30);
+  const resetNews = await filterPage.locator('[data-news-index]').evaluate((root) => ({
+    total: root.querySelectorAll('[data-news-card]').length,
+    visible: [...root.querySelectorAll('[data-news-card]')].filter((card) => !card.hidden).length,
+  }));
+  results.stateCases += 3;
+  if (
+    filteredNews.visible < 1 ||
+    filteredNews.visible !== filteredNews.count ||
+    !filteredNews.everyVisibleMatches ||
+    (filteredNews.total > 1 && filteredNews.hidden < 1)
+  ) {
+    addFailure(
+      'responsive-state',
+      'research-news',
+      'three-filter-intersection',
+      'News filters do not apply module, keyword, and author as an AND intersection',
+      filteredNews,
+    );
+  }
+  if (!zeroCombo || zeroNews.visible !== 0 || zeroNews.count !== 0 || !zeroNews.emptyVisible) {
+    addFailure(
+      'responsive-state',
+      'research-news',
+      'zero-result-state',
+      'News filters do not expose the explicit zero-result state for a valid option combination',
+      { zeroCombo, zeroNews },
+    );
+  }
+  if (resetNews.total < 1 || resetNews.visible !== resetNews.total) {
+    addFailure(
+      'responsive-state',
+      'research-news',
+      'filter-reset',
+      'Resetting News filters does not restore the complete feed',
+      resetNews,
+    );
+  }
+  await filterPage.close();
 
   const storageContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await storageContext.addInitScript(() => {
@@ -1594,6 +1785,8 @@ async function auditResponsiveStates(browser) {
   }
   await textResizePage.close();
 }
+
+if (auditMode === 'all' || auditMode === 'site') await addRepresentativeNewsDetails();
 
 await mkdir(outputDir, { recursive: true });
 

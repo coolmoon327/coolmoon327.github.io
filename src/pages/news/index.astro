@@ -1,0 +1,11 @@
+---
+import NewsIndex from '@components/news/NewsIndex.astro';
+import { assertBilingualNewsPairs, listedNews, sortNews } from '@utils/news';
+import { getCollection } from 'astro:content';
+
+const allNews = await getCollection('news');
+assertBilingualNewsPairs(allNews);
+const entries = sortNews(listedNews(allNews, 'en'));
+---
+
+<NewsIndex locale="en" entries={entries} />

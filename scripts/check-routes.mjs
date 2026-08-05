@@ -99,6 +99,13 @@ const coreRoutes = [
     protectedBlog: true,
   },
   {
+    path: '/news/',
+    lang: 'en',
+    marker: 'Research News',
+    switchHref: '/zh/news/',
+    newsLocale: 'en',
+  },
+  {
     path: '/games/',
     lang: 'en',
     marker: 'Eighteen small, dependency-free games',
@@ -189,6 +196,13 @@ const coreRoutes = [
     protectedBlog: true,
   },
   {
+    path: '/zh/news/',
+    lang: 'zh-CN',
+    marker: '研究资讯',
+    switchHref: '/news/',
+    newsLocale: 'zh',
+  },
+  {
     path: '/zh/games/',
     lang: 'zh-CN',
     marker: '这里有 18 款无需额外依赖的轻量小游戏',
@@ -216,7 +230,6 @@ const removedDemoRoutes = [
   '/people/',
   '/books/',
   '/cv/',
-  '/news/',
   '/teaching/',
   '/repositories/',
   '/blog/welcome/',
@@ -225,6 +238,7 @@ const removedDemoRoutes = [
 
 const failures = [];
 const blogIndexLinks = new Map();
+const newsIndexLinks = new Map();
 
 for (const route of coreRoutes) {
   const response = await fetch(routeUrl(route.path), { redirect: 'manual' });
@@ -334,6 +348,27 @@ for (const route of coreRoutes) {
       .filter((href) => typeof href === 'string' && href.startsWith(expectedPrefix));
     blogIndexLinks.set(route.blogLocale, [...new Set(links)]);
   }
+  if (route.newsLocale) {
+    const expectedPrefix = routeHref(route.newsLocale === 'zh' ? '/zh/news/' : '/news/');
+    const links = [...html.matchAll(/<a\b[^>]*>/gi)]
+      .map((match) => match[0])
+      .filter((tag) => (attributeValue(tag, 'class') ?? '').split(/\s+/).includes('news-card-link'))
+      .map((tag) => attributeValue(tag, 'href'))
+      .filter((href) => typeof href === 'string' && href.startsWith(expectedPrefix));
+    newsIndexLinks.set(route.newsLocale, [...new Set(links)]);
+
+    const selectCount = [
+      ...html.matchAll(/<select\b[^>]*\bdata-news-filter=["'][^"']+["'][^>]*>/gi),
+    ].length;
+    if (!html.includes('data-news-index') || !html.includes('data-news-filters')) {
+      failures.push(`${route.path}: missing progressive-enhancement News filter shell`);
+    }
+    if (selectCount !== 3) {
+      failures.push(
+        `${route.path}: expected exactly three select-only News filters, found ${selectCount}`,
+      );
+    }
+  }
   if (/Albert Einstein|Linus Torvalds|Dadang NH/.test(html)) {
     failures.push(`${route.path}: contains an upstream demo identity`);
   }
@@ -391,6 +426,88 @@ for (const slug of new Set([...enBlogSlugs, ...zhBlogSlugs])) {
   }
 }
 
+const enNewsLinks = newsIndexLinks.get('en') ?? [];
+const zhNewsLinks = newsIndexLinks.get('zh') ?? [];
+const slugFromNewsHref = (href, locale) => {
+  const prefix = routeHref(locale === 'zh' ? '/zh/news/' : '/news/');
+  return href.startsWith(prefix) ? href.slice(prefix.length).replace(/\/$/, '') : '';
+};
+const enNewsSlugs = new Set(
+  enNewsLinks.map((href) => slugFromNewsHref(href, 'en')).filter(Boolean),
+);
+const zhNewsSlugs = new Set(
+  zhNewsLinks.map((href) => slugFromNewsHref(href, 'zh')).filter(Boolean),
+);
+
+if (enNewsLinks.length === 0 || zhNewsLinks.length === 0) {
+  failures.push('news indexes: expected at least one listed update in each locale');
+}
+if (enNewsLinks.length !== zhNewsLinks.length) {
+  failures.push(
+    `news indexes: English has ${enNewsLinks.length} updates but Chinese has ${zhNewsLinks.length}`,
+  );
+}
+for (const slug of new Set([...enNewsSlugs, ...zhNewsSlugs])) {
+  if (!enNewsSlugs.has(slug) || !zhNewsSlugs.has(slug)) {
+    failures.push(`news indexes: bilingual route pair is incomplete for ${slug}`);
+    continue;
+  }
+
+  const pairs = [
+    { locale: 'en', lang: 'en', path: `/news/${slug}/`, alternate: `/zh/news/${slug}/` },
+    { locale: 'zh', lang: 'zh-CN', path: `/zh/news/${slug}/`, alternate: `/news/${slug}/` },
+  ];
+  const responses = await Promise.all(
+    pairs.map(async (pair) => {
+      const response = await fetch(routeUrl(pair.path), { redirect: 'manual' });
+      return { pair, response, html: await response.text() };
+    }),
+  );
+  for (const { pair, response, html } of responses) {
+    if (response.status !== 200) {
+      failures.push(`${pair.path}: expected 200, received ${response.status}`);
+    }
+    if (!new RegExp(`<html[^>]+lang=["']?${pair.lang}`, 'i').test(html)) {
+      failures.push(`${pair.path}: missing html lang=${pair.lang}`);
+    }
+    if (!html.includes(`href="${routeHref(pair.alternate)}"`)) {
+      failures.push(`${pair.path}: missing paired-language article link`);
+    }
+    console.log(`news ${response.status} ${pair.locale.padEnd(2)}    ${pair.path}`);
+  }
+}
+
+const sitemapResponse = await fetch(routeUrl('/sitemap.xml'), { redirect: 'manual' });
+const sitemapXml = await sitemapResponse.text();
+if (sitemapResponse.status !== 200) {
+  failures.push(`/sitemap.xml: expected 200, received ${sitemapResponse.status}`);
+}
+if (!/\b(?:application|text)\/xml\b/i.test(sitemapResponse.headers.get('content-type') ?? '')) {
+  failures.push('/sitemap.xml: expected an XML content type');
+}
+const sitemapPaths = new Set(
+  [...sitemapXml.matchAll(/<loc>([^<]+)<\/loc>/g)].flatMap((match) => {
+    try {
+      return [new URL(match[1]).pathname];
+    } catch {
+      failures.push(`/sitemap.xml: invalid absolute URL: ${match[1]}`);
+      return [];
+    }
+  }),
+);
+const expectedNewsSitemapPaths = [
+  routeHref('/news/'),
+  routeHref('/zh/news/'),
+  ...[...enNewsSlugs].map((slug) => routeHref(`/news/${slug}/`)),
+  ...[...zhNewsSlugs].map((slug) => routeHref(`/zh/news/${slug}/`)),
+];
+for (const path of expectedNewsSitemapPaths) {
+  if (!sitemapPaths.has(path)) {
+    failures.push(`/sitemap.xml: missing listed News route ${path}`);
+  }
+}
+console.log(`map  ${sitemapResponse.status}       /sitemap.xml`);
+
 for (const path of removedDemoRoutes) {
   const response = await fetch(routeUrl(path), { redirect: 'manual' });
   if (response.status !== 404) {
@@ -420,6 +537,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `\nValidated ${coreRoutes.length} core routes, ${pocketAssets.length} game assets, and ${removedDemoRoutes.length} removed demo routes.`,
+    `\nValidated ${coreRoutes.length} core routes, ${enNewsSlugs.size} bilingual News routes, ${pocketAssets.length} game assets, and ${removedDemoRoutes.length} removed demo routes.`,
   );
 }

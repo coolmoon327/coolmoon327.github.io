@@ -102,6 +102,79 @@ const posts = defineCollection({
   }),
 });
 
+// ─── Research news ─────────────────────────────────────────────────
+
+const news = defineCollection({
+  loader: glob({
+    pattern: '**/*.md',
+    base: './src/content/news',
+    generateId: ({ data, entry }) => {
+      const { locale, slug } = data;
+      if ((locale !== 'en' && locale !== 'zh') || typeof slug !== 'string') {
+        throw new Error(`Cannot generate news ID for ${entry}: expected locale and slug.`);
+      }
+      return `${locale}/${slug}`;
+    },
+  }),
+  schema: z
+    .object({
+      title: z.string().min(1),
+      locale: z.enum(['en', 'zh']),
+      slug: z
+        .string()
+        .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Use a lowercase ASCII kebab-case slug.'),
+      /** Stable identity shared by both language versions and future status updates. */
+      newsId: z.string().min(1),
+      translationKey: z.string().min(1),
+      generated: z.boolean(),
+      date: z.coerce.date(),
+      coverageStart: z.coerce.date(),
+      coverageEnd: z.coerce.date(),
+      module: z.enum(['fields', 'advisors', 'interests']),
+      keywords: z.array(z.string().min(1)).min(1),
+      /** Work authors, not the author of this website. */
+      authors: z.array(z.string().min(1)).min(1),
+      subjectIds: z.array(z.string().min(1)).default([]),
+      workIds: z.array(z.string().min(1)).min(1),
+      /** Present for a dedicated tracked-person update. */
+      focusSubjectId: z.string().min(1).optional(),
+      description: z.string().min(1),
+      coverTone: z.enum(['ocean', 'violet', 'amber', 'mint', 'rose', 'slate']),
+      coverKicker: z.string().min(1),
+      coverTitle: z.string().min(1),
+      coverPoints: z.array(z.string().min(1)).min(1).max(4),
+      /** Optional, licensed local asset. Text posters remain the default. */
+      coverImage: z
+        .string()
+        .regex(/^\/assets\/news\//)
+        .optional(),
+      coverImageAlt: z.string().min(1).optional(),
+      coverImageCredit: z.string().min(1).optional(),
+      draft: z.boolean().optional().default(false),
+      /** Hidden entries have no public detail route. */
+      hidden: z.boolean().optional().default(false),
+      /** Archived/superseded entries keep their route but leave the chronological feed. */
+      archived: z.boolean().optional().default(false),
+      lastmod: z.coerce.date().optional(),
+    })
+    .superRefine((entry, context) => {
+      if (entry.coverageEnd.getTime() < entry.coverageStart.getTime()) {
+        context.addIssue({
+          code: 'custom',
+          path: ['coverageEnd'],
+          message: 'coverageEnd cannot precede coverageStart.',
+        });
+      }
+      if (entry.coverImage && (!entry.coverImageAlt || !entry.coverImageCredit)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['coverImage'],
+          message: 'A local cover image requires alt text and a visible credit or licence note.',
+        });
+      }
+    }),
+});
+
 // ─── Projects ──────────────────────────────────────────────────────────────
 
 const projects = defineCollection({
@@ -229,4 +302,4 @@ const books = defineCollection({
   }),
 });
 
-export const collections = { posts, projects, people, teaching, announcements, books };
+export const collections = { posts, news, projects, people, teaching, announcements, books };

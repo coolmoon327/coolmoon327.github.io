@@ -1,0 +1,21 @@
+---
+import NewsPost from '@layouts/NewsPost.astro';
+import { assertBilingualNewsPairs, routableNews } from '@utils/news';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const allNews = await getCollection('news');
+  assertBilingualNewsPairs(allNews);
+  return routableNews(allNews, 'zh').map((entry) => ({
+    params: { slug: entry.data.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<NewsPost entry={entry}>
+  <Content />
+</NewsPost>
