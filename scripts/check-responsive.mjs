@@ -372,6 +372,53 @@ async function measurePage(page) {
         : 0;
     const newsGrid = document.querySelector('[data-news-grid]');
     const newsCards = newsGrid ? [...newsGrid.querySelectorAll(':scope > [data-news-card]')] : [];
+    const visibleNewsCards = newsCards.filter((card) => isVisible(card));
+    const newsCardMetrics = visibleNewsCards.map((card) => {
+      const link = card.querySelector('.news-card-link');
+      const cover = card.querySelector('.news-cover');
+      const poster = cover?.querySelector('.news-cover__poster');
+      const rect = link?.getBoundingClientRect();
+      const linkStyle = link ? getComputedStyle(link) : null;
+      const naturalHeight = link
+        ? link.scrollHeight +
+          (Number.parseFloat(linkStyle?.borderTopWidth || '') || 0) +
+          (Number.parseFloat(linkStyle?.borderBottomWidth || '') || 0)
+        : 0;
+      const coverRect = cover?.getBoundingClientRect();
+      const posterTextRects = poster
+        ? [...poster.querySelectorAll('.news-cover__kicker, .news-cover__title, ul')].map(
+            (element) => element.getBoundingClientRect(),
+          )
+        : [];
+
+      return {
+        bottom: rect?.bottom ?? 0,
+        height: rect?.height ?? 0,
+        heightDelta: Math.abs((rect?.height ?? 0) - naturalHeight),
+        left: rect?.left ?? 0,
+        posterClipped: coverRect
+          ? posterTextRects.some(
+              (textRect) =>
+                textRect.top < coverRect.top - 1 || textRect.bottom > coverRect.bottom + 1,
+            )
+          : false,
+        top: rect?.top ?? 0,
+      };
+    });
+    const newsColumns = new Map();
+    for (const card of newsCardMetrics) {
+      const key = Math.round(card.left * 2) / 2;
+      const column = newsColumns.get(key) ?? [];
+      column.push(card);
+      newsColumns.set(key, column);
+    }
+    const newsVerticalGaps = [...newsColumns.values()].flatMap((column) =>
+      column
+        .sort((a, b) => a.top - b.top)
+        .slice(1)
+        .map((card, index) => card.top - column[index].bottom),
+    );
+    const newsCardHeights = newsCardMetrics.map((card) => card.height);
     const inlineGames = [...document.querySelectorAll('[data-inline-game]')].map((section) => {
       const copy = section.querySelector('.inline-game__copy');
       const stage = section.querySelector('.inline-game__stage');
@@ -429,7 +476,19 @@ async function measurePage(page) {
       news: newsGrid
         ? {
             cardCount: newsCards.length,
-            columnCount: gridTrackCount(newsGrid),
+            clippedPosterCount: newsCardMetrics.filter((card) => card.posterClipped).length,
+            columnCount: Number.parseInt(getComputedStyle(newsGrid).columnCount, 10) || 1,
+            heightRange:
+              newsCardHeights.length > 0
+                ? Math.max(...newsCardHeights) - Math.min(...newsCardHeights)
+                : 0,
+            maxVerticalGap: newsVerticalGaps.length > 0 ? Math.max(...newsVerticalGaps) : 0,
+            maxNaturalHeightDelta:
+              newsCardMetrics.length > 0
+                ? Math.max(...newsCardMetrics.map((card) => card.heightDelta))
+                : 0,
+            occupiedColumnCount: newsColumns.size,
+            visibleCardCount: visibleNewsCards.length,
           }
         : null,
       profile: profileGrid
@@ -866,7 +925,8 @@ async function auditSiteMatrix(browser) {
         if (
           !metrics.news ||
           metrics.news.cardCount < 1 ||
-          metrics.news.columnCount !== expectedColumns
+          metrics.news.columnCount !== expectedColumns ||
+          metrics.news.occupiedColumnCount !== expectedColumns
         ) {
           addFailure(
             'news-grid',
@@ -874,6 +934,21 @@ async function auditSiteMatrix(browser) {
             scenario.name,
             `News feed should use ${expectedColumns} columns at this viewport`,
             { news: metrics.news, expectedColumns },
+          );
+        }
+        if (
+          metrics.news &&
+          (metrics.news.heightRange < 8 ||
+            metrics.news.maxVerticalGap > 22 ||
+            metrics.news.maxNaturalHeightDelta > 2.5 ||
+            metrics.news.clippedPosterCount > 0)
+        ) {
+          addFailure(
+            'news-masonry',
+            route,
+            scenario.name,
+            'News cards should keep natural heights, stack tightly, and show every poster in full',
+            { news: metrics.news },
           );
         }
       }
@@ -1535,6 +1610,8 @@ async function auditResponsiveStates(browser) {
       ),
     };
   });
+  await waitForStableLayout(filterPage);
+  const filteredNewsLayout = (await measurePage(filterPage)).news;
 
   const zeroCombo = await filterPage.locator('[data-news-index]').evaluate((root) => {
     const cards = [...root.querySelectorAll('[data-news-card]')].map((card) => ({
@@ -1573,10 +1650,12 @@ async function auditResponsiveStates(browser) {
   }));
   await filterPage.locator('[data-news-filters] button[type="reset"]').click();
   await filterPage.waitForTimeout(30);
+  await waitForStableLayout(filterPage);
   const resetNews = await filterPage.locator('[data-news-index]').evaluate((root) => ({
     total: root.querySelectorAll('[data-news-card]').length,
     visible: [...root.querySelectorAll('[data-news-card]')].filter((card) => !card.hidden).length,
   }));
+  const resetNewsLayout = (await measurePage(filterPage)).news;
   results.stateCases += 3;
   if (
     filteredNews.visible < 1 ||
@@ -1590,6 +1669,21 @@ async function auditResponsiveStates(browser) {
       'three-filter-intersection',
       'News filters do not apply module, keyword, and author as an AND intersection',
       filteredNews,
+    );
+  }
+  if (
+    !filteredNewsLayout ||
+    filteredNewsLayout.visibleCardCount !== filteredNews.visible ||
+    filteredNewsLayout.occupiedColumnCount !== Math.min(4, filteredNews.visible) ||
+    filteredNewsLayout.maxVerticalGap > 22 ||
+    filteredNewsLayout.clippedPosterCount > 0
+  ) {
+    addFailure(
+      'responsive-state',
+      'research-news',
+      'filtered-masonry-layout',
+      'Filtered News cards do not reflow into tightly stacked columns',
+      { filteredNews, filteredNewsLayout },
     );
   }
   if (!zeroCombo || zeroNews.visible !== 0 || zeroNews.count !== 0 || !zeroNews.emptyVisible) {
@@ -1608,6 +1702,21 @@ async function auditResponsiveStates(browser) {
       'filter-reset',
       'Resetting News filters does not restore the complete feed',
       resetNews,
+    );
+  }
+  if (
+    !resetNewsLayout ||
+    resetNewsLayout.visibleCardCount !== resetNews.total ||
+    resetNewsLayout.occupiedColumnCount !== 4 ||
+    resetNewsLayout.maxVerticalGap > 22 ||
+    resetNewsLayout.clippedPosterCount > 0
+  ) {
+    addFailure(
+      'responsive-state',
+      'research-news',
+      'reset-masonry-layout',
+      'Resetting News filters does not restore the complete tightly stacked feed',
+      { resetNews, resetNewsLayout },
     );
   }
   await filterPage.close();

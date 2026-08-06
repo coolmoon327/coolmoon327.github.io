@@ -61,11 +61,6 @@ const moreAuthors = page.moreAuthors.replace('{count}', String(remainingAuthors)
 </article>
 
 <style>
-  .news-card,
-  .news-card-link {
-    height: 100%;
-  }
-
   .news-card-link {
     display: flex;
     overflow: hidden;
@@ -101,7 +96,6 @@ const moreAuthors = page.moreAuthors.replace('{count}', String(remainingAuthors)
 
   .news-card__body {
     display: flex;
-    flex: 1;
     flex-direction: column;
     padding: 1rem 1rem 1.1rem;
   }
@@ -144,19 +138,14 @@ const moreAuthors = page.moreAuthors.replace('{count}', String(remainingAuthors)
   }
 
   .news-card__description {
-    display: -webkit-box;
     margin: 0.7rem 0 0;
-    overflow: hidden;
     color: var(--global-text-color-light);
     font-size: 0.84rem;
     line-height: 1.55;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
   }
 
   .news-card__authors {
-    margin: auto 0 0;
-    padding-top: 0.9rem;
+    margin: 0.9rem 0 0;
     color: var(--global-text-color-light);
     font-family: var(--font-mono);
     font-size: 0.65rem;

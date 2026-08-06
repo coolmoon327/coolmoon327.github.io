@@ -100,6 +100,10 @@ const {
     object-fit: cover;
   }
 
+  .news-cover--compact.news-cover--image img {
+    object-fit: contain;
+  }
+
   .news-cover__credit {
     position: absolute;
     right: 0.55rem;
@@ -193,6 +197,16 @@ const {
 
   .news-cover--compact .news-cover__title {
     font-size: clamp(1.25rem, 2.7vw, 2rem);
+  }
+
+  .news-cover--compact:not(.news-cover--image) {
+    min-height: 15rem;
+    aspect-ratio: auto;
+  }
+
+  .news-cover--compact:not(.news-cover--image) .news-cover__poster {
+    min-height: inherit;
+    height: auto;
   }
 
   @media (prefers-reduced-motion: no-preference) {

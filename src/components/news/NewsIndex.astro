@@ -226,12 +226,18 @@ const modules = ['fields', 'advisors', 'interests'] as const;
   }
 
   .news-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1rem;
+    column-count: 4;
+    column-gap: 1rem;
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  .news-grid > li {
+    width: 100%;
+    margin: 0 0 1rem;
+    break-inside: avoid;
+    break-inside: avoid-column;
   }
 
   .news-grid > li[hidden] {
@@ -258,7 +264,7 @@ const modules = ['fields', 'advisors', 'interests'] as const;
 
   @media (max-width: 900px) {
     .news-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      column-count: 3;
     }
 
     .news-filters {
@@ -289,7 +295,7 @@ const modules = ['fields', 'advisors', 'interests'] as const;
     }
 
     .news-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-count: 2;
     }
 
     .news-filters {
@@ -302,7 +308,10 @@ const modules = ['fields', 'advisors', 'interests'] as const;
   }
 
   @media (max-width: 520px) {
-    .news-grid,
+    .news-grid {
+      column-count: 1;
+    }
+
     .news-filters {
       grid-template-columns: 1fr;
     }
