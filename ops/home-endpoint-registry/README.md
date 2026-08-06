@@ -122,6 +122,21 @@ node src/validate-services.mjs /path/to/services.json
 
 The command prints only a generic result and the service count; it never prints endpoint details.
 
+After the publisher image has been built, install a revised private catalog with the transactional updater instead of replacing `secrets/services.json` by hand:
+
+```bash
+chmod +x scripts/update-services.sh
+./scripts/update-services.sh --services-file /path/to/mode-0600-services.json
+```
+
+The updater requires GNU `flock` and `timeout`. It holds one non-blocking host lock across candidate validation, catalog replacement, encrypted publication, and container-state restoration; the password-reset workflow uses the same lock, so the two publisher mutations cannot interleave. Docker operations are bounded by a 180-second timeout by default (`HOME_ENDPOINT_DOCKER_TIMEOUT_SECONDS`, maximum 3600). Catchable signals received inside the transaction are recorded and returned as exit status 130 only after a consistent catalog, registry, and container state has been reached. Transactional one-shot publications use a fixed administrative container name; after any timeout or failure, the script explicitly removes and rechecks that container before it permits rollback publication or restarts the persistent daemon.
+
+The updater first copies the candidate into the private `secrets/` directory and validates it inside the exact publisher image with no network, a read-only filesystem, dropped capabilities, and bounded resources. The validation process uses the candidate file's actual host UID/GID, so its mode-`0600` permissions remain effective without assuming UID 1000. Only a valid catalog can proceed. It then preserves the current catalog as mode-`0600` `secrets/services.json.previous`, removes any existing publisher container, atomically installs the candidate, and forces a one-shot encrypted publication. A running or restarting daemon is recreated and started; a paused daemon is recreated, started, and paused again; an exited or created daemon is recreated without starting; an absent daemon remains absent. This guarantees that no retained container can later reopen the old bind-mount inode. Ambiguous, dead, removing, or unknown container states fail closed before replacement.
+
+If publication fails, the previous catalog is atomically restored and republished before the prior container state is restored. If both publication attempts fail, a previously running daemon can retry the restored catalog; when the daemon was intentionally stopped or absent, the script explicitly requires an operator one-shot retry instead of claiming automatic recovery. A failure that occurs after the new ciphertext was published but while the prior daemon state is being restored leaves the new catalog and ciphertext intact and reports only the state-restoration failure. Neither validation nor publication logs endpoint details.
+
+`secrets/services.json.previous` supports a deliberate rollback through the same validated path. It remains excluded from Git and the Docker build context; remove it securely after the new directory has been accepted and no rollback is required.
+
 ## Deploy key and host verification
 
 Generate a new key used only by this publisher:
@@ -151,7 +166,7 @@ chmod +x scripts/reset-password.sh
 ./scripts/reset-password.sh
 ```
 
-The script hides both entries, requires confirmation, and accepts only a password containing 16-1024 Unicode characters that is not numeric-only. It requires the standard `iconv` command so it can validate UTF-8 and count Unicode code points consistently across Linux and Git Bash. It stops a running publisher, saves the previous secret in a private same-directory backup, atomically installs the new mode-`0600` file, and performs a forced one-shot publication. It uses `shred` when available (with removal fallback), recreates the daemon so its file bind mount sees the new inode, and restores the previous running state only after success. On failure it atomically restores the old secret, forces a rollback publication, and restarts the prior daemon; a durable retry flag covers an interrupted rollback. The password is never passed as an argument or environment variable. A legacy password already mounted by an older deployment remains readable for continuity, but the next reset upgrades the shared Owner Access/private-blog secret to this stronger policy. Password length is measured as Unicode code points rather than UTF-8 bytes, so multibyte characters do not receive extra length credit.
+The script hides both entries, requires confirmation, and accepts only a password containing 16-1024 Unicode characters that is not numeric-only. It requires the standard `iconv` command so it can validate UTF-8 and count Unicode code points consistently across Linux and Git Bash. It uses the same bounded, signal-aware transaction and fixed one-shot container as the service updater. Every existing publisher container is removed before the password inode changes, then recreated into its prior running, paused, or stopped state only after publication reaches a consistent result. On failure it atomically restores the old secret, confirms that no one-shot container remains, forces a rollback publication, and restores the prior daemon state. A new ciphertext that was published successfully is never rolled back merely because later container-state restoration failed. The password is never passed as an argument or environment variable. A legacy password already mounted by an older deployment remains readable for continuity, but the next reset upgrades the shared Owner Access/private-blog secret to this stronger policy. Password length is measured as Unicode code points rather than UTF-8 bytes, so multibyte characters do not receive extra length credit.
 
 For a controlled bootstrap, `--password-file /path/to/mode-0600-input` reads a single-line secret from a private regular file; only the file path appears in the process arguments. Securely remove that input file after the transaction. Interactive use remains the normal reset path.
 
@@ -197,7 +212,7 @@ Run the same interactive script at any time:
 ./scripts/reset-password.sh
 ```
 
-It performs the stop, remount, forced publication, rollback protection, and restart as one transaction. The website needs no rebuild: the new password works after the new ciphertext reaches the registry, and the old password stops decrypting it.
+It performs the stop, remount, forced publication, rollback protection, and restart as one transaction. It shares the publisher-mutation lock with `update-services.sh`, so a password reset cannot race a service-directory update. The website needs no rebuild: the new password works after the new ciphertext reaches the registry, and the old password stops decrypting it.
 
 ## Failure and recovery behavior
 
@@ -222,3 +237,11 @@ node --test
 ```
 
 No dependency installation is required. `test/fixtures/interop-envelope-v1.json` is a deterministic, synthetic cross-implementation fixture produced by `scripts/generate-interop-fixture.mjs`; its test-only passphrase and invalid example endpoint are unrelated to deployment secrets. Production publications always use fresh cryptographic randomness.
+
+On a Linux host where the Compose publisher image is already built, opt in to the real container-isolation smoke test:
+
+```bash
+HOME_ENDPOINT_REAL_IMAGE_TEST=1 node --test test/update-services.container.test.mjs
+```
+
+The smoke test resolves the image from `docker compose config`, validates one synthetic mode-`0600` catalog as the file's actual UID/GID, confirms that an invalid catalog is rejected, and keeps the validator offline and read-only. It never reads deployment secrets or starts, stops, or recreates the publisher service.

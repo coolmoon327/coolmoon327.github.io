@@ -141,11 +141,18 @@ const featuredProjects = content.projects.filter((project) => project.featured).
       <h2 id="links-heading">{content.linksLabel}</h2>
       <div>
         {
-          content.links.map((link) => (
-            <a href={link.href} target="_blank" rel="noopener noreferrer">
-              {link.label} <span aria-hidden="true">↗</span>
-            </a>
-          ))
+          content.links.map((link) => {
+            const external = isExternal(link.href);
+            return (
+              <a
+                href={external ? link.href : withBase(link.href)}
+                target={external ? '_blank' : undefined}
+                rel={external ? 'noopener noreferrer' : undefined}
+              >
+                {link.label} <span aria-hidden="true">{external ? '↗' : '→'}</span>
+              </a>
+            );
+          })
         }
       </div>
     </section>

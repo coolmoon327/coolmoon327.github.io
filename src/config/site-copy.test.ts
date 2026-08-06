@@ -82,13 +82,25 @@ describe('localized Blog, Research News, and Owner Access copy', () => {
     expect(site.pages.localized.zh.news.intro).toContain('凸优化');
   });
 
-  it('keeps Research News first in the More menu without adding a top-level item', () => {
+  it('keeps Research News out of navigation while preserving a low-key homepage link', () => {
     for (const locale of ['en', 'zh'] as const) {
       const items = site.i18n.locales[locale].navbar.items;
-      const more = items.find((item) => 'children' in item);
-      expect(more && 'children' in more ? more.children[0]?.href : undefined).toBe(
-        locale === 'zh' ? '/zh/news/' : '/news/',
+      const newsHref = locale === 'zh' ? '/zh/news/' : '/news/';
+      const allNavigationHrefs = items.flatMap((item) =>
+        'children' in item ? item.children.map((child) => child.href) : [item.href],
       );
+      const homepageLinks = site.home[locale].links;
+
+      expect(allNavigationHrefs).not.toContain(newsHref);
+      expect(homepageLinks.filter((link) => link.href === newsHref)).toHaveLength(1);
+      expect(homepageLinks.at(-1)?.href).toBe('https://zobinhuang.github.io/');
+    }
+  });
+
+  it('keeps private-network instructions out of the public Owner Access copy', () => {
+    for (const locale of ['en', 'zh'] as const) {
+      const publicOwnerCopy = JSON.stringify(site.pages.localized[locale].owner);
+      expect(publicOwnerCopy).not.toMatch(/Tailscale|tailnet|192\.168\.|100\./i);
     }
   });
 });

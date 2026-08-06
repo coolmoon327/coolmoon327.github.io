@@ -125,7 +125,6 @@ export const site = {
             {
               label: 'more',
               children: [
-                { label: 'news', href: '/news/' },
                 { label: 'playground', href: '/playground/' },
                 { label: 'owner', href: '/owner/' },
               ],
@@ -152,7 +151,6 @@ export const site = {
             {
               label: '更多',
               children: [
-                { label: '动态', href: '/zh/news/' },
                 { label: '小游戏', href: '/zh/playground/' },
                 { label: '专属入口', href: '/zh/owner/' },
               ],
@@ -469,6 +467,7 @@ export const site = {
           label: 'ResearchGate',
           href: 'https://www.researchgate.net/profile/Yuhang-Shen-5',
         },
+        { label: 'Research feed', href: '/news/' },
         { label: 'Zobin · friend link', href: 'https://zobinhuang.github.io/' },
       ],
     },
@@ -667,6 +666,7 @@ export const site = {
           label: 'ResearchGate',
           href: 'https://www.researchgate.net/profile/Yuhang-Shen-5',
         },
+        { label: '研究动态', href: '/zh/news/' },
         { label: 'Zobin · 友链', href: 'https://zobinhuang.github.io/' },
       ],
     },
@@ -1788,9 +1788,9 @@ export const site = {
           expiresLabel: 'Valid until',
           openAction: 'Open service',
           internetGroup: 'Internet access',
-          homeGroup: 'Home / Tailscale access',
+          homeGroup: 'Additional access',
           internetBadge: 'Internet',
-          homeBadge: 'Home / Tailscale',
+          homeBadge: 'Additional',
           scriptRequired: 'JavaScript is required to unlock this encrypted directory.',
           resetHint:
             'Password changes are made on the home server and take effect after its next successful publication; the website does not need to be rebuilt.',
@@ -1798,7 +1798,7 @@ export const site = {
           rules: [
             'Only an encrypted directory is public; addresses and ports remain inside its ciphertext.',
             'This privacy layer is not service authentication. Each destination must keep its own login and network controls.',
-            'Direct-IP HTTPS may use a self-managed certificate. Verify the expected certificate or install the home CA instead of bypassing warnings blindly.',
+            'Follow the encrypted connection notice for each destination and verify unexpected certificate prompts instead of bypassing them blindly.',
             'A public ciphertext can be guessed offline, so use a long unique password and rotate the bootstrap password.',
           ],
         },
@@ -1938,9 +1938,9 @@ export const site = {
           expiresLabel: '有效期至',
           openAction: '打开服务',
           internetGroup: '互联网入口',
-          homeGroup: '家庭网络 / Tailscale 入口',
+          homeGroup: '其他入口',
           internetBadge: '互联网',
-          homeBadge: '家庭 / Tailscale',
+          homeBadge: '其他',
           scriptRequired: '需要启用 JavaScript 才能解锁这个加密目录。',
           resetHint:
             '访问密码在家庭服务器端更新，并在下一次目录发布成功后生效，无需重新构建个人主页。',
@@ -1948,7 +1948,7 @@ export const site = {
           rules: [
             '公开站点只包含加密后的服务目录；地址和端口始终保存在密文中。',
             '这只是隐私保护层，并不能替代服务认证；每项服务仍须保留自己的登录与网络防护。',
-            '通过 IP 直接访问 HTTPS 服务时，可能遇到自签名证书或家庭私有 CA 签发的证书；请核对证书或安装家庭 CA，不要直接忽略浏览器警告。',
+            '请遵循每项服务密文中的连接说明；若浏览器出现异常证书提示，应先核验证书，不要直接忽略警告。',
             '公开可下载的密文可能遭受离线口令猜测，请使用足够长且不与其他服务复用的密码，并尽快更换初始密码。',
           ],
         },
