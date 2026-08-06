@@ -4,6 +4,9 @@ vi.mock('astro:content', () => ({ getCollection: vi.fn() }));
 
 import {
   assertBilingualNewsPairs,
+  canonicalNewsAuthors,
+  canonicalNewsKeywords,
+  groupedNewsKeywords,
   listedNews,
   newsAuthors,
   newsKeywords,
@@ -147,9 +150,43 @@ describe('news visibility and ordering', () => {
   });
 
   it('derives select options from work metadata', () => {
-    const first = makeNews('first', { keywords: ['b', 'a'], authors: ['Zed', 'Amy'] });
-    const second = makeNews('second', { keywords: ['a'], authors: ['Amy'] });
-    expect(newsKeywords([first, second])).toEqual(['a', 'b']);
-    expect(newsAuthors([first, second])).toEqual(['Amy', 'Zed']);
+    const first = makeNews('first', {
+      keywords: ['b', 'edge-and-fog-computing'],
+      authors: ['Zed', 'M. Di Renzo'],
+    });
+    const second = makeNews('second', {
+      keywords: ['edge-and-fog-systems'],
+      authors: ['Marco Di Renzo'],
+    });
+    expect(canonicalNewsKeywords(first)).toEqual(['b', 'edge-and-fog-systems']);
+    expect(canonicalNewsAuthors(first)).toEqual(['Zed', 'Marco Di Renzo']);
+    expect(newsKeywords([first, second])).toEqual(['b', 'edge-and-fog-systems']);
+    expect(newsAuthors([first, second])).toEqual(['Marco Di Renzo', 'Zed']);
+  });
+
+  it('groups keyword options in core, active, watch, and fallback order', () => {
+    const entry = makeNews('grouped', {
+      keywords: [
+        'pinching-antennas',
+        'unknown-topic',
+        'convex-optimization',
+        'wireless-communications',
+        'online-optimization',
+        'wireless-optimization',
+      ],
+    });
+
+    expect(groupedNewsKeywords([entry])).toEqual([
+      {
+        id: 'core',
+        keywords: ['wireless-communications', 'convex-optimization'],
+      },
+      {
+        id: 'active',
+        keywords: ['online-optimization', 'wireless-optimization'],
+      },
+      { id: 'watch', keywords: ['pinching-antennas'] },
+      { id: 'other', keywords: ['unknown-topic'] },
+    ]);
   });
 });

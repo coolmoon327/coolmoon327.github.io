@@ -1,6 +1,12 @@
 ---
 import { site } from '@config/site';
-import { type NewsEntry, type NewsLocale, newsRoute } from '@utils/news';
+import {
+  canonicalNewsAuthors,
+  canonicalNewsKeywords,
+  type NewsEntry,
+  type NewsLocale,
+  newsRoute,
+} from '@utils/news';
 
 import NewsCover from './NewsCover.astro';
 
@@ -17,8 +23,10 @@ const formattedDate = entry.data.date.toLocaleDateString(languageTag, {
   month: 'short',
   day: 'numeric',
 });
-const visibleAuthors = entry.data.authors.slice(0, 3);
-const remainingAuthors = entry.data.authors.length - visibleAuthors.length;
+const authors = canonicalNewsAuthors(entry);
+const keywords = canonicalNewsKeywords(entry);
+const visibleAuthors = authors.slice(0, 3);
+const remainingAuthors = authors.length - visibleAuthors.length;
 const moreAuthors = page.moreAuthors.replace('{count}', String(remainingAuthors));
 ---
 
@@ -36,12 +44,12 @@ const moreAuthors = page.moreAuthors.replace('{count}', String(remainingAuthors)
       </p>
       <h2>{entry.data.title}</h2>
       <p class="news-card__description">{entry.data.description}</p>
-      <p class="news-card__authors" title={entry.data.authors.join(', ')}>
+      <p class="news-card__authors" title={authors.join(', ')}>
         {visibleAuthors.join(', ')}{remainingAuthors > 0 && <span> · {moreAuthors}</span>}
       </p>
       <ul class="news-card__keywords" aria-label={page.keywordsLabel}>
         {
-          entry.data.keywords
+          keywords
             .slice(0, 3)
             .map((keyword) => (
               <li>{page.keywords[keyword as keyof typeof page.keywords] ?? keyword}</li>

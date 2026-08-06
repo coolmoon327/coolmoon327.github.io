@@ -29,6 +29,9 @@ describe('localized Blog, Research News, and Owner Access copy', () => {
     expect(Object.keys(chinese.news.modules).sort()).toEqual(
       Object.keys(english.news.modules).sort(),
     );
+    expect(Object.keys(chinese.news.keywordGroups).sort()).toEqual(
+      Object.keys(english.news.keywordGroups).sort(),
+    );
     expect(Object.keys(chinese.news.keywords).sort()).toEqual(
       Object.keys(english.news.keywords).sort(),
     );
@@ -50,6 +53,7 @@ describe('localized Blog, Research News, and Owner Access copy', () => {
         news.resetAction,
         news.moreAuthors,
         ...Object.values(news.modules),
+        ...Object.values(news.keywordGroups),
         ...Object.values(news.keywords),
         owner.internetGroup,
         owner.homeGroup,
@@ -64,6 +68,18 @@ describe('localized Blog, Research News, and Owner Access copy', () => {
   it('describes post-level author lists as coverage rather than a shared byline', () => {
     expect(site.pages.localized.en.news.authorsLabel).toBe('Authors covered');
     expect(site.pages.localized.zh.news.authorsLabel).toBe('本期涉及作者');
+  });
+
+  it('names the four core fields in both localized Research News introductions', () => {
+    expect(site.pages.localized.en.news.intro).toContain('wireless communications');
+    expect(site.pages.localized.en.news.intro).toContain('physical-layer security');
+    expect(site.pages.localized.en.news.intro).toContain('reinforcement learning');
+    expect(site.pages.localized.en.news.intro).toContain('convex optimization');
+
+    expect(site.pages.localized.zh.news.intro).toContain('无线通信');
+    expect(site.pages.localized.zh.news.intro).toContain('物理层安全');
+    expect(site.pages.localized.zh.news.intro).toContain('强化学习');
+    expect(site.pages.localized.zh.news.intro).toContain('凸优化');
   });
 
   it('keeps Research News first in the More menu without adding a top-level item', () => {

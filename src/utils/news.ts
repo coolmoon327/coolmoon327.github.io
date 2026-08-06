@@ -3,6 +3,77 @@ import type { CollectionEntry } from 'astro:content';
 export type NewsEntry = CollectionEntry<'news'>;
 export type NewsLocale = NewsEntry['data']['locale'];
 
+export const newsKeywordAliases: Readonly<Record<string, string>> = {
+  'edge-and-fog-computing': 'edge-and-fog-systems',
+  'wireless-resource-allocation': 'resource-allocation',
+};
+
+export const newsAuthorAliases: Readonly<Record<string, string>> = {
+  'M. Di Renzo': 'Marco Di Renzo',
+};
+
+export const newsKeywordGroups = {
+  core: [
+    'wireless-communications',
+    'physical-layer-security',
+    'reinforcement-learning',
+    'convex-optimization',
+  ],
+  active: [
+    'learning-enabled-wireless',
+    'resource-allocation',
+    'online-optimization',
+    'wireless-optimization',
+    'anti-jamming',
+    'adversarial-wireless-learning',
+    'resilient-wireless',
+    'zero-energy-wireless',
+    'energy-constrained-wireless',
+    'energy-constrained-iot',
+    'battery-free-iot',
+    'ambient-backscatter',
+    'wireless-power-transfer',
+    'wireless-powered-edge',
+    'edge-and-fog-systems',
+  ],
+  watch: [
+    'secure-6g',
+    'semantic-communications',
+    'non-terrestrial-networks',
+    'pinching-antennas',
+    'movable-antennas',
+    'ris',
+    'noma',
+    'isac',
+    'ai-native-wireless',
+    'generative-wireless-receivers',
+    'distributed-and-gpu-systems',
+  ],
+} as const;
+
+export type NewsKeywordGroupId = keyof typeof newsKeywordGroups | 'other';
+
+export interface NewsKeywordGroup {
+  id: NewsKeywordGroupId;
+  keywords: string[];
+}
+
+export function canonicalNewsKeyword(keyword: string): string {
+  return newsKeywordAliases[keyword] ?? keyword;
+}
+
+export function canonicalNewsAuthor(author: string): string {
+  return newsAuthorAliases[author] ?? author;
+}
+
+export function canonicalNewsKeywords(entry: NewsEntry): string[] {
+  return [...new Set(entry.data.keywords.map(canonicalNewsKeyword))];
+}
+
+export function canonicalNewsAuthors(entry: NewsEntry): string[] {
+  return [...new Set(entry.data.authors.map(canonicalNewsAuthor))];
+}
+
 /** Fail the build when a public news pair is incomplete or internally inconsistent. */
 export function assertBilingualNewsPairs(entries: NewsEntry[]): void {
   const byTranslation = new Map<string, NewsEntry[]>();
@@ -130,13 +201,32 @@ export function sortNews(entries: NewsEntry[]): NewsEntry[] {
 }
 
 export function newsKeywords(entries: NewsEntry[]): string[] {
-  return [...new Set(entries.flatMap((entry) => entry.data.keywords))].sort((a, b) =>
+  return [...new Set(entries.flatMap(canonicalNewsKeywords))].sort((a, b) =>
     a.localeCompare(b, 'en'),
   );
 }
 
+/** Group available filter keywords in editorial order without hiding unknown future tags. */
+export function groupedNewsKeywords(entries: NewsEntry[]): NewsKeywordGroup[] {
+  const remaining = new Set(newsKeywords(entries));
+  const groups: NewsKeywordGroup[] = [];
+
+  for (const [id, orderedKeywords] of Object.entries(newsKeywordGroups) as [
+    keyof typeof newsKeywordGroups,
+    readonly string[],
+  ][]) {
+    const keywords = orderedKeywords.filter((keyword) => remaining.delete(keyword));
+    if (keywords.length > 0) groups.push({ id, keywords });
+  }
+
+  const other = [...remaining].sort((a, b) => a.localeCompare(b, 'en'));
+  if (other.length > 0) groups.push({ id: 'other', keywords: other });
+
+  return groups;
+}
+
 export function newsAuthors(entries: NewsEntry[]): string[] {
-  return [...new Set(entries.flatMap((entry) => entry.data.authors))].sort((a, b) =>
+  return [...new Set(entries.flatMap(canonicalNewsAuthors))].sort((a, b) =>
     a.localeCompare(b, 'en'),
   );
 }

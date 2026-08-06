@@ -1,7 +1,14 @@
 ---
 import { site } from '@config/site';
 import Base from '@layouts/Base.astro';
-import { newsAuthors, type NewsEntry, newsKeywords, type NewsLocale } from '@utils/news';
+import {
+  canonicalNewsAuthors,
+  canonicalNewsKeywords,
+  groupedNewsKeywords,
+  newsAuthors,
+  type NewsEntry,
+  type NewsLocale,
+} from '@utils/news';
 
 import NewsCard from './NewsCard.astro';
 
@@ -13,7 +20,7 @@ interface Props {
 const { locale, entries } = Astro.props;
 const page = site.pages.localized[locale].news;
 const authors = newsAuthors(entries);
-const keywords = newsKeywords(entries);
+const keywordGroups = groupedNewsKeywords(entries);
 const modules = ['fields', 'advisors', 'interests'] as const;
 ---
 
@@ -43,10 +50,14 @@ const modules = ['fields', 'advisors', 'interests'] as const;
         <select name="keyword" data-news-filter="keyword">
           <option value="">{page.allKeywords}</option>
           {
-            keywords.map((keyword) => (
-              <option value={keyword}>
-                {page.keywords[keyword as keyof typeof page.keywords] ?? keyword}
-              </option>
+            keywordGroups.map((group) => (
+              <optgroup label={page.keywordGroups[group.id]}>
+                {group.keywords.map((keyword) => (
+                  <option value={keyword}>
+                    {page.keywords[keyword as keyof typeof page.keywords] ?? keyword}
+                  </option>
+                ))}
+              </optgroup>
             ))
           }
         </select>
@@ -75,8 +86,8 @@ const modules = ['fields', 'advisors', 'interests'] as const;
           <li
             data-news-card
             data-module={entry.data.module}
-            data-keywords={JSON.stringify(entry.data.keywords)}
-            data-authors={JSON.stringify(entry.data.authors)}
+            data-keywords={JSON.stringify(canonicalNewsKeywords(entry))}
+            data-authors={JSON.stringify(canonicalNewsAuthors(entry))}
           >
             <NewsCard entry={entry} locale={locale} />
           </li>
